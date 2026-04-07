@@ -10,7 +10,11 @@ object AppRoutes {
     const val CART = "cart"
     const val CHECKOUT = "checkout"
     const val ORDER_SUCCESS = "order_success"
-    const val AUTH = "auth"
+    const val LOGIN = "login"
+    const val REGISTER = "register"
+
+    /** @deprecated Use [LOGIN] */
+    const val AUTH = LOGIN
     const val PROFILE = "profile"
 
     // Customer profile subpages
