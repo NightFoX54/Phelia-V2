@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1060085158547",
+    "project_id": "phelia-firebase",
+    "storage_bucket": "phelia-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1060085158547:android:f523391850b7e39a507366",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdos4Qrydv6nggEY7WntatOLQnf5CvT-o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
