@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.model.ui.UserRole
 import com.example.myapplication.ui.components.BottomNavBar
 import com.example.myapplication.ui.screens.admin.AdminDashboardScreen
+import com.example.myapplication.ui.screens.admin.AdminInactiveProductsScreen
 import com.example.myapplication.ui.screens.admin.StoreDetailScreen
 import com.example.myapplication.ui.screens.admin.StoreManagementScreen
 import com.example.myapplication.ui.screens.admin.UserManagementScreen
@@ -28,19 +29,32 @@ import com.example.myapplication.ui.screens.cart.CartScreen
 import com.example.myapplication.ui.screens.checkout.CheckoutScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 import com.example.myapplication.ui.screens.order.OrderSuccessScreen
+import com.example.myapplication.ui.screens.product.ProductDetailAudience
 import com.example.myapplication.ui.screens.product.ProductDetailScreen
 import com.example.myapplication.ui.screens.product.ProductListingScreen
 import com.example.myapplication.ui.screens.profile.FavoritesScreen
+import com.example.myapplication.ui.screens.profile.OrderDetailScreen
+import com.example.myapplication.ui.screens.profile.OrderHistoryScreen
+import com.example.myapplication.ui.screens.profile.PaymentMethodsScreen
+import com.example.myapplication.ui.screens.profile.EditStoreScreen
 import com.example.myapplication.ui.screens.profile.ProfileScreen
 import com.example.myapplication.ui.screens.profile.ProfileSubPagesScreen
+import com.example.myapplication.ui.screens.profile.ShippingAddressesScreen
 import com.example.myapplication.ui.screens.store.ProductFormScreen
 import com.example.myapplication.ui.screens.store.StoreDashboardScreen
 import com.example.myapplication.ui.screens.store.StoreOrderDetailScreen
 import com.example.myapplication.ui.screens.store.StoreOrdersScreen
 import com.example.myapplication.ui.screens.store.StoreProductsScreen
 import com.example.myapplication.viewmodel.CartViewModel
+import com.example.myapplication.viewmodel.CheckoutViewModel
+import com.example.myapplication.viewmodel.CustomerAccountViewModel
+import com.example.myapplication.viewmodel.OrderHistoryViewModel
 import com.example.myapplication.viewmodel.FavoritesViewModel
+import com.example.myapplication.viewmodel.ProductEngagementViewModel
+import com.example.myapplication.viewmodel.ProductEngagementViewModelFactory
 import com.example.myapplication.viewmodel.SessionViewModel
+import com.example.myapplication.viewmodel.StoreOwnerProfileViewModel
+import com.example.myapplication.viewmodel.StoreProductsViewModel
 
 @Composable
 fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
@@ -48,6 +62,11 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
     val activity = LocalContext.current as ComponentActivity
     val cartViewModel: CartViewModel = viewModel(viewModelStoreOwner = activity)
     val favoritesViewModel: FavoritesViewModel = viewModel(viewModelStoreOwner = activity)
+    val customerAccountViewModel: CustomerAccountViewModel = viewModel(viewModelStoreOwner = activity)
+    val checkoutViewModel: CheckoutViewModel = viewModel(viewModelStoreOwner = activity)
+    val orderHistoryViewModel: OrderHistoryViewModel = viewModel(viewModelStoreOwner = activity)
+    val storeOwnerProfileViewModel: StoreOwnerProfileViewModel = viewModel(viewModelStoreOwner = activity)
+    val storeProductsViewModel: StoreProductsViewModel = viewModel(viewModelStoreOwner = activity)
     val user by sessionViewModel.user.collectAsState()
     val profile = user
     if (profile == null) {
@@ -66,7 +85,6 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val hideBottomBarRoutes = setOf(
         AppRoutes.CHECKOUT,
-        AppRoutes.ORDER_SUCCESS,
         AppRoutes.PRODUCT_DETAIL,
         AppRoutes.PRODUCT_FORM,
         AppRoutes.STORE_ORDER_DETAIL,
@@ -79,11 +97,16 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
         AppRoutes.PROFILE_SETTINGS,
         AppRoutes.PROFILE_ORDERS,
         AppRoutes.PROFILE_FAVORITES,
+        AppRoutes.STORE_PROFILE_EDIT,
     )
 
     Scaffold(
         bottomBar = {
-            if (currentRoute != null && !hideBottomBarRoutes.contains(currentRoute)) {
+            if (currentRoute != null && !hideBottomBarRoutes.contains(currentRoute) &&
+                !currentRoute.startsWith("order_success/") &&
+                !currentRoute.startsWith("profile/orders/") &&
+                !currentRoute.startsWith("store-product/")
+            ) {
                 BottomNavBar(navController = navController, role = profile.role)
             }
         },
@@ -113,10 +136,16 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 arguments = AppRoutes.productDetailArgs,
             ) { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                val engagementViewModel: ProductEngagementViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    key = "engagement_$productId",
+                    factory = ProductEngagementViewModelFactory(productId),
+                )
                 ProductDetailScreen(
                     productId = productId,
                     cartViewModel = cartViewModel,
                     favoritesViewModel = favoritesViewModel,
+                    engagementViewModel = engagementViewModel,
                     onBack = { navController.popBackStack() },
                     onAddedToCart = { navController.navigate(AppRoutes.CART) },
                 )
@@ -130,12 +159,27 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             }
             composable(AppRoutes.CHECKOUT) {
                 CheckoutScreen(
+                    cartViewModel = cartViewModel,
+                    accountViewModel = customerAccountViewModel,
+                    checkoutViewModel = checkoutViewModel,
                     onBack = { navController.popBackStack() },
-                    onConfirm = { navController.navigate(AppRoutes.ORDER_SUCCESS) },
+                    onOrderPlaced = { orderId ->
+                        navController.navigate(AppRoutes.orderSuccess(orderId)) {
+                            popUpTo(AppRoutes.CART) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onAddShippingAddress = { navController.navigate(AppRoutes.PROFILE_ADDRESS) },
+                    onAddPaymentMethod = { navController.navigate(AppRoutes.PROFILE_PAYMENT) },
                 )
             }
-            composable(AppRoutes.ORDER_SUCCESS) {
+            composable(
+                route = AppRoutes.ORDER_SUCCESS,
+                arguments = AppRoutes.orderSuccessArgs,
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
                 OrderSuccessScreen(
+                    orderId = orderId,
                     onContinueShopping = {
                         navController.navigate(AppRoutes.HOME) {
                             popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
@@ -148,16 +192,54 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             composable(AppRoutes.PROFILE) {
                 ProfileScreen(
                     sessionViewModel = sessionViewModel,
+                    orderHistoryViewModel = orderHistoryViewModel,
+                    favoritesViewModel = favoritesViewModel,
+                    storeOwnerProfileViewModel = storeOwnerProfileViewModel,
                     onNavigate = { route -> navController.navigate(route) },
                 )
             }
+            composable(AppRoutes.STORE_PROFILE_EDIT) {
+                EditStoreScreen(
+                    viewModel = storeOwnerProfileViewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(AppRoutes.PROFILE_EDIT) { ProfileSubPagesScreen("Edit Profile", onBack = { navController.popBackStack() }) }
-            composable(AppRoutes.PROFILE_ADDRESS) { ProfileSubPagesScreen("Shipping Address", onBack = { navController.popBackStack() }) }
-            composable(AppRoutes.PROFILE_PAYMENT) { ProfileSubPagesScreen("Payment Methods", onBack = { navController.popBackStack() }) }
+            composable(AppRoutes.PROFILE_ADDRESS) {
+                ShippingAddressesScreen(
+                    accountViewModel = customerAccountViewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(AppRoutes.PROFILE_PAYMENT) {
+                PaymentMethodsScreen(
+                    accountViewModel = customerAccountViewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(AppRoutes.PROFILE_NOTIFICATIONS) { ProfileSubPagesScreen("Notifications", onBack = { navController.popBackStack() }) }
             composable(AppRoutes.PROFILE_HELP) { ProfileSubPagesScreen("Help & Support", onBack = { navController.popBackStack() }) }
             composable(AppRoutes.PROFILE_SETTINGS) { ProfileSubPagesScreen("Settings", onBack = { navController.popBackStack() }) }
-            composable(AppRoutes.PROFILE_ORDERS) { ProfileSubPagesScreen("Order History", onBack = { navController.popBackStack() }) }
+            composable(
+                route = AppRoutes.PROFILE_ORDER_DETAIL,
+                arguments = AppRoutes.profileOrderDetailArgs,
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+                OrderDetailScreen(
+                    orderId = orderId,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { productId ->
+                        navController.navigate(AppRoutes.productDetail(productId))
+                    },
+                )
+            }
+            composable(AppRoutes.PROFILE_ORDERS) {
+                OrderHistoryScreen(
+                    viewModel = orderHistoryViewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenOrderDetail = { id -> navController.navigate(AppRoutes.profileOrderDetail(id)) },
+                )
+            }
             composable(AppRoutes.PROFILE_FAVORITES) {
                 FavoritesScreen(
                     favoritesViewModel = favoritesViewModel,
@@ -168,14 +250,40 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
 
             composable(AppRoutes.STORE_DASHBOARD) {
                 StoreDashboardScreen(
+                    storeProductsViewModel = storeProductsViewModel,
                     onAddProduct = { navController.navigate(AppRoutes.PRODUCT_FORM) },
+                    onOpenProductDetail = { navController.navigate(AppRoutes.storeProductDetail(it)) },
                     onEditProduct = { navController.navigate(AppRoutes.productFormEdit(it)) },
                 )
             }
             composable(AppRoutes.STORE_PRODUCTS) {
                 StoreProductsScreen(
+                    viewModel = storeProductsViewModel,
                     onAddProduct = { navController.navigate(AppRoutes.PRODUCT_FORM) },
                     onEditProduct = { navController.navigate(AppRoutes.productFormEdit(it)) },
+                    onOpenProductDetail = { id -> navController.navigate(AppRoutes.storeProductDetail(id)) },
+                )
+            }
+            composable(
+                route = AppRoutes.STORE_PRODUCT_DETAIL,
+                arguments = AppRoutes.storeProductDetailArgs,
+            ) { backStackEntry ->
+                val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+                val store by storeOwnerProfileViewModel.store.collectAsState()
+                val engagementVm: ProductEngagementViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    key = "eng_store_$productId",
+                    factory = ProductEngagementViewModelFactory(productId),
+                )
+                ProductDetailScreen(
+                    productId = productId,
+                    audience = ProductDetailAudience.StoreOwner,
+                    cartViewModel = cartViewModel,
+                    favoritesViewModel = favoritesViewModel,
+                    engagementViewModel = engagementVm,
+                    ownerStoreId = store?.storeId.orEmpty(),
+                    onBack = { navController.popBackStack() },
+                    onEditProduct = { navController.navigate(AppRoutes.productFormEdit(productId)) },
                 )
             }
             composable(AppRoutes.STORE_ORDERS) {
@@ -195,7 +303,11 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 AdminDashboardScreen(
                     onManageUsers = { navController.navigate(AppRoutes.USER_MANAGEMENT) },
                     onManageStores = { navController.navigate(AppRoutes.STORE_MANAGEMENT) },
+                    onInactiveProducts = { navController.navigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) },
                 )
+            }
+            composable(AppRoutes.ADMIN_INACTIVE_PRODUCTS) {
+                AdminInactiveProductsScreen(onBack = { navController.popBackStack() })
             }
             composable(AppRoutes.USER_MANAGEMENT) { UserManagementScreen(onBack = { navController.popBackStack() }) }
             composable(AppRoutes.STORE_MANAGEMENT) {

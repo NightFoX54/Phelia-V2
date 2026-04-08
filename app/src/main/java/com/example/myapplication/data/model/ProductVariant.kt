@@ -7,4 +7,6 @@ data class ProductVariant(
     val price: Double = 0.0,
     val stock: Int = 0,
     val images: List<String> = emptyList(),
+    /** false = satıştan kaldırıldı; doküman silinmez */
+    val isActive: Boolean = true,
 )

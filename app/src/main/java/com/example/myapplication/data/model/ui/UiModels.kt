@@ -28,6 +28,7 @@ data class Product(
     val price: Double,
     val imageUrl: String,
     val rating: Double,
+    val reviewCount: Int = 0,
     val category: String? = null,
     val brandName: String? = null,
 )
@@ -51,6 +52,7 @@ data class CartItem(
 @Immutable
 data class CartLineUi(
     val productId: String,
+    val storeId: String,
     val variantId: String,
     val quantity: Int,
     val productName: String,

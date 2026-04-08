@@ -35,28 +35,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.util.Locale
-import kotlin.random.Random
-
 @Composable
 fun OrderSuccessScreen(
+    orderId: String,
     onTrackOrder: () -> Unit,
     onContinueShopping: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val orderNumber = remember {
-        "ORD-" + Random.nextInt(100000, 999999).toString()
-    }
-    val estimatedDelivery = "Friday, Apr 5"
-
-    val items = listOf(
-        Triple("Wireless Headphones Pro", 299.99, 1),
-        Triple("Smartphone X12 Pro", 999.99, 2),
-    )
-    val subtotal = items.sumOf { it.second * it.third }
-    val shipping = 15.0
-    val tax = subtotal * 0.08
-    val total = subtotal + shipping + tax
+    val orderNumber = remember(orderId) { orderId.ifBlank { "—" } }
+    val estimatedDelivery = "3–5 business days"
 
     Column(
         modifier = modifier
@@ -118,34 +105,24 @@ fun OrderSuccessScreen(
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     InfoRow(icon = Icons.Default.LocalShipping, title = "Estimated Delivery", value = estimatedDelivery, iconBg = Color(0xFFDCFCE7), iconTint = Color(0xFF16A34A))
-                    InfoRow(icon = Icons.Default.LocationOn, title = "Delivering to", value = "123 Main Street\nNew York, NY 10001", iconBg = Color(0xFFDBEAFE), iconTint = Color(0xFF2563EB))
+                    InfoRow(
+                        icon = Icons.Default.LocationOn,
+                        title = "Order reference",
+                        value = orderNumber,
+                        iconBg = Color(0xFFDBEAFE),
+                        iconTint = Color(0xFF2563EB),
+                    )
                 }
             }
 
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Text("Order Summary", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    items.forEach { (name, price, qty) ->
-                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(name, fontWeight = FontWeight.SemiBold)
-                                Text("Qty: $qty", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text("$" + String.format(Locale.US, "%.2f", price * qty), fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    PriceRow("Subtotal", subtotal)
-                    PriceRow("Shipping", shipping)
-                    PriceRow("Tax (8%)", tax)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("Total Paid", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text("$" + String.format(Locale.US, "%.2f", total), fontWeight = FontWeight.Bold)
-                    }
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("What’s next", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Your order was split by store where needed. Each store can update its part of the order. You’ll see details in order history soon.",
+                        color = Color(0xFF4B5563),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
 
@@ -219,14 +196,6 @@ private fun InfoRow(
             Text(title, fontWeight = FontWeight.Bold)
             Text(value, color = Color(0xFF4B5563))
         }
-    }
-}
-
-@Composable
-private fun PriceRow(label: String, value: Double) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-        Text(label, color = Color(0xFF4B5563), modifier = Modifier.weight(1f))
-        Text("$" + String.format(Locale.US, "%.2f", value), color = Color(0xFF4B5563))
     }
 }
 

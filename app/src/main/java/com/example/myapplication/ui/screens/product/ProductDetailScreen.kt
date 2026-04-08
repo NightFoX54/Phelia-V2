@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Send
@@ -44,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,8 +57,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
+import com.example.myapplication.data.model.EligibleReviewSlot
 import com.example.myapplication.data.model.Product
+import com.example.myapplication.data.model.ProductQuestionDoc
+import com.example.myapplication.data.model.ProductReviewDoc
 import com.example.myapplication.data.model.ProductDetailBundle
 import com.example.myapplication.data.model.ProductVariant
 import com.example.myapplication.data.model.VariantSelection
@@ -66,14 +73,20 @@ import com.example.myapplication.ui.product.colorLabelAndComposeColor
 import com.example.myapplication.ui.product.isColorAttributeKey
 import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.FavoritesViewModel
+import com.example.myapplication.viewmodel.ProductEngagementViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun ProductDetailScreen(
     productId: String,
+    audience: ProductDetailAudience = ProductDetailAudience.Customer,
     cartViewModel: CartViewModel,
     favoritesViewModel: FavoritesViewModel,
+    engagementViewModel: ProductEngagementViewModel,
+    ownerStoreId: String = "",
     onBack: () -> Unit,
-    onAddedToCart: () -> Unit,
+    onAddedToCart: () -> Unit = {},
+    onEditProduct: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
@@ -82,9 +95,12 @@ fun ProductDetailScreen(
     var loadState by remember(productId) { mutableStateOf<DetailLoadState>(DetailLoadState.Loading) }
     var selectedAttributes by remember(productId) { mutableStateOf(mapOf<String, String>()) }
 
-    LaunchedEffect(productId) {
+    LaunchedEffect(productId, audience) {
         loadState = DetailLoadState.Loading
-        repository.fetchProductDetail(productId).fold(
+        repository.fetchProductDetail(
+            productId,
+            forStoreManagement = audience == ProductDetailAudience.StoreOwner,
+        ).fold(
             onSuccess = { loadState = DetailLoadState.Ready(it) },
             onFailure = { loadState = DetailLoadState.Error(it.message ?: "Yuklenemedi") },
         )
@@ -132,6 +148,8 @@ fun ProductDetailScreen(
             is DetailLoadState.Ready -> {
                 ProductDetailContent(
                     bundle = state.bundle,
+                    audience = audience,
+                    ownerStoreId = ownerStoreId,
                     selectedAttributes = selectedAttributes,
                     onSelectAttribute = { key, value ->
                         selectedAttributes = VariantSelection.pickAttribute(
@@ -146,10 +164,12 @@ fun ProductDetailScreen(
                     images = images,
                     pagerState = pagerState,
                     cartViewModel = cartViewModel,
+                    engagementViewModel = engagementViewModel,
                     isFavorite = isFavorite,
                     onFavoriteToggle = { favoritesViewModel.toggleFavorite(productId) },
                     onBack = onBack,
                     onAddedToCart = onAddedToCart,
+                    onEditProduct = onEditProduct,
                 )
             }
         }
@@ -166,22 +186,42 @@ private sealed interface DetailLoadState {
 @Composable
 private fun ProductDetailContent(
     bundle: ProductDetailBundle,
+    audience: ProductDetailAudience,
+    ownerStoreId: String,
     selectedAttributes: Map<String, String>,
     onSelectAttribute: (String, String) -> Unit,
     resolvedVariant: ProductVariant?,
     images: List<String>,
     pagerState: PagerState,
     cartViewModel: CartViewModel,
+    engagementViewModel: ProductEngagementViewModel,
     isFavorite: Boolean,
     onFavoriteToggle: () -> Unit,
     onBack: () -> Unit,
     onAddedToCart: () -> Unit,
+    onEditProduct: (() -> Unit)?,
 ) {
     val product = bundle.product
+    val isStoreManagement =
+        audience == ProductDetailAudience.StoreOwner &&
+            ownerStoreId.isNotBlank() &&
+            ownerStoreId == product.storeId
     val keys = bundle.variantAttributeKeys
     val variants = bundle.variants
-    var newReview by remember { mutableStateOf("") }
     var newQuestion by remember { mutableStateOf("") }
+    var reviewRating by remember { mutableIntStateOf(5) }
+    var newReviewComment by remember { mutableStateOf("") }
+    val auth = remember { FirebaseAuth.getInstance() }
+    val signedIn = auth.currentUser != null
+    val reviews by engagementViewModel.reviews.collectAsState()
+    val summaryRating = remember(reviews, product.rating) {
+        if (reviews.isNotEmpty()) reviews.map { it.rating }.average() else product.rating
+    }
+    val summaryReviewCount = if (reviews.isNotEmpty()) reviews.size else product.reviewCount
+    val questions by engagementViewModel.questions.collectAsState()
+    val eligibleReview by engagementViewModel.eligibleReviewSlot.collectAsState()
+    val engagementBusy by engagementViewModel.busy.collectAsState()
+    val engagementError by engagementViewModel.lastError.collectAsState()
 
     val displayPages = if (images.isEmpty()) listOf<String?>(null) else images.map { it }
 
@@ -224,17 +264,26 @@ private fun ProductDetailContent(
                             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF374151)) }
                         }
                         Spacer(modifier = Modifier.weight(1f))
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
-                            IconButton(onClick = {}) { Icon(Icons.Default.Share, null, tint = Color(0xFF374151)) }
-                        }
-                        Spacer(modifier = Modifier.size(10.dp))
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
-                            IconButton(onClick = onFavoriteToggle) {
-                                Icon(
-                                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = if (isFavorite) "Favorilerden cikar" else "Favorilere ekle",
-                                    tint = if (isFavorite) Color(0xFFEF4444) else Color(0xFF374151),
-                                )
+                        if (isStoreManagement && onEditProduct != null) {
+                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                                IconButton(onClick = onEditProduct) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit product", tint = Color(0xFF374151))
+                                }
+                            }
+                            Spacer(modifier = Modifier.size(10.dp))
+                        } else {
+                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                                IconButton(onClick = {}) { Icon(Icons.Default.Share, null, tint = Color(0xFF374151)) }
+                            }
+                            Spacer(modifier = Modifier.size(10.dp))
+                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                                IconButton(onClick = onFavoriteToggle) {
+                                    Icon(
+                                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = if (isFavorite) "Favorilerden cikar" else "Favorilere ekle",
+                                        tint = if (isFavorite) Color(0xFFEF4444) else Color(0xFF374151),
+                                    )
+                                }
                             }
                         }
                     }
@@ -286,11 +335,14 @@ private fun ProductDetailContent(
                     ) {
                         Text("★★★★★", color = Color(0xFFF59E0B))
                         Text(
-                            "  " + String.format("%.1f", product.rating),
+                            "  " + String.format("%.1f", summaryRating),
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF111827),
                         )
-                        Text(" (${product.reviewCount} reviews)", color = Color(0xFF6B7280))
+                        Text(
+                            " ($summaryReviewCount reviews)",
+                            color = Color(0xFF6B7280),
+                        )
                     }
 
                     resolvedVariant?.let { v ->
@@ -410,53 +462,86 @@ private fun ProductDetailContent(
                     )
 
                     DividerLike()
-                    QaSection(
-                        value = newQuestion,
-                        onValueChange = { newQuestion = it },
+                    ProductQuestionsSection(
+                        questions = questions,
+                        questionDraft = newQuestion,
+                        onQuestionChange = { newQuestion = it },
+                        signedIn = signedIn,
+                        busy = engagementBusy,
+                        errorText = engagementError,
+                        customerQuestionEnabled = !isStoreManagement,
+                        isStoreManagement = isStoreManagement,
+                        onSubmitQuestion = {
+                            engagementViewModel.submitQuestion(it) { result ->
+                                result.onSuccess { newQuestion = "" }
+                            }
+                        },
+                        onAnswerQuestion = { qId, text ->
+                            engagementViewModel.answerQuestionAsStore(qId, text) { }
+                        },
                     )
 
                     DividerLike()
-                    ReviewsSection(
-                        value = newReview,
-                        onValueChange = { newReview = it },
+                    ProductReviewsSection(
+                        reviews = reviews,
+                        reviewRating = reviewRating,
+                        onReviewRatingChange = { reviewRating = it },
+                        reviewComment = newReviewComment,
+                        onReviewCommentChange = { newReviewComment = it },
+                        eligibleReview = eligibleReview,
+                        signedIn = signedIn,
+                        busy = engagementBusy,
+                        errorText = engagementError,
+                        customerReviewEnabled = !isStoreManagement,
+                        isStoreManagement = isStoreManagement,
+                        onSubmitReview = { r, c ->
+                            engagementViewModel.submitReview(r, c) { result ->
+                                result.onSuccess { newReviewComment = "" }
+                            }
+                        },
+                        onStoreReplyReview = { reviewId, text ->
+                            engagementViewModel.respondToReviewAsStore(reviewId, text) { }
+                        },
                     )
 
-                    Spacer(modifier = Modifier.height(120.dp))
+                    Spacer(modifier = Modifier.height(if (isStoreManagement) 32.dp else 120.dp))
                 }
             }
         }
 
         val canAdd = resolvedVariant != null && resolvedVariant.stock > 0
 
-        Surface(
-            shadowElevation = 8.dp,
-            color = Color.White,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
-                Button(
-                    onClick = {
-                        val v = resolvedVariant ?: return@Button
-                        cartViewModel.addToCart(
-                            productId = product.productId,
-                            variantId = v.variantId,
-                            quantity = 1,
-                        )
-                        onAddedToCart()
-                    },
-                    enabled = canAdd,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(999.dp),
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                ) {
-                    Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null)
-                    Spacer(modifier = Modifier.size(10.dp))
-                    val label = when {
-                        resolvedVariant == null -> "Varyant secin"
-                        resolvedVariant.stock <= 0 -> "Stokta yok"
-                        else -> "Sepete ekle — $" + String.format("%.2f", resolvedVariant.price)
+        if (!isStoreManagement) {
+            Surface(
+                shadowElevation = 8.dp,
+                color = Color.White,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+                    Button(
+                        onClick = {
+                            val v = resolvedVariant ?: return@Button
+                            cartViewModel.addToCart(
+                                productId = product.productId,
+                                variantId = v.variantId,
+                                quantity = 1,
+                            )
+                            onAddedToCart()
+                        },
+                        enabled = canAdd,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                    ) {
+                        Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null)
+                        Spacer(modifier = Modifier.size(10.dp))
+                        val label = when {
+                            resolvedVariant == null -> "Varyant secin"
+                            resolvedVariant.stock <= 0 -> "Stokta yok"
+                            else -> "Sepete ekle — $" + String.format("%.2f", resolvedVariant.price)
+                        }
+                        Text(label, fontWeight = FontWeight.Bold)
                     }
-                    Text(label, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -501,36 +586,97 @@ private fun SpecsCard(product: Product) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun QaSection(
-    value: String,
-    onValueChange: (String) -> Unit,
+private fun ProductQuestionsSection(
+    questions: List<ProductQuestionDoc>,
+    questionDraft: String,
+    onQuestionChange: (String) -> Unit,
+    signedIn: Boolean,
+    busy: Boolean,
+    errorText: String?,
+    customerQuestionEnabled: Boolean,
+    isStoreManagement: Boolean,
+    onSubmitQuestion: (String) -> Unit,
+    onAnswerQuestion: (String, String) -> Unit,
 ) {
-    Text("Product Questions", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text("Store owner'a soru sor...") },
-        trailingIcon = { Icon(Icons.Default.Send, null) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+    Text(
+        if (isStoreManagement) "Customer questions" else "Product questions",
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(bottom = 8.dp),
     )
-    Text("Popular Q&A", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
-    val qas = listOf(
-        "Bu ürün garantili mi?" to "Evet, 2 yıl resmi distribütör garantisi var.",
-        "Aynı gün kargo var mı?" to "Hafta içi 15:00 öncesi siparişler aynı gün kargolanır.",
-        "Kutudan neler çıkıyor?" to "Ürün, kablo, kullanım kılavuzu ve garanti belgesi.",
-    )
-    FlowRow(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        qas.forEach { (q, a) ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+    if (customerQuestionEnabled) {
+        if (!signedIn) {
+            Text("Sign in to ask a question.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        } else {
+            OutlinedTextField(
+                value = questionDraft,
+                onValueChange = onQuestionChange,
+                placeholder = { Text("Ask the store...") },
+                trailingIcon = {
+                    IconButton(
+                        onClick = { onSubmitQuestion(questionDraft) },
+                        enabled = !busy && questionDraft.isNotBlank(),
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "Send question")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Text("Q: $q", fontWeight = FontWeight.SemiBold)
-                    Text("A: $a", color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+                shape = RoundedCornerShape(12.dp),
+                enabled = !busy,
+            )
+        }
+    } else if (isStoreManagement) {
+        Text("Reply to shoppers below.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+    }
+    errorText?.takeIf { it.isNotBlank() }?.let {
+        Text(it, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+    }
+    Text("Questions", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+    if (questions.isEmpty()) {
+        Text("No questions yet.", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+    } else {
+        FlowRow(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            questions.forEach { q ->
+                var answerDraft by remember(q.questionId) { mutableStateOf("") }
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("Q: ${q.question}", fontWeight = FontWeight.SemiBold)
+                        val ans = q.answer
+                        if (!ans.isNullOrBlank()) {
+                            Text("A: $ans", color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+                        } else {
+                            Text("Awaiting store reply", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                        }
+                        if (isStoreManagement && ans.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = answerDraft,
+                                onValueChange = { answerDraft = it },
+                                placeholder = { Text("Your answer…") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !busy,
+                                minLines = 2,
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            Button(
+                                onClick = {
+                                    onAnswerQuestion(q.questionId, answerDraft)
+                                    answerDraft = ""
+                                },
+                                enabled = !busy && answerDraft.isNotBlank(),
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text("Post answer")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -538,33 +684,116 @@ private fun QaSection(
 }
 
 @Composable
-private fun ReviewsSection(
-    value: String,
-    onValueChange: (String) -> Unit,
+private fun ProductReviewsSection(
+    reviews: List<ProductReviewDoc>,
+    reviewRating: Int,
+    onReviewRatingChange: (Int) -> Unit,
+    reviewComment: String,
+    onReviewCommentChange: (String) -> Unit,
+    eligibleReview: EligibleReviewSlot?,
+    signedIn: Boolean,
+    busy: Boolean,
+    errorText: String?,
+    customerReviewEnabled: Boolean,
+    isStoreManagement: Boolean,
+    onSubmitReview: (Double, String) -> Unit,
+    onStoreReplyReview: (String, String) -> Unit,
 ) {
     Text("Reviews", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text("Yorum yaz...") },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-    )
+    if (customerReviewEnabled && eligibleReview != null && signedIn) {
+        Text(
+            "You can review this product from a completed order.",
+            color = Color(0xFF6B7280),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+            repeat(5) { index ->
+                val filled = index < reviewRating
+                Text(
+                    text = if (filled) "★" else "☆",
+                    fontSize = 26.sp,
+                    color = Color(0xFFF59E0B),
+                    modifier = Modifier.clickable(enabled = !busy) { onReviewRatingChange(index + 1) },
+                )
+            }
+        }
+        OutlinedTextField(
+            value = reviewComment,
+            onValueChange = onReviewCommentChange,
+            placeholder = { Text("Write your review...") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            minLines = 2,
+            enabled = !busy,
+        )
+        Button(
+            onClick = { onSubmitReview(reviewRating.toDouble(), reviewComment) },
+            enabled = !busy && reviewComment.isNotBlank(),
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            Text("Submit review")
+        }
+    } else if (customerReviewEnabled && signedIn && eligibleReview == null) {
+        Text(
+            "Reviews can only be submitted for products you bought in a completed order (once per purchase).",
+            color = Color(0xFF6B7280),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    } else if (customerReviewEnabled && !signedIn) {
+        Text("Sign in to leave a review.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+    } else if (isStoreManagement) {
+        Text("Respond to buyer reviews below.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+    }
+    errorText?.takeIf { it.isNotBlank() }?.let {
+        Text(it, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+    }
     Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(
-            Triple("Alex M.", 5, "Mükemmel ses kalitesi ve pil ömrü."),
-            Triple("Sarah K.", 4, "Konforlu ama taşıma kutusu daha iyi olabilirdi."),
-            Triple("David C.", 5, "Parasını hak ediyor, tavsiye ederim."),
-        ).forEach { (name, rating, comment) ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Text(name, fontWeight = FontWeight.SemiBold)
-                    Text("★".repeat(rating) + "☆".repeat(5 - rating), color = Color(0xFFF59E0B))
-                    Text(comment, color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+        if (reviews.isEmpty()) {
+            Text("No reviews yet.", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+        } else {
+            reviews.forEach { rev ->
+                var replyDraft by remember(rev.reviewId) { mutableStateOf("") }
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        val label = "Buyer ···${rev.userId.takeLast(4)}"
+                        Text(label, fontWeight = FontWeight.SemiBold)
+                        val n = rev.rating.roundToInt().coerceIn(0, 5)
+                        Text("★".repeat(n) + "☆".repeat(5 - n), color = Color(0xFFF59E0B))
+                        Text(rev.comment, color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+                        val sr = rev.storeResponse
+                        if (!sr.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Store", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
+                            Text(sr, color = Color(0xFF374151), style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (isStoreManagement && sr.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = replyDraft,
+                                onValueChange = { replyDraft = it },
+                                placeholder = { Text("Public reply…") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !busy,
+                                minLines = 2,
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            Button(
+                                onClick = {
+                                    onStoreReplyReview(rev.reviewId, replyDraft)
+                                    replyDraft = ""
+                                },
+                                enabled = !busy && replyDraft.isNotBlank(),
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text("Post reply")
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -45,7 +45,7 @@ fun BottomNavBar(
             BottomNavItem(AppRoutes.STORE_DASHBOARD, "Dashboard", Icons.Default.Dashboard),
             BottomNavItem(AppRoutes.STORE_PRODUCTS, "Products", Icons.Default.Inventory),
             BottomNavItem(AppRoutes.STORE_ORDERS, "Orders", Icons.Default.ShoppingCart),
-            BottomNavItem(AppRoutes.PROFILE, "Profile", Icons.Default.AccountCircle),
+            BottomNavItem(AppRoutes.PROFILE, "Store", Icons.Default.AccountCircle),
         )
         UserRole.ADMIN -> listOf(
             BottomNavItem(AppRoutes.ADMIN_DASHBOARD, "Dashboard", Icons.Default.InsertChart),

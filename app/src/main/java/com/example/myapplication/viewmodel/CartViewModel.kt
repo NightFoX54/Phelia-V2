@@ -61,8 +61,20 @@ class CartViewModel(
                     return@collect
                 }
                 _uiState.value = _uiState.value.copy(isEnriching = true)
+                val uid = auth.currentUser?.uid
                 productRepository.enrichCartLines(lines).fold(
                     onSuccess = { enriched ->
+                        if (uid != null && enriched.size < lines.size) {
+                            val ok = enriched.map { it.productId to it.variantId }.toSet()
+                            viewModelScope.launch {
+                                lines.filter { (it.productId to it.variantId) !in ok }.forEach { raw ->
+                                    cartRepository.removeLine(uid, raw.productId, raw.variantId)
+                                }
+                            }
+                            _stockMessages.value = _stockMessages.value + listOf(
+                                "Satışta olmayan ürünler sepetten kaldırıldı.",
+                            )
+                        }
                         _uiState.value = CartUiState(lines = enriched, isEnriching = false)
                     },
                     onFailure = {

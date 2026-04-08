@@ -90,58 +90,6 @@ fun ProfileSubPagesScreen(
                     }
                     SecurityCard()
                 }
-                "Shipping Address" -> {
-                    val addresses = listOf(
-                        Triple("Home", "123 Main Street, New York, NY 10001", true),
-                        Triple("Office", "456 Business Ave, New York, NY 10002", false),
-                        Triple("Parents", "78 Sunset Road, Brooklyn, NY 10011", false),
-                    )
-                    addresses.forEach { (label, address, isDefault) ->
-                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row {
-                                    Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                    if (isDefault) BadgeLike("Default")
-                                }
-                                Text(address, color = Color(0xFF4B5563))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    ChipButton("Edit")
-                                    ChipButton("Set Default")
-                                    ChipButton("Delete", warning = true)
-                                }
-                            }
-                        }
-                    }
-                    Button(onClick = {}, modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                        Text("Add New Address")
-                    }
-                }
-                "Payment Methods" -> {
-                    val methods = listOf(
-                        Triple("Visa", "**** 4242", true),
-                        Triple("Mastercard", "**** 8888", false),
-                        Triple("Apple Pay", "Linked", false),
-                    )
-                    methods.forEach { (brand, detail, isDefault) ->
-                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
-                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row {
-                                    Text("$brand  $detail", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                    if (isDefault) BadgeLike("Primary")
-                                }
-                                Text("Billing: John Doe", color = Color(0xFF6B7280))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    ChipButton("Edit")
-                                    ChipButton("Set Primary")
-                                    ChipButton("Remove", warning = true)
-                                }
-                            }
-                        }
-                    }
-                    Button(onClick = {}, modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                        Text("Add Payment Method")
-                    }
-                }
                 "Notifications" -> {
                     var orderUpdates by remember { mutableStateOf(true) }
                     var campaign by remember { mutableStateOf(true) }

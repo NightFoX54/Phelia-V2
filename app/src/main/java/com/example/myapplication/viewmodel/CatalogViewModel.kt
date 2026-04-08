@@ -76,6 +76,7 @@ class CatalogViewModel(
             price = minPrice,
             imageUrl = imageUrl,
             rating = rating,
+            reviewCount = reviewCount,
             category = categoryName,
             brandName = brandName,
         )

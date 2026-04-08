@@ -45,13 +45,20 @@ class CartRepository(
         require(delta != 0) { "delta 0 olamaz" }
         val docId = cartDocId(productId, variantId)
         val ref = cartRef(userId).document(docId)
-        val variantRef = db.collection(COLLECTION_PRODUCTS).document(productId)
-            .collection(SUBCOLLECTION_VARIANTS).document(variantId)
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val variantRef = productRef.collection(SUBCOLLECTION_VARIANTS).document(variantId)
         db.runTransaction { tx ->
             val snap = tx.get(ref)
             val current = if (snap.exists()) (snap.getLong(FIELD_QUANTITY) ?: 0L).toInt() else 0
+            val pSnap = tx.get(productRef)
+            val productLive = pSnap.exists() && (pSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
+            if (!productLive) {
+                if (snap.exists()) tx.delete(ref)
+                return@runTransaction
+            }
             val vSnap = tx.get(variantRef)
-            if (!vSnap.exists()) {
+            val variantLive = vSnap.exists() && (vSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
+            if (!variantLive) {
                 if (snap.exists()) tx.delete(ref)
                 return@runTransaction
             }
@@ -85,9 +92,12 @@ class CartRepository(
             ref.delete().await()
             return@runCatching
         }
+        val productSnap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
+        val productOk = productSnap.exists() && (productSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
         val variantSnap = db.collection(COLLECTION_PRODUCTS).document(productId)
             .collection(SUBCOLLECTION_VARIANTS).document(variantId).get().await()
-        val stock = if (variantSnap.exists()) (variantSnap.getLong("stock") ?: 0L).toInt() else 0
+        val variantOk = variantSnap.exists() && (variantSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
+        val stock = if (productOk && variantOk) (variantSnap.getLong("stock") ?: 0L).toInt() else 0
         val clamped = quantity.coerceIn(0, stock.coerceAtLeast(0))
         if (clamped <= 0) {
             ref.delete().await()
@@ -129,14 +139,16 @@ class CartRepository(
             }
 
             val title = fetchProductTitle(productId)
-            val variantRef = db.collection(COLLECTION_PRODUCTS).document(productId)
-                .collection(SUBCOLLECTION_VARIANTS).document(variantId)
+            val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+            val pSnap = productRef.get().await()
+            val productActive = pSnap.exists() && (pSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
+            val variantRef = productRef.collection(SUBCOLLECTION_VARIANTS).document(variantId)
             val vSnap = variantRef.get().await()
 
-            if (!vSnap.exists()) {
+            if (!vSnap.exists() || !productActive || (vSnap.getBoolean(FIELD_IS_ACTIVE) == false)) {
                 batch.delete(doc.reference)
                 hasWrites = true
-                warnings.add("$title: Bu varyant artık mevcut değil; sepetten kaldırıldı.")
+                warnings.add("$title: Ürün veya varyant satışta değil; sepetten kaldırıldı.")
                 continue
             }
 
@@ -177,5 +189,6 @@ class CartRepository(
         private const val FIELD_QUANTITY = "quantity"
         private const val COLLECTION_PRODUCTS = "products"
         private const val SUBCOLLECTION_VARIANTS = "variants"
+        private const val FIELD_IS_ACTIVE = "isActive"
     }
 }

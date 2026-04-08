@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TrendingDown
@@ -43,6 +44,7 @@ import com.example.myapplication.ui.components.ReadableLineChart
 fun AdminDashboardScreen(
     onManageUsers: () -> Unit,
     onManageStores: () -> Unit,
+    onInactiveProducts: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val headerGradient = Brush.linearGradient(listOf(Color(0xFF6D28D9), Color(0xFF4338CA)))
@@ -247,6 +249,17 @@ fun AdminDashboardScreen(
                     Spacer(modifier = Modifier.size(8.dp))
                     Text("Manage Stores", fontWeight = FontWeight.SemiBold)
                 }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onInactiveProducts,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEA580C)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(Icons.Default.Inventory, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Pasif ürünleri yönet", fontWeight = FontWeight.SemiBold)
             }
         }
     }

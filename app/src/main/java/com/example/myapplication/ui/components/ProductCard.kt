@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import java.util.Locale
 import com.example.myapplication.data.model.ui.Product
 
 @Composable
@@ -112,10 +113,17 @@ fun ProductCard(
             ) {
                 Text(text = "★", color = Color(0xFFF59E0B))
                 Text(
-                    text = String.format("%.1f", product.rating),
+                    text = String.format(Locale.US, "%.1f", product.rating),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF4B5563),
                 )
+                if (product.reviewCount > 0) {
+                    Text(
+                        text = "(${product.reviewCount})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF9CA3AF),
+                    )
+                }
             }
             Text(
                 text = "$" + String.format("%.2f", product.price),

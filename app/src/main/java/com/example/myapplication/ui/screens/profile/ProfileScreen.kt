@@ -41,16 +41,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.model.ui.UserRole
 import com.example.myapplication.navigation.AppRoutes
+import com.example.myapplication.viewmodel.FavoritesViewModel
+import com.example.myapplication.viewmodel.OrderHistoryViewModel
 import com.example.myapplication.viewmodel.SessionViewModel
+import com.example.myapplication.viewmodel.StoreOwnerProfileViewModel
 
 @Composable
 fun ProfileScreen(
     sessionViewModel: SessionViewModel,
+    orderHistoryViewModel: OrderHistoryViewModel,
+    favoritesViewModel: FavoritesViewModel,
+    storeOwnerProfileViewModel: StoreOwnerProfileViewModel,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val user by sessionViewModel.user.collectAsState()
     val profile = user ?: return
+
+    when (profile.role) {
+        UserRole.STORE_OWNER -> {
+            StoreOwnerProfileScreen(
+                sessionViewModel = sessionViewModel,
+                storeOwnerProfileViewModel = storeOwnerProfileViewModel,
+                onNavigate = onNavigate,
+                modifier = modifier,
+            )
+            return
+        }
+        else -> { /* customer + admin: existing profile */ }
+    }
+
+    val orders by orderHistoryViewModel.orders.collectAsState()
+    val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
+    val orderCountText = orders.size.toString()
+    val favoritesCountText = favoriteIds.size.toString()
 
     val (badgeBg, badgeFg, badgeText) = when (profile.role) {
         UserRole.ADMIN -> Triple(Color(0xFFEDE9FE), Color(0xFF6D28D9), "Admin")
@@ -108,20 +132,20 @@ fun ProfileScreen(
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                QuickCard(
+                ProfileQuickCard(
                     icon = Icons.Default.Inventory,
                     iconBg = Color(0xFFE0E7FF),
                     iconTint = MaterialTheme.colorScheme.primary,
-                    value = "12",
+                    value = orderCountText,
                     label = "Order History",
                     onClick = { onNavigate(AppRoutes.PROFILE_ORDERS) },
                     modifier = Modifier.weight(1f),
                 )
-                QuickCard(
+                ProfileQuickCard(
                     icon = Icons.Default.Favorite,
                     iconBg = Color(0xFFFEE2E2),
                     iconTint = Color(0xFFEF4444),
-                    value = "8",
+                    value = favoritesCountText,
                     label = "Favorites",
                     onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
                     modifier = Modifier.weight(1f),
@@ -136,12 +160,12 @@ fun ProfileScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
                 Column {
-                    MenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
-                    MenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
-                    MenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
-                    MenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = Color(0xFFF59E0B)) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
-                    MenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = Color(0xFF7C3AED)) { onNavigate(AppRoutes.PROFILE_HELP) }
-                    MenuRow(icon = Icons.Default.Settings, label = "Settings", tint = Color(0xFF4B5563)) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
+                    ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
+                    ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
+                    ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
+                    ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = Color(0xFFF59E0B)) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                    ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = Color(0xFF7C3AED)) { onNavigate(AppRoutes.PROFILE_HELP) }
+                    ProfileMenuRow(icon = Icons.Default.Settings, label = "Settings", tint = Color(0xFF4B5563)) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
                 }
             }
         }
@@ -189,11 +213,11 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun QuickCard(
+internal fun ProfileQuickCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     iconBg: Color,
     iconTint: Color,
-    value: String,
+    value: String?,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -218,14 +242,18 @@ private fun QuickCard(
             ) {
                 Icon(icon, contentDescription = null, tint = iconTint)
             }
-            Text(value, fontWeight = FontWeight.Bold, color = iconTint, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 6.dp))
+            if (value != null) {
+                Text(value, fontWeight = FontWeight.Bold, color = iconTint, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 6.dp))
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
+            }
             Text(label, color = Color(0xFF6B7280))
         }
     }
 }
 
 @Composable
-private fun MenuRow(
+internal fun ProfileMenuRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     tint: Color,

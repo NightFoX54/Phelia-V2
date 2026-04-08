@@ -137,6 +137,7 @@ private fun CatalogProductSummary.toUiProduct(): Product =
         price = minPrice,
         imageUrl = imageUrl,
         rating = rating,
+        reviewCount = reviewCount,
         category = categoryName,
         brandName = brandName,
     )

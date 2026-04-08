@@ -5,15 +5,18 @@ import com.example.myapplication.data.model.Brand
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.CartLineFirestore
 import com.example.myapplication.data.model.CatalogProductSummary
+import com.example.myapplication.data.model.InactiveProductAdminItem
 import com.example.myapplication.data.model.Product
 import com.example.myapplication.data.model.ProductDetailBundle
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.model.ProductVariant
 import com.example.myapplication.data.model.Store
+import com.example.myapplication.data.model.StoreOwnerProductRow
 import com.example.myapplication.data.model.displayImagesForVariant
 import com.example.myapplication.data.model.ui.CartLineUi
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
@@ -72,24 +75,28 @@ class ProductRepository(
             docs.map { doc ->
                 async {
                     val p = doc.toProduct()
+                    if (!p.isActive) return@async null
                     val variants = doc.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
                         .map { it.toProductVariant() }
-                    val minPrice = variants.minOfOrNull { it.price } ?: 0.0
+                    val active = variants.filter { it.isActive }
+                    if (active.isEmpty()) return@async null
+                    val minPrice = active.minOfOrNull { it.price } ?: 0.0
                     val imageUrl = p.publicImages.firstOrNull()
-                        ?: variants.flatMap { it.images }.firstOrNull()
+                        ?: active.flatMap { it.images }.firstOrNull()
                         ?: ""
+                    val (reviewAvg, reviewCnt) = doc.reference.fetchReviewStatsFromSubcollection()
                     CatalogProductSummary(
                         productId = p.productId,
                         name = p.name,
                         categoryName = p.category["name"].takeIf { !it.isNullOrBlank() },
                         brandName = p.brand["name"].takeIf { !it.isNullOrBlank() },
-                        rating = p.rating,
-                        reviewCount = p.reviewCount,
+                        rating = reviewAvg,
+                        reviewCount = reviewCnt,
                         imageUrl = imageUrl,
                         minPrice = minPrice,
                     )
                 }
-            }.awaitAll()
+            }.awaitAll().filterNotNull()
         }
     }
 
@@ -108,24 +115,28 @@ class ProductRepository(
                 snaps.map { doc ->
                     async {
                         val p = doc.toProduct()
+                        if (!p.isActive) return@async null
                         val variants = doc.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
                             .map { it.toProductVariant() }
-                        val minPrice = variants.minOfOrNull { it.price } ?: 0.0
+                        val active = variants.filter { it.isActive }
+                        if (active.isEmpty()) return@async null
+                        val minPrice = active.minOfOrNull { it.price } ?: 0.0
                         val imageUrl = p.publicImages.firstOrNull()
-                            ?: variants.flatMap { it.images }.firstOrNull()
+                            ?: active.flatMap { it.images }.firstOrNull()
                             ?: ""
+                        val (reviewAvg, reviewCnt) = doc.reference.fetchReviewStatsFromSubcollection()
                         doc.id to CatalogProductSummary(
                             productId = p.productId,
                             name = p.name,
                             categoryName = p.category["name"].takeIf { !it.isNullOrBlank() },
                             brandName = p.brand["name"].takeIf { !it.isNullOrBlank() },
-                            rating = p.rating,
-                            reviewCount = p.reviewCount,
+                            rating = reviewAvg,
+                            reviewCount = reviewCnt,
                             imageUrl = imageUrl,
                             minPrice = minPrice,
                         )
                     }
-                }.awaitAll().forEach { (id, summary) -> byId[id] = summary }
+                }.awaitAll().filterNotNull().forEach { (id, summary) -> byId[id] = summary }
             }
         }
         orderedUnique.mapNotNull { id -> byId[id] }
@@ -143,9 +154,11 @@ class ProductRepository(
                     if (!vSnap.exists()) return@async null
                     val p = productSnap.toProduct()
                     val v = vSnap.toProductVariant()
+                    if (!p.isActive || !v.isActive) return@async null
                     val img = displayImagesForVariant(p, v).firstOrNull().orEmpty()
                     CartLineUi(
                         productId = line.productId,
+                        storeId = p.storeId,
                         variantId = line.variantId,
                         quantity = line.quantity,
                         productName = p.name,
@@ -161,12 +174,64 @@ class ProductRepository(
         }
     }
 
-    suspend fun fetchProductDetail(productId: String): Result<ProductDetailBundle> = runCatching {
+    suspend fun fetchStoreOwnerProductRows(storeId: String): Result<List<StoreOwnerProductRow>> = runCatching {
+        if (storeId.isBlank()) return@runCatching emptyList()
+        val docs = db.collection(COLLECTION_PRODUCTS)
+            .whereEqualTo(FIELD_PRODUCT_STORE_ID, storeId)
+            .get()
+            .await()
+            .documents
+        coroutineScope {
+            docs.map { doc ->
+                async {
+                    val p = doc.toProduct()
+                    val variants = doc.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
+                        .map { it.toProductVariant() }
+                    val active = variants.filter { it.isActive }
+                    val minPrice = active.minOfOrNull { it.price } ?: 0.0
+                    val totalStock = active.sumOf { it.stock }
+                    val img = p.publicImages.firstOrNull()?.takeIf { it.isNotBlank() }
+                        ?: active.flatMap { it.images }.firstOrNull { it.isNotBlank() }.orEmpty()
+                    val (_, reviewCnt) = doc.reference.fetchReviewStatsFromSubcollection()
+                    StoreOwnerProductRow(
+                        productId = p.productId,
+                        name = p.name,
+                        categoryName = p.category["name"]?.takeIf { it.isNotBlank() } ?: "—",
+                        imageUrl = img,
+                        minPrice = minPrice,
+                        totalStock = totalStock,
+                        variantCount = variants.size,
+                        reviewCount = reviewCnt,
+                        isActive = p.isActive,
+                    )
+                }
+            }.awaitAll()
+        }.sortedBy { it.name.lowercase() }
+    }
+
+    /**
+     * @param forStoreManagement true ise pasif ürün/varyantlar da listelenir (panel düzenleme).
+     */
+    suspend fun fetchProductDetail(
+        productId: String,
+        forStoreManagement: Boolean = false,
+    ): Result<ProductDetailBundle> = runCatching {
         val snap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
         if (!snap.exists()) error("Urun bulunamadi.")
         val product = snap.toProduct()
-        val variants = snap.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
+        if (!forStoreManagement && !product.isActive) {
+            error("Bu urun artik satista degil.")
+        }
+        val allVariants = snap.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
             .map { it.toProductVariant() }
+        val variants = if (forStoreManagement) {
+            allVariants
+        } else {
+            allVariants.filter { it.isActive }
+        }
+        if (!forStoreManagement && variants.isEmpty()) {
+            error("Bu urunun satisa acik varyanti yok.")
+        }
         val categoryId = product.category["categoryId"].orEmpty()
         val keysFromCategory = if (categoryId.isNotBlank()) {
             val catSnap = db.collection(COLLECTION_CATEGORIES).document(categoryId).get().await()
@@ -179,7 +244,10 @@ class ProductRepository(
         } else {
             variants.flatMap { it.attributes.keys }.distinct().sorted()
         }
-        ProductDetailBundle(product, keys, variants)
+        val (aggRating, aggCount) = snap.reference.fetchReviewStatsFromSubcollection()
+        val productForBundle =
+            if (aggCount > 0) product.copy(rating = aggRating, reviewCount = aggCount) else product
+        ProductDetailBundle(productForBundle, keys, variants)
     }
 
     suspend fun createProductForCurrentOwner(input: CreateProductInput): Result<String> = runCatching {
@@ -199,6 +267,7 @@ class ProductRepository(
             rating = 0.0,
             reviewCount = 0,
             createdAt = now,
+            isActive = true,
         )
 
         productRef.set(product.toMap()).await()
@@ -213,12 +282,160 @@ class ProductRepository(
                 price = draft.price,
                 stock = draft.stock,
                 images = draft.images,
+                isActive = true,
             )
             batch.set(variantRef, variant.toMap())
         }
         batch.commit().await()
 
         productRef.id
+    }
+
+    data class VariantDraftPersisted(
+        /** Firestore varyant dokümanı id; yeni varyant için null */
+        val firestoreVariantId: String?,
+        val sku: String,
+        val attributes: Map<String, String>,
+        val price: Double,
+        val stock: Int,
+        val images: List<String>,
+    )
+
+    data class UpdateProductInput(
+        val name: String,
+        val description: String,
+        val brandId: String,
+        val brandName: String,
+        val categoryId: String,
+        val categoryName: String,
+        val publicImages: List<String>,
+        val variants: List<VariantDraftPersisted>,
+    )
+
+    suspend fun updateProductForCurrentOwner(
+        productId: String,
+        input: UpdateProductInput,
+    ): Result<Unit> = runCatching {
+        val ownerId = auth.currentUser?.uid ?: error("Store owner oturumu bulunamadi.")
+        val store = getStoreByOwner(ownerId)
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val snap = productRef.get().await()
+        if (!snap.exists()) error("Urun bulunamadi.")
+        val existing = snap.toProduct()
+        if (existing.storeId != store.storeId) error("Bu urun sizin magazanzda degil.")
+
+        productRef.update(
+            mapOf(
+                "name" to input.name.trim(),
+                "description" to input.description.trim(),
+                "publicImages" to input.publicImages,
+                "brand" to mapOf("brandId" to input.brandId, "name" to input.brandName),
+                "category" to mapOf("categoryId" to input.categoryId, "name" to input.categoryName),
+            ),
+        ).await()
+
+        val variantsCol = productRef.collection(SUBCOLLECTION_VARIANTS)
+        val existingIds = variantsCol.get().await().documents.map { it.id }.toSet()
+        val keepIds = input.variants.mapNotNull { it.firestoreVariantId?.takeIf { id -> id.isNotBlank() } }.toSet()
+
+        val batch = db.batch()
+        for (id in existingIds) {
+            if (id !in keepIds) {
+                batch.update(variantsCol.document(id), mapOf(FIELD_IS_ACTIVE to false))
+            }
+        }
+        for (v in input.variants) {
+            val fid = v.firestoreVariantId?.takeIf { it.isNotBlank() }
+            if (fid != null && fid in existingIds) {
+                val docRef = variantsCol.document(fid)
+                val variant = ProductVariant(
+                    variantId = fid,
+                    sku = v.sku.trim(),
+                    attributes = v.attributes,
+                    price = v.price,
+                    stock = v.stock,
+                    images = v.images,
+                    isActive = true,
+                )
+                batch.set(docRef, variant.toMap())
+            } else {
+                val newRef = variantsCol.document()
+                val variant = ProductVariant(
+                    variantId = newRef.id,
+                    sku = v.sku.trim(),
+                    attributes = v.attributes,
+                    price = v.price,
+                    stock = v.stock,
+                    images = v.images,
+                    isActive = true,
+                )
+                batch.set(newRef, variant.toMap())
+            }
+        }
+        batch.commit().await()
+    }
+
+    suspend fun deactivateProductForCurrentOwner(productId: String): Result<Unit> = runCatching {
+        val ownerId = auth.currentUser?.uid ?: error("Store owner oturumu bulunamadi.")
+        val store = getStoreByOwner(ownerId)
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val snap = productRef.get().await()
+        if (!snap.exists()) error("Urun bulunamadi.")
+        val existing = snap.toProduct()
+        if (existing.storeId != store.storeId) error("Bu urun sizin magazanzda degil.")
+        val batch = db.batch()
+        batch.update(productRef, mapOf(FIELD_IS_ACTIVE to false))
+        productRef.collection(SUBCOLLECTION_VARIANTS).get().await().documents.forEach { vdoc ->
+            batch.update(vdoc.reference, mapOf(FIELD_IS_ACTIVE to false))
+        }
+        batch.commit().await()
+    }
+
+    suspend fun activateProductForCurrentOwner(productId: String): Result<Unit> = runCatching {
+        val ownerId = auth.currentUser?.uid ?: error("Store owner oturumu bulunamadi.")
+        val store = getStoreByOwner(ownerId)
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val snap = productRef.get().await()
+        if (!snap.exists()) error("Urun bulunamadi.")
+        val existing = snap.toProduct()
+        if (existing.storeId != store.storeId) error("Bu urun sizin magazanzda degil.")
+        val batch = db.batch()
+        batch.update(productRef, mapOf(FIELD_IS_ACTIVE to true))
+        productRef.collection(SUBCOLLECTION_VARIANTS).get().await().documents.forEach { vdoc ->
+            batch.update(vdoc.reference, mapOf(FIELD_IS_ACTIVE to true))
+        }
+        batch.commit().await()
+    }
+
+    /** Admin paneli: satistan kaldirilmis urunler (Firestore guvenlik kurallarinda admin dogrulanmali). */
+    suspend fun fetchInactiveProductsForAdmin(): Result<List<InactiveProductAdminItem>> = runCatching {
+        db.collection(COLLECTION_PRODUCTS)
+            .whereEqualTo(FIELD_IS_ACTIVE, false)
+            .get()
+            .await()
+            .documents
+            .map { doc ->
+                val p = doc.toProduct()
+                InactiveProductAdminItem(
+                    productId = p.productId,
+                    name = p.name.ifBlank { p.productId },
+                    storeId = p.storeId,
+                )
+            }
+            .sortedBy { it.name.lowercase() }
+    }
+
+    suspend fun adminReactivateProduct(productId: String): Result<Unit> = runCatching {
+        if (productId.isBlank()) error("Urun id bos.")
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val snap = productRef.get().await()
+        if (!snap.exists()) error("Urun bulunamadi.")
+        val batch = db.batch()
+        batch.update(productRef, mapOf(FIELD_IS_ACTIVE to true))
+        productRef.collection(SUBCOLLECTION_VARIANTS).get().await().documents.forEach { vdoc ->
+            batch.update(vdoc.reference, mapOf(FIELD_IS_ACTIVE to true))
+        }
+        batch.commit().await()
     }
 
     private suspend fun getStoreByOwner(ownerId: String): Store {
@@ -284,6 +501,7 @@ class ProductRepository(
             rating = getDouble("rating") ?: 0.0,
             reviewCount = (getLong("reviewCount") ?: 0L).toInt(),
             createdAt = readMillis("createdAt"),
+            isActive = readIsActiveField(),
         )
     }
 
@@ -298,8 +516,24 @@ class ProductRepository(
             price = getDouble("price") ?: 0.0,
             stock = (getLong("stock") ?: 0L).toInt(),
             images = imgs,
+            isActive = readIsActiveField(),
         )
     }
+
+    /** `products/{id}/reviews` alt koleksiyonundan ortalama puan ve adet (ürün dokümanındaki alanlar güncel olmayabilir). */
+    private suspend fun DocumentReference.fetchReviewStatsFromSubcollection(): Pair<Double, Int> {
+        val docs = collection(SUBCOLLECTION_REVIEWS).get().await().documents
+        if (docs.isEmpty()) return 0.0 to 0
+        val ratings = docs.mapNotNull { d ->
+            val r = d.getDouble(FIELD_REVIEW_RATING) ?: return@mapNotNull null
+            if (r in 0.0..5.0) r else null
+        }
+        val n = docs.size
+        val avg = if (ratings.isEmpty()) 0.0 else ratings.average()
+        return avg to n
+    }
+
+    private fun DocumentSnapshot.readIsActiveField(): Boolean = getBoolean(FIELD_IS_ACTIVE) ?: true
 
     private fun Product.toMap(): Map<String, Any> =
         mapOf(
@@ -313,6 +547,7 @@ class ProductRepository(
             "rating" to rating,
             "reviewCount" to reviewCount,
             "createdAt" to createdAt,
+            FIELD_IS_ACTIVE to isActive,
         )
 
     private fun ProductVariant.toMap(): Map<String, Any> =
@@ -323,6 +558,7 @@ class ProductRepository(
             "price" to price,
             "stock" to stock,
             "images" to images,
+            FIELD_IS_ACTIVE to isActive,
         )
 
     data class VariantDraft(
@@ -345,10 +581,14 @@ class ProductRepository(
     )
 
     companion object {
+        private const val FIELD_IS_ACTIVE = "isActive"
         private const val COLLECTION_STORES = "stores"
         private const val COLLECTION_PRODUCTS = "products"
+        private const val FIELD_PRODUCT_STORE_ID = "storeId"
         private const val COLLECTION_CATEGORIES = "categories"
         private const val COLLECTION_BRANDS = "brands"
         private const val SUBCOLLECTION_VARIANTS = "variants"
+        private const val SUBCOLLECTION_REVIEWS = "reviews"
+        private const val FIELD_REVIEW_RATING = "rating"
     }
 }

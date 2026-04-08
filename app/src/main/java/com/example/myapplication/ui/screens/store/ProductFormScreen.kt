@@ -67,7 +67,10 @@ private val FormPresetColors = listOf(
 )
 
 private data class VariantFormState(
+    /** Compose / galeri yukleme anahtari */
     val id: String,
+    /** Firestore `variants` doküman id; yeni satırda null */
+    val firestoreVariantId: String? = null,
     val sku: String = "",
     val price: String = "",
     val stock: String = "",
@@ -106,9 +109,11 @@ fun ProductFormScreen(
     var selectedCategoryId by remember { mutableStateOf("") }
     var categoryExpanded by remember { mutableStateOf(false) }
 
+    fun newLocalVariantId() = "local-${System.nanoTime()}"
+
     var variants by remember {
         mutableStateOf(
-            listOf(VariantFormState(id = System.currentTimeMillis().toString())),
+            listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null)),
         )
     }
 
@@ -127,7 +132,7 @@ fun ProductFormScreen(
         repository.fetchCategories().fold(
             onSuccess = { fetched ->
                 categories = fetched
-                if (selectedCategoryId.isBlank() && fetched.isNotEmpty()) {
+                if (!isEdit && selectedCategoryId.isBlank() && fetched.isNotEmpty()) {
                     selectedCategoryId = fetched.first().categoryId
                 }
             },
@@ -138,7 +143,7 @@ fun ProductFormScreen(
         repository.fetchBrands().fold(
             onSuccess = { fetched ->
                 brands = fetched
-                if (selectedBrandId.isBlank() && fetched.isNotEmpty()) {
+                if (!isEdit && selectedBrandId.isBlank() && fetched.isNotEmpty()) {
                     selectedBrandId = fetched.first().brandId
                 }
             },
@@ -149,8 +154,48 @@ fun ProductFormScreen(
         loading = false
     }
 
+    LaunchedEffect(productId, categories.size, brands.size) {
+        val pid = productId ?: return@LaunchedEffect
+        if (categories.isEmpty() || brands.isEmpty()) return@LaunchedEffect
+        loading = true
+        error = null
+        repository.fetchProductDetail(pid, forStoreManagement = true).fold(
+            onSuccess = { bundle ->
+                val p = bundle.product
+                name = p.name
+                description = p.description
+                selectedBrandId = p.brand["brandId"].orEmpty().ifBlank {
+                    brands.firstOrNull()?.brandId.orEmpty()
+                }
+                selectedCategoryId = p.category["categoryId"].orEmpty().ifBlank {
+                    categories.firstOrNull()?.categoryId.orEmpty()
+                }
+                publicImages = p.publicImages
+                val keys = bundle.variantAttributeKeys
+                variants = bundle.variants.map { v ->
+                    VariantFormState(
+                        id = v.variantId,
+                        firestoreVariantId = v.variantId,
+                        sku = v.sku,
+                        price = v.price.toString(),
+                        stock = v.stock.toString(),
+                        attributes = keys.associateWith { k -> v.attributes[k].orEmpty() },
+                        images = v.images,
+                    )
+                }.ifEmpty {
+                    listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null, attributes = keys.associateWith { "" }))
+                }
+            },
+            onFailure = { e ->
+                error = e.message ?: "Urun yuklenemedi"
+            },
+        )
+        loading = false
+    }
+
     LaunchedEffect(selectedCategoryId) {
         val keys = variantAttributeKeys
+        if (keys.isEmpty()) return@LaunchedEffect
         variants = variants.map { v ->
             v.copy(attributes = keys.associateWith { key -> v.attributes[key].orEmpty() })
         }
@@ -186,16 +231,12 @@ fun ProductFormScreen(
         }
     }
 
-    fun createProduct() {
+    fun saveProduct() {
         error = null
         successMessage = null
 
-        if (isEdit) {
-            error = "Edit akisi hen?z bagli degil. Simdilik yeni ?r?n ekleyin."
-            return
-        }
         if (name.isBlank()) {
-            error = "?r?n adi zorunlu"
+            error = "Urun adi zorunlu"
             return
         }
         if (selectedBrand == null) {
@@ -211,7 +252,9 @@ fun ProductFormScreen(
             return
         }
 
-        val variantDrafts = variants.mapIndexed { i, v ->
+        val variantDraftsCreate = mutableListOf<ProductRepository.VariantDraft>()
+        val variantDraftsUpdate = mutableListOf<ProductRepository.VariantDraftPersisted>()
+        variants.forEachIndexed { i, v ->
             val p = v.price.toDoubleOrNull()
             val s = v.stock.toIntOrNull()
             if (v.sku.isBlank()) {
@@ -219,51 +262,91 @@ fun ProductFormScreen(
                 return
             }
             if (p == null) {
-                error = "Variant ${i + 1}: price ge?erli sayi olmali"
+                error = "Variant ${i + 1}: price gecerli sayi olmali"
                 return
             }
             if (s == null) {
-                error = "Variant ${i + 1}: stock ge?erli sayi olmali"
+                error = "Variant ${i + 1}: stock gecerli sayi olmali"
                 return
             }
-            ProductRepository.VariantDraft(
-                sku = v.sku,
-                attributes = v.attributes.filterValues { it.isNotBlank() },
-                price = p,
-                stock = s,
-                images = v.images,
-            )
+            val attrs = v.attributes.filterValues { it.isNotBlank() }
+            if (isEdit) {
+                variantDraftsUpdate.add(
+                    ProductRepository.VariantDraftPersisted(
+                        firestoreVariantId = v.firestoreVariantId,
+                        sku = v.sku,
+                        attributes = attrs,
+                        price = p,
+                        stock = s,
+                        images = v.images,
+                    ),
+                )
+            } else {
+                variantDraftsCreate.add(
+                    ProductRepository.VariantDraft(
+                        sku = v.sku,
+                        attributes = attrs,
+                        price = p,
+                        stock = s,
+                        images = v.images,
+                    ),
+                )
+            }
         }
 
         if (error != null) return
 
         loading = true
         scope.launch {
-            repository.createProductForCurrentOwner(
-                ProductRepository.CreateProductInput(
-                    name = name,
-                    description = description,
-                    brandId = selectedBrand.brandId,
-                    brandName = selectedBrand.name,
-                    categoryId = selectedCategory.categoryId,
-                    categoryName = selectedCategory.name,
-                    publicImages = publicImages,
-                    variants = variantDrafts,
-                ),
-            ).fold(
-                onSuccess = { productIdCreated ->
-                    successMessage = "?r?n kaydedildi: $productIdCreated"
-                    name = ""
-                    description = ""
-                    selectedBrandId = if (brands.isNotEmpty()) brands.first().brandId else ""
-                    publicImageInput = ""
-                    publicImages = emptyList()
-                    variants = listOf(VariantFormState(id = System.currentTimeMillis().toString()))
-                },
-                onFailure = { e ->
-                    error = e.message ?: "?r?n kaydedilemedi"
-                },
-            )
+            if (isEdit && productId != null) {
+                repository.updateProductForCurrentOwner(
+                    productId = productId,
+                    input = ProductRepository.UpdateProductInput(
+                        name = name,
+                        description = description,
+                        brandId = selectedBrand.brandId,
+                        brandName = selectedBrand.name,
+                        categoryId = selectedCategory.categoryId,
+                        categoryName = selectedCategory.name,
+                        publicImages = publicImages,
+                        variants = variantDraftsUpdate,
+                    ),
+                ).fold(
+                    onSuccess = {
+                        successMessage = "Urun guncellendi"
+                    },
+                    onFailure = { e ->
+                        error = e.message ?: "Guncellenemedi"
+                    },
+                )
+            } else {
+                repository.createProductForCurrentOwner(
+                    ProductRepository.CreateProductInput(
+                        name = name,
+                        description = description,
+                        brandId = selectedBrand.brandId,
+                        brandName = selectedBrand.name,
+                        categoryId = selectedCategory.categoryId,
+                        categoryName = selectedCategory.name,
+                        publicImages = publicImages,
+                        variants = variantDraftsCreate,
+                    ),
+                ).fold(
+                    onSuccess = { productIdCreated ->
+                        successMessage = "Urun kaydedildi: $productIdCreated"
+                        name = ""
+                        description = ""
+                        selectedBrandId = if (brands.isNotEmpty()) brands.first().brandId else ""
+                        selectedCategoryId = if (categories.isNotEmpty()) categories.first().categoryId else ""
+                        publicImageInput = ""
+                        publicImages = emptyList()
+                        variants = listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null))
+                    },
+                    onFailure = { e ->
+                        error = e.message ?: "Urun kaydedilemedi"
+                    },
+                )
+            }
             loading = false
         }
     }
@@ -445,7 +528,8 @@ fun ProductFormScreen(
                             Button(
                                 onClick = {
                                     variants = variants + VariantFormState(
-                                        id = System.currentTimeMillis().toString(),
+                                        id = newLocalVariantId(),
+                                        firestoreVariantId = null,
                                         attributes = variantAttributeKeys.associateWith { "" },
                                     )
                                 },
@@ -623,7 +707,7 @@ fun ProductFormScreen(
                 if (successMessage != null) Text(successMessage!!, color = Color(0xFF16A34A))
 
                 Button(
-                    onClick = { createProduct() },
+                    onClick = { saveProduct() },
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !loading && !imageUploadBusy,
