@@ -82,9 +82,9 @@ fun StoreProductsScreen(
     confirmDeactivateId?.let { pid ->
         AlertDialog(
             onDismissRequest = { confirmDeactivateId = null },
-            title = { Text("Satıştan kaldır") },
+            title = { Text("Remove from sale") },
             text = {
-                Text("Ürün silinmez; yalnızca pasif yapılır. Eski siparişler aynı kalır, müşteriler göremez.")
+                Text("The product is not deleted; it is only deactivated. Past orders stay the same; customers will not see it.")
             },
             confirmButton = {
                 TextButton(
@@ -92,10 +92,10 @@ fun StoreProductsScreen(
                         viewModel.deactivateProduct(pid)
                         confirmDeactivateId = null
                     },
-                ) { Text("Pasif yap") }
+                ) { Text("Deactivate") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDeactivateId = null }) { Text("İptal") }
+                TextButton(onClick = { confirmDeactivateId = null }) { Text("Cancel") }
             },
         )
     }
@@ -272,7 +272,7 @@ private fun StoreProductListCard(
                                 CategoryBadge(product.categoryName)
                                 if (!product.isActive) {
                                     Text(
-                                        "PASİF",
+                                        "INACTIVE",
                                         color = Color(0xFFDC2626),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
@@ -314,7 +314,7 @@ private fun StoreProductListCard(
                     ) {
                         Icon(Icons.Default.Delete, null)
                         Spacer(modifier = Modifier.size(6.dp))
-                        Text("Satıştan kaldır")
+                        Text("Remove from sale")
                     }
                 } else {
                     Button(
@@ -323,7 +323,7 @@ private fun StoreProductListCard(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0FDF4), contentColor = Color(0xFF16A34A)),
                     ) {
-                        Text("Tekrar aktif et")
+                        Text("Activate again")
                     }
                 }
             }

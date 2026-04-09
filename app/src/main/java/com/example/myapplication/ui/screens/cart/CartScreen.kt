@@ -68,9 +68,9 @@ fun CartScreen(
     ) {
         Surface(color = Color.White, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                AppTopBar(title = "Sepetim", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "My Cart", onBack = onBack, containerColor = Color.White)
                 Text(
-                    text = "${lines.size} " + if (lines.size == 1) "urun" else "urun",
+                    text = "${lines.size} " + if (lines.size == 1) "item" else "items",
                     color = Color(0xFF6B7280),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 12.dp),
@@ -101,7 +101,7 @@ fun CartScreen(
                         }
                     }
                     IconButton(onClick = { cartViewModel.clearStockMessages() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Kapat", tint = Color(0xFF9A3412))
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Color(0xFF9A3412))
                     }
                 }
             }
@@ -109,7 +109,7 @@ fun CartScreen(
 
         if (cartUi.isEnriching && lines.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Yukleniyor...", color = Color(0xFF6B7280))
+                Text("Loading…", color = Color(0xFF6B7280))
             }
         } else if (lines.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -123,8 +123,8 @@ fun CartScreen(
                     ) {
                         Text("🛒", fontSize = 40.sp)
                     }
-                    Text("Sepetiniz bos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
-                    Text("Urun eklemek icin magazaya gidin", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 4.dp))
+                    Text("Your cart is empty", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
+                    Text("Browse the store to add items", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 4.dp))
                 }
             }
         } else {
@@ -211,15 +211,15 @@ fun CartScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Siparis ozeti", fontWeight = FontWeight.Bold)
+                        Text("Order summary", fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
-                        SummaryRow("Ara toplam", subtotal)
-                        SummaryRow("Kargo", shipping)
+                        SummaryRow("Subtotal", subtotal)
+                        SummaryRow("Shipping", shipping)
                         Spacer(modifier = Modifier.height(12.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Toplam", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             Text("$" + String.format("%.2f", total), fontWeight = FontWeight.Bold)
                         }
                     }
@@ -240,7 +240,7 @@ fun CartScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
-                        Text("Odeme — $" + String.format("%.2f", total), fontWeight = FontWeight.Bold)
+                        Text("Checkout — $" + String.format("%.2f", total), fontWeight = FontWeight.Bold)
                     }
                 }
             }

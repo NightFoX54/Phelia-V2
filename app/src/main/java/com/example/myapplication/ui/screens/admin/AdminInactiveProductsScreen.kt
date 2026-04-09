@@ -62,7 +62,7 @@ fun AdminInactiveProductsScreen(
                 listError = null
             },
             onFailure = {
-                listError = it.message ?: "Liste yüklenemedi"
+                listError = it.message ?: "Could not load list"
                 items = emptyList()
             },
         )
@@ -75,7 +75,7 @@ fun AdminInactiveProductsScreen(
             .background(Color(0xFFF9FAFB)),
     ) {
         AppTopBar(
-            title = "Pasif ürünler",
+            title = "Inactive products",
             onBack = onBack,
             containerColor = Color.White,
         )
@@ -102,7 +102,7 @@ fun AdminInactiveProductsScreen(
             }
             items.isEmpty() -> {
                 Text(
-                    "Pasif ürün yok.",
+                    "No inactive products.",
                     modifier = Modifier.padding(20.dp),
                     color = Color(0xFF6B7280),
                 )
@@ -126,7 +126,7 @@ fun AdminInactiveProductsScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(row.name, fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        "Mağaza: ${row.storeId}",
+                                        "Store: ${row.storeId}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFF6B7280),
                                     )
@@ -138,11 +138,11 @@ fun AdminInactiveProductsScreen(
                                             busyProductId = row.productId
                                             repository.adminReactivateProduct(row.productId).fold(
                                                 onSuccess = {
-                                                    banner = "Ürün ve tüm varyantları tekrar aktif."
+                                                    banner = "Product and all variants are active again."
                                                     reloadToken++
                                                 },
                                                 onFailure = {
-                                                    banner = it.message ?: "Aktifleştirilemedi"
+                                                    banner = it.message ?: "Could not activate"
                                                 },
                                             )
                                             busyProductId = null
@@ -159,7 +159,7 @@ fun AdminInactiveProductsScreen(
                                             color = Color.White,
                                         )
                                     } else {
-                                        Text("Aktif et")
+                                        Text("Activate")
                                     }
                                 }
                             }

@@ -48,7 +48,7 @@ data class CartItem(
     val variant: SelectedCartVariant? = null,
 )
 
-/** Sepet ekrani (Firestore cartItems + zenginlestirilmis veri) */
+/** Cart screen row (Firestore cartItems + enriched display data). */
 @Immutable
 data class CartLineUi(
     val productId: String,

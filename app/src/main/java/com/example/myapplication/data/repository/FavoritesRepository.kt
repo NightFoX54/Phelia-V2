@@ -33,12 +33,14 @@ class FavoritesRepository(
                 onUpdate(list)
             }
 
-    suspend fun toggleFavorite(userId: String, productId: String): Result<Unit> = runCatching {
+    /** @return `true` if the product is favorited after the toggle, `false` if removed. */
+    suspend fun toggleFavorite(userId: String, productId: String): Result<Boolean> = runCatching {
         val ref = db.collection(COLLECTION_USERS).document(userId)
             .collection(SUBCOLLECTION_FAVORITES).document(productId)
         val snap = ref.get().await()
         if (snap.exists()) {
             ref.delete().await()
+            false
         } else {
             ref.set(
                 mapOf(
@@ -47,6 +49,7 @@ class FavoritesRepository(
                     "createdAt" to FieldValue.serverTimestamp(),
                 ),
             ).await()
+            true
         }
     }
 

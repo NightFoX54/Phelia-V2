@@ -1,6 +1,6 @@
 package com.example.myapplication.data.model
 
-/** Mağaza paneli ürün listesi satırı (Firestore `products` + `variants` özet). */
+/** Store panel product list row (Firestore `products` + `variants` summary). */
 data class StoreOwnerProductRow(
     val productId: String,
     val name: String,

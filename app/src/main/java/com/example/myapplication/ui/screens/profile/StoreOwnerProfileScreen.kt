@@ -255,7 +255,15 @@ private fun StoreOwnerHeader(
                             modifier = Modifier.padding(top = 6.dp),
                         )
                         Text(
-                            "Rating ${String.format(Locale.US, "%.1f", store.rating)}",
+                            buildString {
+                                append("Rating ")
+                                append(String.format(Locale.US, "%.1f", store.rating))
+                                if (store.reviewCount > 0) {
+                                    append(" (")
+                                    append(store.reviewCount)
+                                    append(" reviews)")
+                                }
+                            },
                             color = Color(0xFFFDE68A),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,

@@ -1,18 +1,31 @@
 package com.example.myapplication.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,9 +35,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.viewmodel.StoreOwnerProfileViewModel
 
@@ -35,12 +54,30 @@ fun EditStoreScreen(
     modifier: Modifier = Modifier,
 ) {
     val store by viewModel.store.collectAsState()
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var logoUrl by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
+    var uploadLogoBusy by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var success by remember { mutableStateOf(false) }
+
+    val pickLogoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        uploadLogoBusy = true
+        errorText = null
+        success = false
+        viewModel.uploadStoreLogoFromGallery(context, uri) { result ->
+            uploadLogoBusy = false
+            result.fold(
+                onSuccess = { logoUrl = it },
+                onFailure = { e -> errorText = e.message ?: "Could not upload logo" },
+            )
+        }
+    }
 
     LaunchedEffect(store?.storeId, store?.name, store?.description, store?.logo) {
         store?.let {
@@ -73,7 +110,7 @@ fun EditStoreScreen(
                     onValueChange = { name = it },
                     label = { Text("Store name") },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !saving,
+                    enabled = !saving && !uploadLogoBusy,
                     singleLine = true,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -82,18 +119,69 @@ fun EditStoreScreen(
                     onValueChange = { description = it },
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !saving,
+                    enabled = !saving && !uploadLogoBusy,
                     minLines = 4,
                 )
+                Spacer(modifier = Modifier.height(20.dp))
+                Text("Store logo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Photos are center-cropped to a square (1:1), then saved to your store folder in Firebase Storage.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.45f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(20.dp))
+                        .background(Color(0xFFF3F4F6)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (logoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = logoUrl,
+                            contentDescription = "Store logo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            tint = Color(0xFF9CA3AF),
+                            modifier = Modifier.size(48.dp),
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = {
+                        pickLogoLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    },
+                    enabled = !saving && !uploadLogoBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (uploadLogoBusy) "Uploading…" else "Choose logo from gallery")
+                }
+                if (uploadLogoBusy) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = logoUrl,
                     onValueChange = { logoUrl = it },
-                    label = { Text("Logo image URL") },
+                    label = { Text("Logo URL (optional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !saving,
+                    enabled = !saving && !uploadLogoBusy,
                     minLines = 2,
-                    supportingText = { Text("Paste a direct image link (HTTPS).") },
+                    supportingText = {
+                        Text("Override or paste a direct HTTPS link if you host the image elsewhere.")
+                    },
                 )
 
                 errorText?.let {
@@ -119,7 +207,7 @@ fun EditStoreScreen(
                             )
                         }
                     },
-                    enabled = !saving && name.isNotBlank(),
+                    enabled = !saving && !uploadLogoBusy && name.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (saving) {

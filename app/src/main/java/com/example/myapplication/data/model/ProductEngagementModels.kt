@@ -1,6 +1,6 @@
 package com.example.myapplication.data.model
 
-/** Sipariş kaleminde gömülü yorum (Firestore: orders/.../items içinde `review` map) */
+/** Embedded review on an order line (Firestore: orders/.../items `review` map). */
 data class OrderItemReviewEmb(
     val rating: Double,
     val comment: String,
@@ -32,7 +32,7 @@ data class ProductQuestionDoc(
     val answeredAtMs: Long,
 )
 
-/** Yorum yazma için uygun tek satır (sipariş tamamlanmış, review yok) */
+/** One eligible line to write a review (order completed, no review yet). */
 data class EligibleReviewSlot(
     val orderId: String,
     val suborderId: String,

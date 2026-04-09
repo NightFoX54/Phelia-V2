@@ -2,14 +2,14 @@ package com.example.myapplication.data.model
 
 /**
  * Firestore: users/{uid}/paymentMethods/{paymentMethodId}
- * Tam PAN ve CVV saklanmaz; [maskedPan], [last4] ve marka gibi güvenli gösterim alanları tutulur.
+ * Full PAN and CVV are not stored; safe display fields like [maskedPan], [last4], and brand are kept.
  */
 data class PaymentMethodDoc(
     val paymentMethodId: String,
     val label: String,
     val type: String,
     val brand: String,
-    /** Örn. "4532 •••• •••• 4242" */
+    /** e.g. "4532 •••• •••• 4242" */
     val maskedPan: String,
     val last4: String,
     val holderName: String,

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -27,7 +29,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,14 +62,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.example.myapplication.data.model.EligibleReviewSlot
 import com.example.myapplication.data.model.Product
+import com.example.myapplication.data.model.ProductStatsSnapshot
+import com.example.myapplication.data.model.Store
 import com.example.myapplication.data.model.ProductQuestionDoc
 import com.example.myapplication.data.model.ProductReviewDoc
 import com.example.myapplication.data.model.ProductDetailBundle
@@ -69,12 +84,18 @@ import com.example.myapplication.data.model.ProductVariant
 import com.example.myapplication.data.model.VariantSelection
 import com.example.myapplication.data.model.displayImagesForVariant
 import com.example.myapplication.data.repository.ProductRepository
+import com.example.myapplication.data.repository.ProductStatsRepository
 import com.example.myapplication.ui.product.colorLabelAndComposeColor
 import com.example.myapplication.ui.product.isColorAttributeKey
 import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.FavoritesViewModel
 import com.example.myapplication.viewmodel.ProductEngagementViewModel
 import kotlin.math.roundToInt
+
+/** Height of the hero image pager (used for collapse progress). */
+private val ProductDetailHeroImageHeight = 380.dp
+
+private val PinnedProductStripHeight = 56.dp
 
 @Composable
 fun ProductDetailScreen(
@@ -86,14 +107,17 @@ fun ProductDetailScreen(
     ownerStoreId: String = "",
     onBack: () -> Unit,
     onAddedToCart: () -> Unit = {},
+    onOpenStore: (String) -> Unit = {},
     onEditProduct: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
     val isFavorite = favoriteIds.contains(productId)
     val repository = remember { ProductRepository() }
+    val productStatsRepository = remember { ProductStatsRepository() }
     var loadState by remember(productId) { mutableStateOf<DetailLoadState>(DetailLoadState.Loading) }
     var selectedAttributes by remember(productId) { mutableStateOf(mapOf<String, String>()) }
+    var productViewRecorded by remember(productId) { mutableStateOf(false) }
 
     LaunchedEffect(productId, audience) {
         loadState = DetailLoadState.Loading
@@ -102,8 +126,15 @@ fun ProductDetailScreen(
             forStoreManagement = audience == ProductDetailAudience.StoreOwner,
         ).fold(
             onSuccess = { loadState = DetailLoadState.Ready(it) },
-            onFailure = { loadState = DetailLoadState.Error(it.message ?: "Yuklenemedi") },
+            onFailure = { loadState = DetailLoadState.Error(it.message ?: "Couldn't load product") },
         )
+    }
+
+    LaunchedEffect(productId, audience, loadState) {
+        if (audience != ProductDetailAudience.Customer) return@LaunchedEffect
+        if (loadState !is DetailLoadState.Ready || productViewRecorded) return@LaunchedEffect
+        productViewRecorded = true
+        productStatsRepository.recordProductView(productId)
     }
 
     LaunchedEffect(productId, loadState) {
@@ -142,7 +173,7 @@ fun ProductDetailScreen(
                 ) {
                     Text(state.message, color = Color(0xFFDC2626))
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = onBack) { Text("Geri") }
+                    Button(onClick = onBack) { Text("Back") }
                 }
             }
             is DetailLoadState.Ready -> {
@@ -150,6 +181,7 @@ fun ProductDetailScreen(
                     bundle = state.bundle,
                     audience = audience,
                     ownerStoreId = ownerStoreId,
+                    onOpenStore = onOpenStore,
                     selectedAttributes = selectedAttributes,
                     onSelectAttribute = { key, value ->
                         selectedAttributes = VariantSelection.pickAttribute(
@@ -188,6 +220,7 @@ private fun ProductDetailContent(
     bundle: ProductDetailBundle,
     audience: ProductDetailAudience,
     ownerStoreId: String,
+    onOpenStore: (String) -> Unit,
     selectedAttributes: Map<String, String>,
     onSelectAttribute: (String, String) -> Unit,
     resolvedVariant: ProductVariant?,
@@ -223,10 +256,28 @@ private fun ProductDetailContent(
     val engagementBusy by engagementViewModel.busy.collectAsState()
     val engagementError by engagementViewModel.lastError.collectAsState()
 
+    val statsRepo = remember { ProductStatsRepository() }
+    var ownerStats by remember(product.productId) { mutableStateOf<ProductStatsSnapshot?>(null) }
+    var ownerStatsLoading by remember(product.productId) { mutableStateOf(false) }
+    LaunchedEffect(product.productId, isStoreManagement) {
+        if (!isStoreManagement) {
+            ownerStats = null
+            ownerStatsLoading = false
+            return@LaunchedEffect
+        }
+        ownerStatsLoading = true
+        ownerStats = statsRepo.fetchProductStatsSnapshot(product.productId).getOrNull() ?: ProductStatsSnapshot()
+        ownerStatsLoading = false
+    }
+
     val displayPages = if (images.isEmpty()) listOf<String?>(null) else images.map { it }
 
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val heroHeightPx = remember(density) { with(density) { ProductDetailHeroImageHeight.roundToPx() } }
+
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        LazyColumn {
+        LazyColumn(state = listState) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFF3F4F6))) {
                     HorizontalPager(
@@ -240,17 +291,17 @@ private fun ProductDetailContent(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(380.dp),
+                                    .height(ProductDetailHeroImageHeight),
                             )
                         } else {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(380.dp)
+                                    .height(ProductDetailHeroImageHeight)
                                     .background(Color(0xFFE5E7EB)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("Gorsel yok", color = Color(0xFF6B7280))
+                                Text("No image", color = Color(0xFF6B7280))
                             }
                         }
                     }
@@ -280,7 +331,7 @@ private fun ProductDetailContent(
                                 IconButton(onClick = onFavoriteToggle) {
                                     Icon(
                                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = if (isFavorite) "Favorilerden cikar" else "Favorilere ekle",
+                                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
                                         tint = if (isFavorite) Color(0xFFEF4444) else Color(0xFF374151),
                                     )
                                 }
@@ -347,7 +398,7 @@ private fun ProductDetailContent(
 
                     resolvedVariant?.let { v ->
                         Text(
-                            text = if (v.stock > 0) "Stokta: ${v.stock}" else "Stokta yok",
+                            text = if (v.stock > 0) "In stock: ${v.stock}" else "Out of stock",
                             color = if (v.stock > 0) Color(0xFF16A34A) else Color(0xFFDC2626),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(top = 4.dp),
@@ -457,9 +508,94 @@ private fun ProductDetailContent(
 
                     Text("Description", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
                     Text(
-                        text = product.description.ifBlank { "Aciklama eklenmemis." },
+                        text = product.description.ifBlank { "No description provided." },
                         color = Color(0xFF4B5563),
                     )
+
+                    if (isStoreManagement) {
+                        DividerLike()
+                        Text(
+                            "Performance",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+                        )
+                        Text(
+                            "Product analytics (all time)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF6B7280),
+                            modifier = Modifier.padding(bottom = 10.dp),
+                        )
+                        if (ownerStatsLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(32.dp),
+                                    strokeWidth = 3.dp,
+                                )
+                            }
+                        } else {
+                            ownerStats?.let { s ->
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        OwnerStatTile(
+                                            icon = Icons.Default.Visibility,
+                                            label = "Views",
+                                            value = formatStatCount(s.views),
+                                            tint = Color(0xFF2563EB),
+                                            bg = Color(0xFFEFF6FF),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        OwnerStatTile(
+                                            icon = Icons.Default.ShoppingCart,
+                                            label = "Add to cart",
+                                            value = formatStatCount(s.addedToCart),
+                                            tint = Color(0xFFCA8A04),
+                                            bg = Color(0xFFFFFBEB),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        OwnerStatTile(
+                                            icon = Icons.Default.Favorite,
+                                            label = "In favorites",
+                                            value = formatStatCount(s.addedToFavorite),
+                                            tint = Color(0xFFDB2777),
+                                            bg = Color(0xFFFDF2F8),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        OwnerStatTile(
+                                            icon = Icons.Default.Inventory,
+                                            label = "Units sold",
+                                            value = formatStatCount(s.purchased),
+                                            tint = Color(0xFF16A34A),
+                                            bg = Color(0xFFF0FDF4),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (audience == ProductDetailAudience.Customer) {
+                        bundle.store?.takeIf { it.storeId.isNotBlank() }?.let { st ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ProductStorePreviewRow(
+                                store = st,
+                                onClick = { onOpenStore(st.storeId) },
+                            )
+                        }
+                    }
 
                     DividerLike()
                     ProductQuestionsSection(
@@ -509,6 +645,24 @@ private fun ProductDetailContent(
             }
         }
 
+        if (!isStoreManagement) {
+            val priceVal = resolvedVariant?.price ?: variants.minOfOrNull { it.price } ?: 0.0
+            val stockLine = resolvedVariant?.let {
+                if (it.stock > 0) "In stock: ${it.stock}" else "Out of stock"
+            } ?: "Select options"
+            val thumbUrl = displayPages.getOrNull(pagerState.currentPage)?.takeIf { !it.isNullOrBlank() }
+            CustomerPinnedProductStrip(
+                modifier = Modifier.align(Alignment.TopCenter),
+                listState = listState,
+                heroHeightPx = heroHeightPx,
+                productName = product.name,
+                price = priceVal,
+                stockLine = stockLine,
+                imageUrl = thumbUrl,
+                onBack = onBack,
+            )
+        }
+
         val canAdd = resolvedVariant != null && resolvedVariant.stock > 0
 
         if (!isStoreManagement) {
@@ -536,9 +690,9 @@ private fun ProductDetailContent(
                         Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null)
                         Spacer(modifier = Modifier.size(10.dp))
                         val label = when {
-                            resolvedVariant == null -> "Varyant secin"
-                            resolvedVariant.stock <= 0 -> "Stokta yok"
-                            else -> "Sepete ekle — $" + String.format("%.2f", resolvedVariant.price)
+                            resolvedVariant == null -> "Select options"
+                            resolvedVariant.stock <= 0 -> "Out of stock"
+                            else -> "Add to cart — $" + String.format("%.2f", resolvedVariant.price)
                         }
                         Text(label, fontWeight = FontWeight.Bold)
                     }
@@ -548,8 +702,229 @@ private fun ProductDetailContent(
     }
 }
 
+/**
+ * Customer-only: as the hero image scrolls away, a compact strip appears under the status bar
+ * with thumbnail, title, price, and stock so key info stays visible.
+ */
+@Composable
+private fun CustomerPinnedProductStrip(
+    modifier: Modifier = Modifier,
+    listState: LazyListState,
+    heroHeightPx: Int,
+    productName: String,
+    price: Double,
+    stockLine: String,
+    imageUrl: String?,
+    onBack: () -> Unit,
+) {
+    val scrollProgress by remember(heroHeightPx) {
+        derivedStateOf {
+            when (listState.firstVisibleItemIndex) {
+                0 -> (listState.firstVisibleItemScrollOffset.toFloat() / heroHeightPx.coerceAtLeast(1)).coerceIn(0f, 1f)
+                else -> 1f
+            }
+        }
+    }
+
+    if (scrollProgress >= 0.04f) {
+        val enter = ((scrollProgress - 0.04f) / 0.96f).coerceIn(0f, 1f)
+        val smooth = enter * enter * (3f - 2f * enter)
+
+        val stockColor = when {
+            stockLine.startsWith("In stock") -> Color(0xFF16A34A)
+            stockLine == "Out of stock" -> Color(0xFFDC2626)
+            else -> Color(0xFF6B7280)
+        }
+
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .zIndex(24f)
+                .graphicsLayer {
+                    alpha = smooth
+                    translationY = -8f * (1f - smooth)
+                },
+            color = Color.White,
+            shadowElevation = 6.dp * smooth,
+        ) {
+            Column(Modifier.statusBarsPadding()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(PinnedProductStripHeight)
+                        .padding(start = 2.dp, end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF111827))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFF3F4F6)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (imageUrl != null) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(10.dp)),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.size(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            productName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = Color(0xFF111827),
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "$" + String.format("%.2f", price),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                            )
+                            Text(
+                                stockLine,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = stockColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun uniqueValuesForKey(variants: List<ProductVariant>, key: String): List<String> =
     variants.mapNotNull { it.attributes[key]?.takeIf { v -> v.isNotBlank() } }.distinct().sorted()
+
+private fun formatStatCount(n: Long): String = when {
+    n < 1000 -> n.toString()
+    n < 1_000_000 -> String.format(java.util.Locale.US, "%.1fK", n / 1000.0)
+    else -> String.format(java.util.Locale.US, "%.1fM", n / 1_000_000.0)
+}
+
+@Composable
+private fun OwnerStatTile(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    tint: Color,
+    bg: Color,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = bg),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    value,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF111827),
+                    maxLines = 1,
+                )
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
+                    maxLines = 2,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductStorePreviewRow(
+    store: Store,
+    onClick: () -> Unit,
+) {
+    Text("Sold by", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (store.logo.isNotBlank()) {
+                AsyncImage(
+                    model = store.logo,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFE5E7EB)),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFEEF2FF)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF4338CA))
+                }
+            }
+            Column(modifier = Modifier.padding(horizontal = 12.dp).weight(1f)) {
+                Text(
+                    store.name.ifBlank { "Store" },
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("★★★★★", color = Color(0xFFF59E0B), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "  " + String.format("%.1f", store.rating),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        " (${store.reviewCount} reviews)",
+                        color = Color(0xFF6B7280),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            Text("›", color = Color(0xFF9CA3AF), fontSize = 22.sp)
+        }
+    }
+}
 
 @Composable
 private fun DividerLike() {
@@ -565,7 +940,7 @@ private fun SpecsCard(product: Product) {
         product.category["name"]?.takeIf { it.isNotBlank() }?.let { add("Category" to it) }
     }
     if (specs.isEmpty()) {
-        Text("Ek bilgi yok.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        Text("No additional details.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
     } else {
         Card(
             colors = CardDefaults.cardColors(containerColor = Color.White),

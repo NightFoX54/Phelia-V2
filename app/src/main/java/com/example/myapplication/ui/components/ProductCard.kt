@@ -79,7 +79,7 @@ fun ProductCard(
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Favorilerden cikar" else "Favorilere ekle",
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
                         tint = if (isFavorite) Color(0xFFEF4444) else Color(0xFF9CA3AF),
                     )
                 }

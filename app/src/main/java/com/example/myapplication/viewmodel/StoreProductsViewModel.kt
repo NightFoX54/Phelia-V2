@@ -3,7 +3,9 @@ package com.example.myapplication.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.StoreOwnerProductRow
+import com.example.myapplication.data.model.StoreWeeklySalesSummary
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
+import com.example.myapplication.data.repository.OrderRepository
 import com.example.myapplication.data.repository.ProductRepository
 import com.example.myapplication.data.repository.StoreRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -20,6 +22,7 @@ class StoreProductsViewModel(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
     private val storeRepository: StoreRepository = StoreRepository(),
     private val productRepository: ProductRepository = ProductRepository(),
+    private val orderRepository: OrderRepository = OrderRepository(),
 ) : ViewModel() {
 
     private val _rows = MutableStateFlow<List<StoreOwnerProductRow>>(emptyList())
@@ -27,6 +30,9 @@ class StoreProductsViewModel(
 
     private val _loadState = MutableStateFlow<StoreProductsLoadState>(StoreProductsLoadState.Idle)
     val loadState: StateFlow<StoreProductsLoadState> = _loadState.asStateFlow()
+
+    private val _weeklySales = MutableStateFlow<StoreWeeklySalesLoadState>(StoreWeeklySalesLoadState.Idle)
+    val weeklySales: StateFlow<StoreWeeklySalesLoadState> = _weeklySales.asStateFlow()
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
@@ -41,6 +47,7 @@ class StoreProductsViewModel(
         refreshJob?.cancel()
         activeStoreId = null
         _rows.value = emptyList()
+        _weeklySales.value = StoreWeeklySalesLoadState.Idle
         val uid = user?.uid
         if (uid.isNullOrBlank()) {
             _loadState.value = StoreProductsLoadState.Idle
@@ -56,6 +63,7 @@ class StoreProductsViewModel(
             activeStoreId = storeId
             _loadState.value = StoreProductsLoadState.Ready
             attachProductsListener(storeId)
+            refreshWeeklySales()
         }
     }
 
@@ -92,6 +100,22 @@ class StoreProductsViewModel(
                 onSuccess = { _rows.value = it },
                 onFailure = { },
             )
+            refreshWeeklySales()
+        }
+    }
+
+    fun refreshWeeklySales() {
+        val sid = activeStoreId ?: return
+        viewModelScope.launch {
+            _weeklySales.value = StoreWeeklySalesLoadState.Loading
+            orderRepository.fetchLastSevenDaysStoreSales(sid).fold(
+                onSuccess = { _weeklySales.value = StoreWeeklySalesLoadState.Ready(it) },
+                onFailure = { e ->
+                    _weeklySales.value = StoreWeeklySalesLoadState.Error(
+                        e.message ?: "Could not load sales",
+                    )
+                },
+            )
         }
     }
 
@@ -103,8 +127,8 @@ class StoreProductsViewModel(
         if (productId.isBlank()) return
         viewModelScope.launch {
             productRepository.deactivateProductForCurrentOwner(productId).fold(
-                onSuccess = { _userMessage.value = "Ürün satıştan kaldırıldı (silinmedi)." },
-                onFailure = { _userMessage.value = it.message ?: "İşlem başarısız" },
+                onSuccess = { _userMessage.value = "Product removed from sale (not deleted)." },
+                onFailure = { _userMessage.value = it.message ?: "Action failed" },
             )
         }
     }
@@ -113,8 +137,8 @@ class StoreProductsViewModel(
         if (productId.isBlank()) return
         viewModelScope.launch {
             productRepository.activateProductForCurrentOwner(productId).fold(
-                onSuccess = { _userMessage.value = "Ürün tekrar satışa alındı." },
-                onFailure = { _userMessage.value = it.message ?: "İşlem başarısız" },
+                onSuccess = { _userMessage.value = "Product is for sale again." },
+                onFailure = { _userMessage.value = it.message ?: "Action failed" },
             )
         }
     }
@@ -138,4 +162,11 @@ sealed interface StoreProductsLoadState {
     data object Ready : StoreProductsLoadState
     data object NoStore : StoreProductsLoadState
     data class Error(val message: String) : StoreProductsLoadState
+}
+
+sealed interface StoreWeeklySalesLoadState {
+    data object Idle : StoreWeeklySalesLoadState
+    data object Loading : StoreWeeklySalesLoadState
+    data class Ready(val summary: StoreWeeklySalesSummary) : StoreWeeklySalesLoadState
+    data class Error(val message: String) : StoreWeeklySalesLoadState
 }

@@ -41,8 +41,11 @@ class CartRepository(
                 onUpdate(list)
             }
 
-    suspend fun addOrIncrement(userId: String, productId: String, variantId: String, delta: Int): Result<Unit> = runCatching {
-        require(delta != 0) { "delta 0 olamaz" }
+    /**
+     * @return Units **added** to the line (max(0, newQty - previousQty)); 0 if cart unchanged or line removed.
+     */
+    suspend fun addOrIncrement(userId: String, productId: String, variantId: String, delta: Int): Result<Int> = runCatching {
+        require(delta != 0) { "delta cannot be 0" }
         val docId = cartDocId(productId, variantId)
         val ref = cartRef(userId).document(docId)
         val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
@@ -54,34 +57,35 @@ class CartRepository(
             val productLive = pSnap.exists() && (pSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
             if (!productLive) {
                 if (snap.exists()) tx.delete(ref)
-                return@runTransaction
+                return@runTransaction 0
             }
             val vSnap = tx.get(variantRef)
             val variantLive = vSnap.exists() && (vSnap.getBoolean(FIELD_IS_ACTIVE) ?: true)
             if (!variantLive) {
                 if (snap.exists()) tx.delete(ref)
-                return@runTransaction
+                return@runTransaction 0
             }
             val stock = (vSnap.getLong("stock") ?: 0L).toInt()
             if (stock <= 0) {
                 if (snap.exists()) tx.delete(ref)
-                return@runTransaction
+                return@runTransaction 0
             }
             var newQty = current + delta
             newQty = newQty.coerceIn(0, stock)
             if (newQty <= 0) {
                 if (snap.exists()) tx.delete(ref)
-            } else {
-                tx.set(
-                    ref,
-                    mapOf(
-                        FIELD_PRODUCT_ID to productId,
-                        FIELD_VARIANT_ID to variantId,
-                        FIELD_QUANTITY to newQty,
-                    ),
-                    SetOptions.merge(),
-                )
+                return@runTransaction 0
             }
+            tx.set(
+                ref,
+                mapOf(
+                    FIELD_PRODUCT_ID to productId,
+                    FIELD_VARIANT_ID to variantId,
+                    FIELD_QUANTITY to newQty,
+                ),
+                SetOptions.merge(),
+            )
+            (newQty - current).coerceAtLeast(0)
         }.await()
     }
 
@@ -118,7 +122,7 @@ class CartRepository(
     }
 
     /**
-     * Sepet acildiginda: stok 0 ise satiri siler, talep > stok ise miktari stoga indirir.
+     * On cart open: deletes lines when stock is 0; clamps quantity when requested qty exceeds stock.
      */
     suspend fun validateAndAdjustStock(userId: String): Result<StockValidationResult> = runCatching {
         val warnings = mutableListOf<String>()
@@ -148,7 +152,7 @@ class CartRepository(
             if (!vSnap.exists() || !productActive || (vSnap.getBoolean(FIELD_IS_ACTIVE) == false)) {
                 batch.delete(doc.reference)
                 hasWrites = true
-                warnings.add("$title: Ürün veya varyant satışta değil; sepetten kaldırıldı.")
+                warnings.add("$title: Product or variant is unavailable; removed from cart.")
                 continue
             }
 
@@ -157,13 +161,13 @@ class CartRepository(
                 stock <= 0 -> {
                     batch.delete(doc.reference)
                     hasWrites = true
-                    warnings.add("$title: Stokta kalmadığı için sepetten çıkarıldı.")
+                    warnings.add("$title: Removed from cart — out of stock.")
                 }
                 qty > stock -> {
                     batch.update(doc.reference, mapOf(FIELD_QUANTITY to stock))
                     hasWrites = true
                     warnings.add(
-                        "$title: Sepetinizde $qty adet vardı; güncel stok $stock adet olduğu için adet $stock olarak güncellendi.",
+                        "$title: You had $qty in your cart; available stock is $stock, so quantity was updated to $stock.",
                     )
                 }
             }
@@ -175,7 +179,7 @@ class CartRepository(
 
     private suspend fun fetchProductTitle(productId: String): String {
         val snap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
-        return snap.getString("name")?.trim()?.takeIf { it.isNotEmpty() } ?: "Ürün"
+        return snap.getString("name")?.trim()?.takeIf { it.isNotEmpty() } ?: "Product"
     }
 
     private fun cartRef(userId: String) =

@@ -1,7 +1,7 @@
 package com.example.myapplication.data
 
 /**
- * Kart numarası doğrulama ve maskeleme. Tam PAN üretim ortamında veritabanında saklanmamalıdır.
+ * Card number validation and masking. Full PAN must not be stored in production databases.
  */
 object CardPanUtils {
     const val MIN_PAN_LENGTH = 13
@@ -42,7 +42,7 @@ object CardPanUtils {
         }
     }
 
-    /** Görüntü: ilk 4 + ortası maskeli + son 4 (16 hane için tipik kart ekranı) */
+    /** Display: first 4 + masked middle + last 4 (typical 16-digit card UI). */
     fun maskedDisplay(digits: String): String {
         val d = digits.filter { it.isDigit() }
         if (d.length < MIN_PAN_LENGTH) return formatGrouped(d)

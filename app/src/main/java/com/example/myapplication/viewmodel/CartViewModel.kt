@@ -6,6 +6,7 @@ import com.example.myapplication.data.model.CartLineFirestore
 import com.example.myapplication.data.model.ui.CartLineUi
 import com.example.myapplication.data.repository.CartRepository
 import com.example.myapplication.data.repository.ProductRepository
+import com.example.myapplication.data.repository.ProductStatsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ class CartViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val cartRepository: CartRepository = CartRepository(),
     private val productRepository: ProductRepository = ProductRepository(),
+    private val productStatsRepository: ProductStatsRepository = ProductStatsRepository(),
 ) : ViewModel() {
 
     private val _rawLines = MutableStateFlow<List<CartLineFirestore>>(emptyList())
@@ -72,7 +74,7 @@ class CartViewModel(
                                 }
                             }
                             _stockMessages.value = _stockMessages.value + listOf(
-                                "Satışta olmayan ürünler sepetten kaldırıldı.",
+                                "Items that are no longer for sale were removed from your cart.",
                             )
                         }
                         _uiState.value = CartUiState(lines = enriched, isEnriching = false)
@@ -113,7 +115,12 @@ class CartViewModel(
         val uid = auth.currentUser?.uid ?: return
         if (productId.isBlank() || variantId.isBlank() || quantity == 0) return
         viewModelScope.launch {
-            cartRepository.addOrIncrement(uid, productId, variantId, quantity)
+            cartRepository.addOrIncrement(uid, productId, variantId, quantity).fold(
+                onSuccess = { added ->
+                    if (added > 0) productStatsRepository.recordAddToCart(productId, added)
+                },
+                onFailure = { },
+            )
         }
     }
 
@@ -121,7 +128,12 @@ class CartViewModel(
         val uid = auth.currentUser?.uid ?: return
         if (delta == 0) return
         viewModelScope.launch {
-            cartRepository.addOrIncrement(uid, productId, variantId, delta)
+            cartRepository.addOrIncrement(uid, productId, variantId, delta).fold(
+                onSuccess = { added ->
+                    if (added > 0) productStatsRepository.recordAddToCart(productId, added)
+                },
+                onFailure = { },
+            )
         }
     }
 

@@ -47,8 +47,8 @@ object VariantSelection {
 }
 
 /**
- * Galeri sirasi: once varyanta ozel gorseller, sonra herkes icin ortak [Product.publicImages]
- * (or. renk bazli fotolar + sonda spec/kutu ortak fotosu). Ayni URL iki kez gelmez.
+ * Gallery order: variant-specific images first, then shared [Product.publicImages]
+ * (e.g. color-specific shots + common box/spec photo at the end). Duplicate URLs are dropped.
  */
 fun displayImagesForVariant(product: Product, variant: ProductVariant?): List<String> {
     val variantUrls = variant?.images.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }

@@ -11,6 +11,6 @@ data class Product(
     val rating: Double = 0.0,
     val reviewCount: Int = 0,
     val createdAt: Long = 0L,
-    /** false = satıştan kaldırıldı (soft delete); eski siparişler bozulmaz */
+    /** false = removed from sale (soft delete); past orders stay valid */
     val isActive: Boolean = true,
 )

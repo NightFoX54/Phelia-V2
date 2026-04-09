@@ -25,8 +25,8 @@ data class ShippingAddressInput(
 )
 
 /**
- * @param panDigits Tam kart numarası yalnızca rakamlar; depoda tutulmaz, masked + last4 üretilir.
- * Düzenlemede boş bırakılırsa mevcut kart bilgisi korunur.
+ * @param panDigits Full card number as digits only; not stored raw—masked + last4 are derived.
+ * When editing, leave empty to keep the existing card on file.
  */
 data class PaymentMethodInput(
     val label: String,

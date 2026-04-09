@@ -26,10 +26,11 @@ class AuthRepository(
             onFailure = { e -> Result.failure(Exception(mapAuthError(e))) },
         )
 
-    suspend fun register(name: String, email: String, password: String): Result<Unit> =
+    /** Creates Firebase Auth user + `users/{uid}` with role `customer`. Returns new [User.uid]. */
+    suspend fun register(name: String, email: String, password: String): Result<String> =
         runCatching {
             val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
-            val uid = result.user?.uid ?: error("Kullanıcı oluşturulamadı")
+            val uid = result.user?.uid ?: error("Could not create user")
             val user = User(
                 uid = uid,
                 name = name.trim(),
@@ -38,7 +39,7 @@ class AuthRepository(
                 createdAt = System.currentTimeMillis(),
             )
             db.collection(COLLECTION_USERS).document(uid).set(user.toFirestoreMap()).await()
-            Unit
+            uid
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { e -> Result.failure(Exception(mapAuthError(e))) },
@@ -55,7 +56,7 @@ class AuthRepository(
             delay(200L * (attempt + 1))
         }
         return Result.failure(
-            Exception("users/$uid belgesi bulunamadı. Firestore’da profil oluşturun."),
+            Exception("users/$uid document not found. Create the profile in Firestore."),
         )
     }
 
@@ -64,10 +65,10 @@ class AuthRepository(
     }
 
     private fun mapAuthError(e: Throwable): String = when (e) {
-        is FirebaseAuthInvalidCredentialsException -> "E-posta veya şifre hatalı."
-        is FirebaseAuthUserCollisionException -> "Bu e-posta ile zaten kayıt var."
-        is FirebaseAuthWeakPasswordException -> "Şifre çok zayıf (en az 6 karakter)."
-        else -> e.message ?: "Bir hata oluştu."
+        is FirebaseAuthInvalidCredentialsException -> "Invalid email or password."
+        is FirebaseAuthUserCollisionException -> "An account with this email already exists."
+        is FirebaseAuthWeakPasswordException -> "Password is too weak (at least 6 characters)."
+        else -> e.message ?: "Something went wrong."
     }
 
     companion object {

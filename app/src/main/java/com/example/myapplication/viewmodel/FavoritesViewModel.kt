@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.FavoriteEntry
 import com.example.myapplication.data.repository.FavoritesRepository
+import com.example.myapplication.data.repository.ProductStatsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 class FavoritesViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val repository: FavoritesRepository = FavoritesRepository(),
+    private val productStatsRepository: ProductStatsRepository = ProductStatsRepository(),
 ) : ViewModel() {
 
     private val _favoriteEntries = MutableStateFlow<List<FavoriteEntry>>(emptyList())
@@ -55,7 +57,13 @@ class FavoritesViewModel(
         val uid = auth.currentUser?.uid ?: return
         if (productId.isBlank()) return
         viewModelScope.launch {
-            repository.toggleFavorite(uid, productId)
+            repository.toggleFavorite(uid, productId).fold(
+                onSuccess = { nowFavorited ->
+                    val delta = if (nowFavorited) 1 else -1
+                    productStatsRepository.adjustFavoriteCount(productId, delta)
+                },
+                onFailure = { },
+            )
         }
     }
 }

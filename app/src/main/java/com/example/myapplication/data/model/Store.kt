@@ -7,5 +7,6 @@ data class Store(
     val description: String = "",
     val logo: String = "",
     val rating: Double = 0.0,
+    val reviewCount: Int = 0,
     val createdAt: Long = 0L,
 )

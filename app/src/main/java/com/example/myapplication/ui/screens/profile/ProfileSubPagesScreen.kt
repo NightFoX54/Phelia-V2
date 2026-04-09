@@ -44,7 +44,7 @@ fun ProfileSubPagesScreen(
     var name by remember { mutableStateOf("John Doe") }
     var email by remember { mutableStateOf("user@test.com") }
     var phone by remember { mutableStateOf("+90 5XX XXX XX XX") }
-    var bio by remember { mutableStateOf("Teknoloji ve kampanya avcısı.") }
+    var bio by remember { mutableStateOf("Tech enthusiast and deal hunter.") }
     val scrollState = rememberScrollState()
 
     Column(

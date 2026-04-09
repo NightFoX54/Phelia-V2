@@ -6,14 +6,23 @@ import com.example.myapplication.data.model.OrderDoc
 import com.example.myapplication.data.model.OrderItemDoc
 import com.example.myapplication.data.model.OrderItemReviewEmb
 import com.example.myapplication.data.model.OrderStatus
+import com.example.myapplication.data.model.StoreOrderDetailBundle
+import com.example.myapplication.data.model.StoreOrderItemLine
+import com.example.myapplication.data.model.StoreSuborderListRow
 import com.example.myapplication.data.model.SuborderDetailUi
 import com.example.myapplication.data.model.SuborderDoc
 import com.example.myapplication.data.model.ShippingAddressDoc
+import com.example.myapplication.data.model.aggregateParentOrderStatus
+import com.example.myapplication.data.model.allowedNextSuborderStatuses
+import com.example.myapplication.data.model.normalizeOrderStatus
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.model.cartDocId
+import com.example.myapplication.data.model.StoreSalesDayBucket
+import com.example.myapplication.data.model.StoreWeeklySalesSummary
 import com.example.myapplication.data.model.ui.CartLineUi
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -21,14 +30,22 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
 class OrderRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
+    private val productRepository: ProductRepository = ProductRepository(),
+    private val productStatsRepository: ProductStatsRepository = ProductStatsRepository(),
 ) {
 
     /**
-     * Sadece [FIELD_USER_ID] eşitliği kullanılır; [orderBy] yok — böylece
-     * `userId + createdAt` composite index zorunluluğu oluşmaz. Sıralama istemcide yapılır.
+     * Uses only [FIELD_USER_ID] equality (no [orderBy]) so a `userId + createdAt` composite index
+     * is not required. Sorting is done on the client.
      */
     fun listenUserOrders(
         userId: String,
@@ -74,9 +91,7 @@ class OrderRepository(
         )
     }
 
-    /**
-     * Tamamlanmış siparişlerde bu ürün için henüz yorum yazılmamış ilk kalemi döner.
-     */
+    /** First order line for this product in a completed order that does not yet have a review. */
     suspend fun findEligibleReviewSlot(userId: String, productId: String): EligibleReviewSlot? {
         if (productId.isBlank()) return null
         val ordersSnap = db.collection(COLLECTION_ORDERS)
@@ -117,9 +132,7 @@ class OrderRepository(
         }.getOrElse { storeId }
     }
 
-    /**
-     * Tek transaction: varyant stok kontrolü, orders + suborders + items yazar, sepeti temizler.
-     */
+    /** Single transaction: variant stock check, writes orders + suborders + items, clears cart. */
     suspend fun placeOrder(
         userId: String,
         lines: List<CartLineUi>,
@@ -128,9 +141,9 @@ class OrderRepository(
         shippingFee: Double,
         taxRate: Double = DEFAULT_TAX_RATE,
     ): Result<String> = runCatching {
-        require(lines.isNotEmpty()) { "Sepet boş" }
+        require(lines.isNotEmpty()) { "Cart is empty" }
         lines.forEach { line ->
-            require(line.storeId.isNotBlank()) { "Ürün mağaza bilgisi eksik: ${line.productName}" }
+            require(line.storeId.isNotBlank()) { "Missing store for product: ${line.productName}" }
         }
 
         val orderRef = db.collection(COLLECTION_ORDERS).document()
@@ -153,26 +166,26 @@ class OrderRepository(
             }
             for (line in lines) {
                 val pSnap = snapByProduct[line.productId]
-                    ?: error("Ürün okunamadı")
+                    ?: error("Could not read product")
                 if (!pSnap.exists()) {
-                    error("Ürün artık yok: ${line.productName}")
+                    error("Product no longer available: ${line.productName}")
                 }
                 val productActive = pSnap.getBoolean(FIELD_IS_ACTIVE) ?: true
                 if (!productActive) {
-                    error("Ürün satışta değil: ${line.productName}")
+                    error("Product is not for sale: ${line.productName}")
                 }
                 val snap = snapByVariant[line.productId to line.variantId]
-                    ?: error("Varyant okunamadı")
+                    ?: error("Could not read variant")
                 if (!snap.exists()) {
-                    error("Ürün artık yok: ${line.productName}")
+                    error("Product no longer available: ${line.productName}")
                 }
                 val variantActive = snap.getBoolean(FIELD_IS_ACTIVE) ?: true
                 if (!variantActive) {
-                    error("Seçilen varyant satışta değil: ${line.productName}")
+                    error("Selected variant is not for sale: ${line.productName}")
                 }
                 val stock = (snap.getLong(FIELD_STOCK) ?: 0L).toInt()
                 if (stock < line.quantity) {
-                    error("Yetersiz stok: ${line.productName}")
+                    error("Insufficient stock: ${line.productName}")
                 }
             }
 
@@ -249,6 +262,15 @@ class OrderRepository(
                 val cartRef = db.collection(COLLECTION_USERS).document(userId)
                     .collection(SUBCOLLECTION_CART).document(cartDocId(line.productId, line.variantId))
                 tx.delete(cartRef)
+            }
+
+            val purchasedByProduct = lines.groupBy { it.productId }.mapValues { (_, ls) ->
+                ls.sumOf { it.quantity }.coerceAtLeast(0)
+            }
+            for ((pid, qty) in purchasedByProduct) {
+                if (qty <= 0) continue
+                val pSnap = snapByProduct[pid] ?: continue
+                productStatsRepository.applyPurchasedIncrement(tx, pid, qty, pSnap)
             }
 
             null
@@ -346,6 +368,209 @@ class OrderRepository(
 
     private fun isOrderCompletedForReview(status: String): Boolean =
         status == OrderStatus.COMPLETED || status == "delivered"
+
+    /**
+     * Store panel: `suborders` collection group query with `storeId` equality.
+     * Firestore may log a composite index URL on first run.
+     */
+    fun listenStoreSuborders(
+        storeId: String,
+        onDocuments: (List<com.google.firebase.firestore.DocumentSnapshot>) -> Unit,
+    ): ListenerRegistration =
+        db.collectionGroup(SUBCOLLECTION_SUBORDERS)
+            .whereEqualTo(FIELD_STORE_ID, storeId)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    onDocuments(emptyList())
+                    return@addSnapshotListener
+                }
+                onDocuments(snap?.documents ?: emptyList())
+            }
+
+    /** One-shot fetch (e.g. refresh when returning to the orders list). */
+    suspend fun fetchStoreSubordersSnapshot(storeId: String): List<DocumentSnapshot> =
+        db.collectionGroup(SUBCOLLECTION_SUBORDERS)
+            .whereEqualTo(FIELD_STORE_ID, storeId)
+            .get()
+            .await()
+            .documents
+
+    /**
+     * Suborders for [storeId] with `createdAt` at or after [sinceMillis].
+     * Requires a composite index on collection group `suborders`: `storeId` + `createdAt`.
+     */
+    suspend fun fetchStoreSubordersCreatedSince(storeId: String, sinceMillis: Long): Result<List<DocumentSnapshot>> = runCatching {
+        if (storeId.isBlank()) return@runCatching emptyList()
+        val ts = Timestamp(Date(sinceMillis.coerceAtLeast(0L)))
+        db.collectionGroup(SUBCOLLECTION_SUBORDERS)
+            .whereEqualTo(FIELD_STORE_ID, storeId)
+            .whereGreaterThanOrEqualTo(FIELD_CREATED_AT, ts)
+            .get()
+            .await()
+            .documents
+    }
+
+    /**
+     * Rolling last 7 calendar days in the device timezone (today and the 6 days before).
+     * Revenue per day = suborder `totalPrice` + `totalTax` (store’s share of the order).
+     */
+    suspend fun fetchLastSevenDaysStoreSales(storeId: String): Result<StoreWeeklySalesSummary> = runCatching {
+        if (storeId.isBlank()) error("Missing store")
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val firstDay = today.minusDays(6)
+        val sinceMillis = firstDay.atStartOfDay(zone).toInstant().toEpochMilli()
+        val docs = fetchStoreSubordersCreatedSince(storeId, sinceMillis).getOrElse { throw it }
+        val revenue = DoubleArray(7)
+        val counts = IntArray(7)
+        val firstEpochDay = firstDay.toEpochDay()
+        for (doc in docs) {
+            val ms = doc.readMillis(FIELD_CREATED_AT)
+            if (ms <= 0L) continue
+            val d = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+            val idx = (d.toEpochDay() - firstEpochDay).toInt()
+            if (idx !in 0..6) continue
+            val price = doc.getDouble(FIELD_TOTAL_PRICE) ?: 0.0
+            val tax = doc.getDouble(FIELD_TOTAL_TAX) ?: 0.0
+            revenue[idx] += price + tax
+            counts[idx] += 1
+        }
+        val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
+        val days = (0..6).map { i ->
+            val d = firstDay.plusDays(i.toLong())
+            StoreSalesDayBucket(
+                label = d.format(dayFmt),
+                revenue = revenue[i],
+                suborderCount = counts[i],
+            )
+        }
+        val rangeFmt = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+        val rangeLabel = "${firstDay.format(rangeFmt)} – ${today.format(rangeFmt)}"
+        StoreWeeklySalesSummary(
+            days = days,
+            weekTotalRevenue = revenue.sum(),
+            weekSuborderCount = counts.sum(),
+            rangeLabel = rangeLabel,
+        )
+    }
+
+    suspend fun enrichStoreSuborderDocuments(
+        docs: List<com.google.firebase.firestore.DocumentSnapshot>,
+    ): List<StoreSuborderListRow> {
+        if (docs.isEmpty()) return emptyList()
+        return coroutineScope {
+            docs.map { doc ->
+                async {
+                    val orderDocRef = doc.reference.parent?.parent ?: return@async null
+                    val orderId = orderDocRef.id
+                    val so = doc.toSuborderDoc() ?: return@async null
+                    val orderSnap = db.collection(COLLECTION_ORDERS).document(orderId).get().await()
+                    if (!orderSnap.exists()) return@async null
+                    val order = orderSnap.toOrderDoc() ?: return@async null
+                    val uid = order.userId
+                    val userSnap = db.collection(COLLECTION_USERS).document(uid).get().await()
+                    val buyerName = userSnap.getString("name").orEmpty().ifBlank { "Customer" }
+                    val itemSnaps = doc.reference.collection(SUBCOLLECTION_ITEMS).get().await().documents
+                    val itemCount = itemSnaps.size
+                    val thumbPid = itemSnaps.firstOrNull()?.getString(FIELD_PRODUCT_ID)?.takeIf { it.isNotBlank() }
+                    val thumb = thumbPid?.let { fetchPrimaryProductImageUrl(it) }
+                    StoreSuborderListRow(
+                        orderId = orderId,
+                        suborderFirestoreId = doc.id,
+                        suborder = so,
+                        parentOrderStatus = order.status,
+                        buyerDisplayName = buyerName,
+                        orderCreatedAtMs = order.createdAtMs,
+                        itemCount = itemCount,
+                        thumbnailUrl = thumb,
+                    )
+                }
+            }.awaitAll().filterNotNull()
+        }
+    }
+
+    suspend fun fetchStoreOrderDetailForOwner(
+        orderId: String,
+        storeId: String,
+    ): Result<StoreOrderDetailBundle> = runCatching {
+        val orderRef = db.collection(COLLECTION_ORDERS).document(orderId)
+        val orderSnap = orderRef.get().await()
+        if (!orderSnap.exists()) error("Order not found")
+        val order = orderSnap.toOrderDoc() ?: error("Invalid order")
+        val addressLines = orderSnap.shippingAddressLines()
+        val subSnaps = orderRef.collection(SUBCOLLECTION_SUBORDERS).get().await().documents
+        val mine = subSnaps.filter { it.getString(FIELD_STORE_ID) == storeId }
+        if (mine.isEmpty()) error("No package for your store in this order")
+        val subDocSnap = mine.first()
+        val so = subDocSnap.toSuborderDoc() ?: error("Invalid suborder")
+        val items = subDocSnap.reference.collection(SUBCOLLECTION_ITEMS).get().await().documents
+            .mapNotNull { it.toOrderItemDoc() }
+        val itemLines = coroutineScope {
+            items.map { item ->
+                async {
+                    val url = productRepository.fetchLineItemDisplayImageUrl(item.productId, item.variantId)
+                    StoreOrderItemLine(item = item, imageUrl = url)
+                }
+            }.awaitAll()
+        }
+        val uid = order.userId
+        val userSnap = db.collection(COLLECTION_USERS).document(uid).get().await()
+        val buyerName = userSnap.getString("name").orEmpty().ifBlank { "Customer" }
+        val buyerEmail = userSnap.getString("email").orEmpty()
+        val thumb = itemLines.firstOrNull()?.imageUrl
+            ?: items.firstOrNull()?.productId?.takeIf { it.isNotBlank() }?.let { fetchPrimaryProductImageUrl(it) }
+        StoreOrderDetailBundle(
+            order = order,
+            shippingAddressLines = addressLines,
+            buyerName = buyerName,
+            buyerEmail = buyerEmail,
+            ourSuborder = so,
+            ourSuborderFirestoreId = subDocSnap.id,
+            items = itemLines,
+            thumbnailUrl = thumb,
+        )
+    }
+
+    suspend fun updateSuborderStatusForStore(
+        orderId: String,
+        suborderFirestoreId: String,
+        newStatus: String,
+        storeId: String,
+    ): Result<Unit> = runCatching {
+        val orderRef = db.collection(COLLECTION_ORDERS).document(orderId)
+        val allIds = orderRef.collection(SUBCOLLECTION_SUBORDERS).get().await().documents.map { it.id }
+        val targetNorm = normalizeOrderStatus(newStatus)
+        db.runTransaction { tx ->
+            val subRef = orderRef.collection(SUBCOLLECTION_SUBORDERS).document(suborderFirestoreId)
+            val subSnap = tx.get(subRef)
+            if (!subSnap.exists()) error("Suborder not found")
+            if (subSnap.getString(FIELD_STORE_ID) != storeId) error("Not your store order")
+            val current = subSnap.getString(FIELD_STATUS).orEmpty()
+            val allowed = allowedNextSuborderStatuses(current).map { normalizeOrderStatus(it) }.toSet()
+            if (targetNorm !in allowed) error("Invalid status change")
+            val now = FieldValue.serverTimestamp()
+            tx.update(subRef, mapOf(FIELD_STATUS to newStatus, FIELD_UPDATED_AT to now))
+            val statuses = allIds.map { sid ->
+                if (sid == suborderFirestoreId) {
+                    newStatus
+                } else {
+                    val s = tx.get(orderRef.collection(SUBCOLLECTION_SUBORDERS).document(sid))
+                    s.getString(FIELD_STATUS).orEmpty()
+                }
+            }
+            val parentStatus = aggregateParentOrderStatus(statuses)
+            tx.update(orderRef, mapOf(FIELD_STATUS to parentStatus, FIELD_UPDATED_AT to now))
+            null
+        }.await()
+    }
+
+    private suspend fun fetchPrimaryProductImageUrl(productId: String): String? = runCatching {
+        val p = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
+        if (!p.exists()) return@runCatching null
+        @Suppress("UNCHECKED_CAST")
+        val imgs = (p.get("publicImages") as? List<*>)?.mapNotNull { it?.toString() }?.filter { it.isNotBlank() }
+        imgs?.firstOrNull()
+    }.getOrNull()
 
     private fun ShippingAddressDoc.toFirestoreMap(): Map<String, Any?> = mapOf(
         "addressId" to addressId,

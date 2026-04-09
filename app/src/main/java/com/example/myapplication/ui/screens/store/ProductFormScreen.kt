@@ -67,9 +67,9 @@ private val FormPresetColors = listOf(
 )
 
 private data class VariantFormState(
-    /** Compose / galeri yukleme anahtari */
+    /** Compose / gallery upload key */
     val id: String,
-    /** Firestore `variants` doküman id; yeni satırda null */
+    /** Firestore `variants` document id; null for a new row */
     val firestoreVariantId: String? = null,
     val sku: String = "",
     val price: String = "",
@@ -137,7 +137,7 @@ fun ProductFormScreen(
                 }
             },
             onFailure = { e ->
-                categoryError = e.message ?: "Kategoriler yuklenemedi"
+                categoryError = e.message ?: "Could not load categories"
             },
         )
         repository.fetchBrands().fold(
@@ -148,7 +148,7 @@ fun ProductFormScreen(
                 }
             },
             onFailure = { e ->
-                brandError = e.message ?: "Markalar yuklenemedi"
+                brandError = e.message ?: "Could not load brands"
             },
         )
         loading = false
@@ -187,7 +187,7 @@ fun ProductFormScreen(
                 }
             },
             onFailure = { e ->
-                error = e.message ?: "Urun yuklenemedi"
+                error = e.message ?: "Could not load product"
             },
         )
         loading = false
@@ -224,7 +224,7 @@ fun ProductFormScreen(
                     }
                 },
                 onFailure = { e ->
-                    error = e.message ?: "Gorsel yuklenemedi"
+                    error = e.message ?: "Could not upload image"
                 },
             )
             imageUploadBusy = false
@@ -236,19 +236,19 @@ fun ProductFormScreen(
         successMessage = null
 
         if (name.isBlank()) {
-            error = "Urun adi zorunlu"
+            error = "Product name is required"
             return
         }
         if (selectedBrand == null) {
-            error = "Marka secin"
+            error = "Select a brand"
             return
         }
         if (selectedCategory == null) {
-            error = "Kategori secin"
+            error = "Select a category"
             return
         }
         if (variants.isEmpty()) {
-            error = "En az bir varyant olmali"
+            error = "At least one variant is required"
             return
         }
 
@@ -258,15 +258,15 @@ fun ProductFormScreen(
             val p = v.price.toDoubleOrNull()
             val s = v.stock.toIntOrNull()
             if (v.sku.isBlank()) {
-                error = "Variant ${i + 1}: SKU zorunlu"
+                error = "Variant ${i + 1}: SKU is required"
                 return
             }
             if (p == null) {
-                error = "Variant ${i + 1}: price gecerli sayi olmali"
+                error = "Variant ${i + 1}: price must be a valid number"
                 return
             }
             if (s == null) {
-                error = "Variant ${i + 1}: stock gecerli sayi olmali"
+                error = "Variant ${i + 1}: stock must be a valid number"
                 return
             }
             val attrs = v.attributes.filterValues { it.isNotBlank() }
@@ -313,10 +313,10 @@ fun ProductFormScreen(
                     ),
                 ).fold(
                     onSuccess = {
-                        successMessage = "Urun guncellendi"
+                        successMessage = "Product updated"
                     },
                     onFailure = { e ->
-                        error = e.message ?: "Guncellenemedi"
+                        error = e.message ?: "Update failed"
                     },
                 )
             } else {
@@ -333,7 +333,7 @@ fun ProductFormScreen(
                     ),
                 ).fold(
                     onSuccess = { productIdCreated ->
-                        successMessage = "Urun kaydedildi: $productIdCreated"
+                        successMessage = "Product saved: $productIdCreated"
                         name = ""
                         description = ""
                         selectedBrandId = if (brands.isNotEmpty()) brands.first().brandId else ""
@@ -343,7 +343,7 @@ fun ProductFormScreen(
                         variants = listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null))
                     },
                     onFailure = { e ->
-                        error = e.message ?: "Urun kaydedilemedi"
+                        error = e.message ?: "Could not save product"
                     },
                 )
             }
@@ -354,7 +354,7 @@ fun ProductFormScreen(
     colorPickerContext?.let { (variantId, attrKey) ->
         AlertDialog(
             onDismissRequest = { colorPickerContext = null },
-            title = { Text("Renk sec: $attrKey") },
+            title = { Text("Pick color: $attrKey") },
             text = {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
@@ -380,7 +380,7 @@ fun ProductFormScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { colorPickerContext = null }) { Text("Kapat") }
+                TextButton(onClick = { colorPickerContext = null }) { Text("Close") }
             },
         )
     }
@@ -428,7 +428,7 @@ fun ProductFormScreen(
                         ) { Text("Select Brand") }
                         if (!loading && brands.isEmpty() && brandError == null) {
                             Text(
-                                "Marka listesi bos. Firestore'da Brands veya brands koleksiyonuna dokuman ekleyin (alanlar: brandId, name).",
+                                "Brand list is empty. Add documents to Brands or brands in Firestore (fields: brandId, name).",
                                 color = Color(0xFF92400E),
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -465,7 +465,7 @@ fun ProductFormScreen(
             item {
                 Card(shape = RoundedCornerShape(18.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Urun gorselleri (public)", style = MaterialTheme.typography.titleSmall)
+                        Text("Product images (public)", style = MaterialTheme.typography.titleSmall)
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -483,7 +483,7 @@ fun ProductFormScreen(
                             ) {
                                 Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text("Galeriden yukle")
+                                Text("Upload from gallery")
                             }
                             if (imageUploadBusy) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -493,7 +493,7 @@ fun ProductFormScreen(
                             OutlinedTextField(
                                 value = publicImageInput,
                                 onValueChange = { publicImageInput = it },
-                                label = { Text("Veya URL yap??t?r") },
+                                label = { Text("Or paste image URL") },
                                 modifier = Modifier.weight(1f),
                             )
                             Button(
@@ -505,7 +505,7 @@ fun ProductFormScreen(
                                     }
                                 },
                                 enabled = !imageUploadBusy,
-                            ) { Text("Ekle") }
+                            ) { Text("Add") }
                         }
                         publicImages.forEach { url ->
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -599,7 +599,7 @@ fun ProductFormScreen(
                                                             it.copy(attributes = it.attributes + (key to text))
                                                         }
                                                     },
-                                                    label = { Text("$key (#hex veya Etiket|#hex)") },
+                                                    label = { Text("$key (#hex or Label|#hex)") },
                                                     modifier = Modifier.weight(1f),
                                                 )
                                                 Button(
@@ -608,7 +608,7 @@ fun ProductFormScreen(
                                                         containerColor = Color(0xFFEEF2FF),
                                                         contentColor = Color(0xFF4338CA),
                                                     ),
-                                                ) { Text("Paletten") }
+                                                ) { Text("From palette") }
                                             }
                                         } else {
                                             OutlinedTextField(
@@ -624,7 +624,7 @@ fun ProductFormScreen(
                                         }
                                     }
 
-                                    Text("Varyant gorselleri", color = Color(0xFF374151), style = MaterialTheme.typography.bodySmall)
+                                    Text("Variant images", color = Color(0xFF374151), style = MaterialTheme.typography.bodySmall)
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
@@ -642,14 +642,14 @@ fun ProductFormScreen(
                                         ) {
                                             Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.size(6.dp))
-                                            Text("Galeriden yukle")
+                                            Text("Upload from gallery")
                                         }
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                         OutlinedTextField(
                                             value = variant.imageInput,
                                             onValueChange = { text -> updateVariant(variant.id) { it.copy(imageInput = text) } },
-                                            label = { Text("Veya URL") },
+                                            label = { Text("Or image URL") },
                                             modifier = Modifier.weight(1f),
                                         )
                                         Button(
@@ -666,7 +666,7 @@ fun ProductFormScreen(
                                             },
                                             enabled = !imageUploadBusy,
                                         ) {
-                                            Text("Ekle")
+                                            Text("Add")
                                         }
                                     }
 

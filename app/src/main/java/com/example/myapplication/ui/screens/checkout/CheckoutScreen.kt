@@ -269,7 +269,7 @@ fun CheckoutScreen(
                                 onSuccess = { orderId -> onOrderPlaced(orderId) },
                                 onFailure = { e ->
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(e.message ?: "Sipariş oluşturulamadı")
+                                        snackbarHostState.showSnackbar(e.message ?: "Could not place order")
                                     }
                                 },
                             )

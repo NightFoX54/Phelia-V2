@@ -24,6 +24,7 @@ import com.example.myapplication.ui.screens.admin.AdminDashboardScreen
 import com.example.myapplication.ui.screens.admin.AdminInactiveProductsScreen
 import com.example.myapplication.ui.screens.admin.StoreDetailScreen
 import com.example.myapplication.ui.screens.admin.StoreManagementScreen
+import com.example.myapplication.ui.screens.admin.StoreApplicationsAdminScreen
 import com.example.myapplication.ui.screens.admin.UserManagementScreen
 import com.example.myapplication.ui.screens.cart.CartScreen
 import com.example.myapplication.ui.screens.checkout.CheckoutScreen
@@ -44,6 +45,7 @@ import com.example.myapplication.ui.screens.store.ProductFormScreen
 import com.example.myapplication.ui.screens.store.StoreDashboardScreen
 import com.example.myapplication.ui.screens.store.StoreOrderDetailScreen
 import com.example.myapplication.ui.screens.store.StoreOrdersScreen
+import com.example.myapplication.ui.screens.store.PublicStoreScreen
 import com.example.myapplication.ui.screens.store.StoreProductsScreen
 import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.CheckoutViewModel
@@ -53,6 +55,9 @@ import com.example.myapplication.viewmodel.FavoritesViewModel
 import com.example.myapplication.viewmodel.ProductEngagementViewModel
 import com.example.myapplication.viewmodel.ProductEngagementViewModelFactory
 import com.example.myapplication.viewmodel.SessionViewModel
+import com.example.myapplication.viewmodel.StoreOrderDetailViewModel
+import com.example.myapplication.viewmodel.StoreOrderDetailViewModelFactory
+import com.example.myapplication.viewmodel.StoreOrdersViewModel
 import com.example.myapplication.viewmodel.StoreOwnerProfileViewModel
 import com.example.myapplication.viewmodel.StoreProductsViewModel
 
@@ -67,6 +72,7 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
     val orderHistoryViewModel: OrderHistoryViewModel = viewModel(viewModelStoreOwner = activity)
     val storeOwnerProfileViewModel: StoreOwnerProfileViewModel = viewModel(viewModelStoreOwner = activity)
     val storeProductsViewModel: StoreProductsViewModel = viewModel(viewModelStoreOwner = activity)
+    val storeOrdersViewModel: StoreOrdersViewModel = viewModel(viewModelStoreOwner = activity)
     val user by sessionViewModel.user.collectAsState()
     val profile = user
     if (profile == null) {
@@ -89,6 +95,8 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
         AppRoutes.PRODUCT_FORM,
         AppRoutes.STORE_ORDER_DETAIL,
         AppRoutes.STORE_DETAIL,
+        AppRoutes.ADMIN_STORE_APPLICATIONS,
+        AppRoutes.PUBLIC_STORE,
         AppRoutes.PROFILE_EDIT,
         AppRoutes.PROFILE_ADDRESS,
         AppRoutes.PROFILE_PAYMENT,
@@ -105,7 +113,8 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             if (currentRoute != null && !hideBottomBarRoutes.contains(currentRoute) &&
                 !currentRoute.startsWith("order_success/") &&
                 !currentRoute.startsWith("profile/orders/") &&
-                !currentRoute.startsWith("store-product/")
+                !currentRoute.startsWith("store-product/") &&
+                !currentRoute.startsWith("public-store/")
             ) {
                 BottomNavBar(navController = navController, role = profile.role)
             }
@@ -148,6 +157,19 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     engagementViewModel = engagementViewModel,
                     onBack = { navController.popBackStack() },
                     onAddedToCart = { navController.navigate(AppRoutes.CART) },
+                    onOpenStore = { storeId -> navController.navigate(AppRoutes.publicStore(storeId)) },
+                )
+            }
+            composable(
+                route = AppRoutes.PUBLIC_STORE,
+                arguments = AppRoutes.publicStoreArgs,
+            ) { backStackEntry ->
+                val sid = backStackEntry.arguments?.getString("storeId").orEmpty()
+                PublicStoreScreen(
+                    storeId = sid,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
+                    favoritesViewModel = favoritesViewModel,
                 )
             }
             composable(AppRoutes.CART) {
@@ -288,6 +310,7 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             }
             composable(AppRoutes.STORE_ORDERS) {
                 StoreOrdersScreen(
+                    viewModel = storeOrdersViewModel,
                     onOpenOrder = { navController.navigate(AppRoutes.storeOrderDetail(it)) },
                 )
             }
@@ -296,7 +319,17 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 arguments = AppRoutes.storeOrderDetailArgs,
             ) { backStackEntry ->
                 val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
-                StoreOrderDetailScreen(orderId = orderId, onBack = { navController.popBackStack() })
+                val detailVm: StoreOrderDetailViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    key = "store_order_detail_$orderId",
+                    factory = StoreOrderDetailViewModelFactory(orderId) {
+                        storeOrdersViewModel.refreshOrdersIfPossible()
+                    },
+                )
+                StoreOrderDetailScreen(
+                    viewModel = detailVm,
+                    onBack = { navController.popBackStack() },
+                )
             }
 
             composable(AppRoutes.ADMIN_DASHBOARD) {
@@ -304,7 +337,11 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onManageUsers = { navController.navigate(AppRoutes.USER_MANAGEMENT) },
                     onManageStores = { navController.navigate(AppRoutes.STORE_MANAGEMENT) },
                     onInactiveProducts = { navController.navigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) },
+                    onStoreApplications = { navController.navigate(AppRoutes.ADMIN_STORE_APPLICATIONS) },
                 )
+            }
+            composable(AppRoutes.ADMIN_STORE_APPLICATIONS) {
+                StoreApplicationsAdminScreen(onBack = { navController.popBackStack() })
             }
             composable(AppRoutes.ADMIN_INACTIVE_PRODUCTS) {
                 AdminInactiveProductsScreen(onBack = { navController.popBackStack() })

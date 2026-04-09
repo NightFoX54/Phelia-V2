@@ -15,4 +15,6 @@ data class ProductDetailBundle(
     val product: Product,
     val variantAttributeKeys: List<String>,
     val variants: List<ProductVariant>,
+    /** Loaded from [Product.storeId] when present; null if missing or fetch failed. */
+    val store: Store? = null,
 )

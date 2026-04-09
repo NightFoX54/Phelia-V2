@@ -64,7 +64,7 @@ fun FavoritesScreen(
                 loading = false
             },
             onFailure = { e ->
-                loadError = e.message ?: "Urunler yuklenemedi"
+                loadError = e.message ?: "Could not load products"
                 loading = false
             },
         )
@@ -77,9 +77,9 @@ fun FavoritesScreen(
     ) {
         Surface(color = Color.White, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                AppTopBar(title = "Favoriler", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "Favorites", onBack = onBack, containerColor = Color.White)
                 Text(
-                    text = "${favoriteEntries.size} urun",
+                    text = "${favoriteEntries.size} " + if (favoriteEntries.size == 1) "item" else "items",
                     color = Color(0xFF6B7280),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 12.dp),
@@ -102,7 +102,7 @@ fun FavoritesScreen(
             }
             favoriteEntries.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Henuz favori urun yok.", color = Color(0xFF6B7280))
+                    Text("No favorites yet.", color = Color(0xFF6B7280))
                 }
             }
             else -> {

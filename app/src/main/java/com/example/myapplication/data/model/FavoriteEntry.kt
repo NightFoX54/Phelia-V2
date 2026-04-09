@@ -2,8 +2,8 @@ package com.example.myapplication.data.model
 
 /**
  * Firestore: users/{uid}/favorites/{documentId}
- * Alanlar: favoriteId, productId, createdAt
- * [productId] ile ayni doc id kullanilir (tekil favori, toggle kolay).
+ * Fields: favoriteId, productId, createdAt.
+ * Document id matches [productId] for a single favorite per product (easy toggle).
  */
 data class FavoriteEntry(
     val favoriteId: String,

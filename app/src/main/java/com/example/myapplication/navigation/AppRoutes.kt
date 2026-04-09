@@ -7,6 +7,8 @@ object AppRoutes {
     const val HOME = "home"
     const val PRODUCTS = "products"
     const val PRODUCT_DETAIL = "product/{productId}"
+    /** Customer: seller profile + that store's active products (distinct from admin [STORE_DETAIL]). */
+    const val PUBLIC_STORE = "public-store/{storeId}"
     const val CART = "cart"
     const val CHECKOUT = "checkout"
     const val ORDER_SUCCESS = "order_success/{orderId}"
@@ -25,17 +27,17 @@ object AppRoutes {
     const val PROFILE_HELP = "profile/help"
     const val PROFILE_SETTINGS = "profile/settings"
     const val PROFILE_ORDERS = "profile/orders"
-    /** Tek sipariş detayı (liste: [PROFILE_ORDERS]) */
+    /** Single order detail (from list: [PROFILE_ORDERS]). */
     const val PROFILE_ORDER_DETAIL = "profile/orders/{orderId}"
     const val PROFILE_FAVORITES = "profile/favorites"
-    /** Mağaza sahibi: mağaza adı / açıklama / logo URL */
+    /** Store owner: store name / description / logo URL. */
     const val STORE_PROFILE_EDIT = "profile/store-edit"
 
     // Store owner
     const val STORE_DASHBOARD = "store-dashboard"
     const val STORE_PRODUCTS = "store-products"
     const val STORE_ORDERS = "store-orders"
-    /** Mağaza sahibi: ürün detayı + Q&A / yorum yanıtı */
+    /** Store owner: product detail + Q&A / review replies. */
     const val STORE_PRODUCT_DETAIL = "store-product/{productId}"
     const val STORE_ORDER_DETAIL = "store-order/{orderId}"
 
@@ -45,12 +47,14 @@ object AppRoutes {
     const val STORE_MANAGEMENT = "store-management"
     const val STORE_DETAIL = "store/{storeId}"
     const val ADMIN_INACTIVE_PRODUCTS = "admin/inactive-products"
+    const val ADMIN_STORE_APPLICATIONS = "admin/store-applications"
 
     // Forms
     const val PRODUCT_FORM = "product-form"
     const val PRODUCT_FORM_EDIT = "product-form/{productId}"
 
     fun productDetail(productId: String) = "product/$productId"
+    fun publicStore(storeId: String) = "public-store/$storeId"
     fun productFormEdit(productId: String) = "product-form/$productId"
     fun storeOrderDetail(orderId: String) = "store-order/$orderId"
     fun storeProductDetail(productId: String) = "store-product/$productId"
@@ -60,6 +64,9 @@ object AppRoutes {
 
     val productDetailArgs = listOf(
         navArgument("productId") { type = NavType.StringType },
+    )
+    val publicStoreArgs = listOf(
+        navArgument("storeId") { type = NavType.StringType },
     )
     val storeOrderDetailArgs = listOf(
         navArgument("orderId") { type = NavType.StringType },

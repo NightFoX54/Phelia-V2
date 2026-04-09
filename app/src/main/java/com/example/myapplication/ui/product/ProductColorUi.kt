@@ -3,9 +3,9 @@ package com.example.myapplication.ui.product
 import androidx.compose.ui.graphics.Color
 
 /**
- * Renk alani icin:
- * - `#RRGGBB` veya `#AARRGGBB` (goruntu: swatch)
- * - istege bagli `Etiket|#RRGGBB` (etiket + swatch)
+ * For color attribute values:
+ * - `#RRGGBB` or `#AARRGGBB` (shown as swatch)
+ * - optional `Label|#RRGGBB` (label + swatch)
  */
 fun parseComposeColorHex(raw: String): Color? {
     val s = raw.trim()

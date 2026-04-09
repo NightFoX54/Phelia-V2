@@ -24,7 +24,7 @@ data class SuborderDoc(
     val updatedAtMs: Long,
 )
 
-/** UI: tek sipariş detayı (Firestore + mağaza adı) */
+/** UI: single order detail (Firestore + store name). */
 data class OrderDetailBundle(
     val order: OrderDoc,
     val shippingAddressLines: List<String>,
@@ -35,6 +35,36 @@ data class SuborderDetailUi(
     val suborder: SuborderDoc,
     val storeName: String,
     val items: List<OrderItemDoc>,
+)
+
+/** Store owner order list row (this store's suborder only). */
+data class StoreSuborderListRow(
+    val orderId: String,
+    val suborderFirestoreId: String,
+    val suborder: SuborderDoc,
+    val parentOrderStatus: String,
+    val buyerDisplayName: String,
+    val orderCreatedAtMs: Long,
+    val itemCount: Int,
+    val thumbnailUrl: String?,
+)
+
+/** Store order line + display image (product/variant). */
+data class StoreOrderItemLine(
+    val item: OrderItemDoc,
+    val imageUrl: String?,
+)
+
+/** Store order detail (one store suborder + parent order summary). */
+data class StoreOrderDetailBundle(
+    val order: OrderDoc,
+    val shippingAddressLines: List<String>,
+    val buyerName: String,
+    val buyerEmail: String,
+    val ourSuborder: SuborderDoc,
+    val ourSuborderFirestoreId: String,
+    val items: List<StoreOrderItemLine>,
+    val thumbnailUrl: String?,
 )
 
 /** Firestore: orders/{orderId}/suborders/{suborderId}/items/{itemId} */
@@ -48,13 +78,13 @@ data class OrderItemDoc(
     val quantity: Int,
     val tax: Double,
     val createdAtMs: Long,
-    /** Ürün sayfasındaki review ile senkron; yoksa kullanıcı henüz yorumlamadı */
+    /** In sync with product-page review; null if the user has not reviewed yet. */
     val review: OrderItemReviewEmb? = null,
 )
 
 /**
- * Firestore `status` alanı (İngilizce anahtarlar).
- * Eski kayıtlar: [legacyOrderStatusLabel] ile etiketlenir.
+ * Firestore `status` field (English keys).
+ * Legacy records may use alternate strings; see [normalizeOrderStatus].
  */
 object OrderStatus {
     const val ORDER_RECEIVED = "order_received"
@@ -63,9 +93,56 @@ object OrderStatus {
     const val SHIPPED = "shipped"
     const val COMPLETED = "completed"
     const val CANCELLED = "cancelled"
+    /** Suborders are in mixed stages; parent cannot collapse to one status. */
+    const val IN_PROGRESS = "in_progress"
 }
 
-/** Kullanıcı arayüzünde gösterilecek kısa İngilizce metinler. */
+/** Maps legacy or UI-sourced status strings to canonical keys. */
+fun normalizeOrderStatus(raw: String): String {
+    val k = raw.lowercase()
+    return when (k) {
+        "pending" -> OrderStatus.ORDER_RECEIVED
+        "confirmed" -> OrderStatus.ORDER_CONFIRMED
+        "processing" -> OrderStatus.PREPARING
+        "delivered" -> OrderStatus.COMPLETED
+        OrderStatus.ORDER_RECEIVED,
+        OrderStatus.ORDER_CONFIRMED,
+        OrderStatus.PREPARING,
+        OrderStatus.SHIPPED,
+        OrderStatus.COMPLETED,
+        OrderStatus.CANCELLED,
+        OrderStatus.IN_PROGRESS,
+        -> k
+        else -> raw
+    }
+}
+
+/**
+ * Parent order status: same as all suborders if they match; otherwise [OrderStatus.IN_PROGRESS].
+ * If all are cancelled, returns [OrderStatus.CANCELLED].
+ */
+fun aggregateParentOrderStatus(suborderStatuses: List<String>): String {
+    if (suborderStatuses.isEmpty()) return OrderStatus.ORDER_RECEIVED
+    val canon = suborderStatuses.map { normalizeOrderStatus(it) }
+    if (canon.all { it == OrderStatus.CANCELLED }) return OrderStatus.CANCELLED
+    val active = canon.filter { it != OrderStatus.CANCELLED }
+    if (active.isEmpty()) return OrderStatus.CANCELLED
+    return if (active.distinct().size == 1) active.first() else OrderStatus.IN_PROGRESS
+}
+
+/** Allowed next statuses for a store-owned suborder. */
+fun allowedNextSuborderStatuses(current: String): List<String> {
+    val c = normalizeOrderStatus(current)
+    return when (c) {
+        OrderStatus.ORDER_RECEIVED -> listOf(OrderStatus.ORDER_CONFIRMED, OrderStatus.CANCELLED)
+        OrderStatus.ORDER_CONFIRMED -> listOf(OrderStatus.PREPARING, OrderStatus.CANCELLED)
+        OrderStatus.PREPARING -> listOf(OrderStatus.SHIPPED, OrderStatus.CANCELLED)
+        OrderStatus.SHIPPED -> listOf(OrderStatus.COMPLETED)
+        else -> emptyList()
+    }
+}
+
+/** Short English labels for the UI. */
 fun orderStatusLabelEnglish(status: String): String = when (status) {
     OrderStatus.ORDER_RECEIVED, "pending" -> "Order received"
     OrderStatus.ORDER_CONFIRMED, "confirmed" -> "Order confirmed"
@@ -73,6 +150,7 @@ fun orderStatusLabelEnglish(status: String): String = when (status) {
     OrderStatus.SHIPPED -> "Shipped"
     OrderStatus.COMPLETED, "delivered" -> "Completed"
     OrderStatus.CANCELLED -> "Cancelled"
+    OrderStatus.IN_PROGRESS -> "In progress"
     else -> status.split("_")
         .filter { it.isNotBlank() }
         .joinToString(" ") { word -> word.replaceFirstChar(Char::uppercaseChar) }

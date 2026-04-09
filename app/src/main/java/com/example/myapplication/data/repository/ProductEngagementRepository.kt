@@ -86,6 +86,18 @@ class ProductEngagementRepository(
             val newCount = oldCount + 1
             val newRating = if (oldCount == 0) rating else (oldRating * oldCount + rating) / newCount
 
+            val storeId = productSnap.getString(FIELD_PRODUCT_STORE_ID).orEmpty().trim()
+            if (storeId.isBlank()) error("Product has no store")
+            val storeRef = db.collection(COLLECTION_STORES).document(storeId)
+            val storeSnap = tx.get(storeRef)
+            if (!storeSnap.exists()) error("Store not found")
+            val oldStoreReviewCount = (storeSnap.getLong(FIELD_STORE_REVIEW_COUNT) ?: 0L).toInt().coerceAtLeast(0)
+            val oldStoreRating = storeSnap.getDouble(FIELD_STORE_RATING) ?: 0.0
+            val newStoreReviewCount = oldStoreReviewCount + 1
+            val newStoreRating =
+                if (oldStoreReviewCount == 0) rating
+                else (oldStoreRating * oldStoreReviewCount + rating) / newStoreReviewCount
+
             tx.update(
                 itemRef,
                 mapOf(
@@ -117,6 +129,13 @@ class ProductEngagementRepository(
                 mapOf(
                     FIELD_PRODUCT_AGG_RATING to newRating,
                     FIELD_PRODUCT_REVIEW_COUNT to newCount,
+                ),
+            )
+            tx.update(
+                storeRef,
+                mapOf(
+                    FIELD_STORE_RATING to newStoreRating,
+                    FIELD_STORE_REVIEW_COUNT to newStoreReviewCount,
                 ),
             )
             null
@@ -265,6 +284,8 @@ class ProductEngagementRepository(
 
         private const val FIELD_PRODUCT_AGG_RATING = "rating"
         private const val FIELD_PRODUCT_REVIEW_COUNT = "reviewCount"
+        private const val FIELD_STORE_RATING = "rating"
+        private const val FIELD_STORE_REVIEW_COUNT = "reviewCount"
 
         fun reviewDocumentId(orderId: String, suborderId: String, itemId: String): String =
             listOf(orderId, suborderId, itemId)

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.AppRegistration
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -45,6 +46,7 @@ fun AdminDashboardScreen(
     onManageUsers: () -> Unit,
     onManageStores: () -> Unit,
     onInactiveProducts: () -> Unit = {},
+    onStoreApplications: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val headerGradient = Brush.linearGradient(listOf(Color(0xFF6D28D9), Color(0xFF4338CA)))
@@ -252,6 +254,17 @@ fun AdminDashboardScreen(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Button(
+                onClick = onStoreApplications,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(Icons.Default.AppRegistration, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Store applications", fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
                 onClick = onInactiveProducts,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEA580C)),
                 shape = RoundedCornerShape(14.dp),
@@ -259,7 +272,7 @@ fun AdminDashboardScreen(
             ) {
                 Icon(Icons.Default.Inventory, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Pasif ürünleri yönet", fontWeight = FontWeight.SemiBold)
+                Text("Manage inactive products", fontWeight = FontWeight.SemiBold)
             }
         }
     }

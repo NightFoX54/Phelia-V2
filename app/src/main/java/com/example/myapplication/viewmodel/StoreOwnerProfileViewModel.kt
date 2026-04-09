@@ -1,15 +1,20 @@
 package com.example.myapplication.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Store
 import com.example.myapplication.data.repository.StoreRepository
+import com.example.myapplication.util.StoreLogoImageUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class StoreOwnerProfileViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -53,6 +58,30 @@ class StoreOwnerProfileViewModel(
 
     init {
         auth.addAuthStateListener(authStateListener)
+    }
+
+    /**
+     * Crops picked image to a centered **1:1** square, uploads to Storage under `stores/{id}/brand/`, returns download URL.
+     */
+    fun uploadStoreLogoFromGallery(
+        context: Context,
+        sourceUri: Uri,
+        onResult: (Result<String>) -> Unit,
+    ) {
+        val uid = auth.currentUser?.uid
+        if (uid.isNullOrBlank()) {
+            onResult(Result.failure(IllegalStateException("Not signed in")))
+            return
+        }
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching {
+                    val cropped = StoreLogoImageUtils.cropCenterSquareToJpegFile(context.applicationContext, sourceUri)
+                    repository.uploadStoreLogo(uid, cropped).getOrThrow()
+                }
+            }
+            onResult(r)
+        }
     }
 
     fun saveStore(
