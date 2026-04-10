@@ -13,10 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,39 +38,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.AppTopBar
-
-private data class StoreItem(
-    val id: String,
-    val name: String,
-    val ownerName: String,
-    val ownerEmail: String,
-    val rating: Double,
-    val totalSales: String,
-    val totalProducts: Int,
-    val totalOrders: Int,
-    val status: String,
-    val joinDate: String,
-)
+import com.example.myapplication.viewmodel.AdminStoreListUiState
+import com.example.myapplication.viewmodel.AdminStoreManagementViewModel
+import java.util.Locale
 
 @Composable
 fun StoreManagementScreen(
     onBack: () -> Unit,
     onOpenStore: (String) -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: AdminStoreManagementViewModel = viewModel(),
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var stores by remember {
-        mutableStateOf(
-            listOf(
-                StoreItem("1", "TechStore Pro", "Store Owner", "store@test.com", 4.9, "$2,548,000", 145, 1250, "active", "2023-06-15"),
-                StoreItem("2", "Gadget Hub", "Mike Anderson", "mike@store.com", 4.8, "$1,823,500", 98, 890, "active", "2023-08-20"),
-                StoreItem("3", "ElectroWorld", "Sarah Martinez", "sarah@electroworld.com", 4.7, "$1,567,200", 112, 720, "active", "2023-07-10"),
-                StoreItem("4", "TechMart", "David Lee", "contact@techmart.com", 4.5, "$987,400", 76, 450, "active", "2023-09-05"),
-                StoreItem("5", "SmartDevices Co", "Emma Wilson", "emma@smartdevices.com", 3.8, "$245,600", 34, 120, "disabled", "2024-01-15"),
-            ),
-        )
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    val stores = (uiState as? AdminStoreListUiState.Ready)?.stores.orEmpty()
     val filteredStores = stores.filter {
         it.name.contains(searchQuery, true) ||
             it.ownerName.contains(searchQuery, true) ||
@@ -99,7 +84,31 @@ fun StoreManagementScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(filteredStores, key = { it.id }) { store ->
+            if (uiState is AdminStoreListUiState.Loading) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        horizontalArrangement = Arrangement.Center,
+                    ) { CircularProgressIndicator() }
+                }
+            }
+            if (uiState is AdminStoreListUiState.Error) {
+                val msg = (uiState as AdminStoreListUiState.Error).message
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(msg, color = Color(0xFFDC2626))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.refresh() }) {
+                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+            }
+            items(filteredStores, key = { it.storeId }) { store ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(18.dp),
@@ -110,10 +119,6 @@ fun StoreManagementScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(store.name, fontWeight = FontWeight.Bold)
-                                    if (store.status == "disabled") {
-                                        Spacer(modifier = Modifier.size(8.dp))
-                                        Text("Disabled", color = Color(0xFFB91C1C), style = MaterialTheme.typography.bodySmall)
-                                    }
                                 }
                                 Text(store.ownerName, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
                                 Text(store.ownerEmail, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
@@ -127,36 +132,20 @@ fun StoreManagementScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             StatTile("Products", store.totalProducts.toString(), Color(0xFFEFF6FF), Color(0xFF2563EB), Modifier.weight(1f))
                             StatTile("Orders", store.totalOrders.toString(), Color(0xFFF0FDF4), Color(0xFF16A34A), Modifier.weight(1f))
-                            StatTile("Sales", store.totalSales, Color(0xFFF5F3FF), Color(0xFF6D28D9), Modifier.weight(1f))
+                            StatTile("Sales", formatCompactCurrency(store.totalSales), Color(0xFFF5F3FF), Color(0xFF6D28D9), Modifier.weight(1f))
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         Text("Joined ${store.joinDate}", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(
-                                onClick = { onOpenStore(store.id) },
+                                onClick = { onOpenStore(store.storeId) },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF), contentColor = Color(0xFF4338CA)),
                                 modifier = Modifier.weight(1f),
                             ) {
                                 Icon(Icons.Default.Visibility, null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.size(6.dp))
                                 Text("View Store")
-                            }
-                            Button(
-                                onClick = {
-                                    stores = stores.map {
-                                        if (it.id == store.id) it.copy(status = if (it.status == "active") "disabled" else "active") else it
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (store.status == "active") Color(0xFFFEF2F2) else Color(0xFFECFDF5),
-                                    contentColor = if (store.status == "active") Color(0xFFDC2626) else Color(0xFF16A34A),
-                                ),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Icon(Icons.Default.Block, null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.size(6.dp))
-                                Text(if (store.status == "active") "Disable" else "Enable")
                             }
                         }
                     }
@@ -167,6 +156,12 @@ fun StoreManagementScreen(
             }
         }
     }
+}
+
+private fun formatCompactCurrency(value: Double): String = when {
+    value >= 1_000_000.0 -> "$" + String.format(Locale.US, "%.2fM", value / 1_000_000.0)
+    value >= 1_000.0 -> "$" + String.format(Locale.US, "%.1fK", value / 1_000.0)
+    else -> "$" + String.format(Locale.US, "%.0f", value)
 }
 
 @Composable

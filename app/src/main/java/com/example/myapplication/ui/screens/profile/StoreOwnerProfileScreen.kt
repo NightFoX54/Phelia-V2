@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Card
@@ -115,6 +116,11 @@ fun StoreOwnerProfileScreen(
                         label = "Store orders",
                         tint = Color(0xFF2563EB),
                     ) { onNavigate(AppRoutes.STORE_ORDERS) }
+                    ProfileMenuRow(
+                        icon = Icons.Default.Notifications,
+                        label = "Notifications",
+                        tint = Color(0xFFF59E0B),
+                    ) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
                     ProfileMenuRow(
                         icon = Icons.Default.Help,
                         label = "Help & Support",

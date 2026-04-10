@@ -239,7 +239,13 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(AppRoutes.PROFILE_NOTIFICATIONS) { ProfileSubPagesScreen("Notifications", onBack = { navController.popBackStack() }) }
+            composable(AppRoutes.PROFILE_NOTIFICATIONS) {
+                ProfileSubPagesScreen(
+                    "Notifications",
+                    onBack = { navController.popBackStack() },
+                    onNavigateToRoute = { route -> navController.navigate(route) },
+                )
+            }
             composable(AppRoutes.PROFILE_HELP) { ProfileSubPagesScreen("Help & Support", onBack = { navController.popBackStack() }) }
             composable(AppRoutes.PROFILE_SETTINGS) { ProfileSubPagesScreen("Settings", onBack = { navController.popBackStack() }) }
             composable(

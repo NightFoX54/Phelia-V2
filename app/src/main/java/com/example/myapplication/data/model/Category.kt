@@ -4,4 +4,5 @@ data class Category(
     val categoryId: String = "",
     val name: String = "",
     val variantAttributes: List<String> = emptyList(),
+    val taxRate: Int = 0,
 )

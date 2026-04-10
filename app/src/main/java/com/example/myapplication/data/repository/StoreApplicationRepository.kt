@@ -22,6 +22,7 @@ import java.util.UUID
 class StoreApplicationRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
     private val storage: FirebaseStorage = FirebaseRemoteDataSource.storage,
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
 ) {
 
     /** Before account exists, no upload. After register, path: `store_application_uploads/{uid}/logo_*.jpg`. */
@@ -68,6 +69,20 @@ class StoreApplicationRepository(
             createdAtMs = now,
         )
         ref.set(doc.toFirestoreMap()).await()
+        val adminUserIds = db.collection(COLLECTION_USERS)
+            .whereEqualTo(FIELD_ROLE, ROLE_ADMIN)
+            .get()
+            .await()
+            .documents
+            .map { it.id }
+            .filter { it.isNotBlank() }
+        notificationRepository.sendToUsers(
+            userIds = adminUserIds,
+            type = NotificationTypes.STORE_APPLICATION_SUBMITTED,
+            title = "New store application",
+            body = "${doc.applicantName.ifBlank { "A user" }} submitted a store application.",
+            storeApplicationId = ref.id,
+        )
         ref.id
     }
 
@@ -184,5 +199,6 @@ class StoreApplicationRepository(
         private const val FIELD_CREATED_AT = "createdAt"
         private const val FIELD_ROLE = "role"
         private const val ROLE_STORE_OWNER = "store_owner"
+        private const val ROLE_ADMIN = "admin"
     }
 }

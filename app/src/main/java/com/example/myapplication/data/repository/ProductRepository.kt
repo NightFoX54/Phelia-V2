@@ -32,6 +32,7 @@ class ProductRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
     private val storage: FirebaseStorage = FirebaseRemoteDataSource.storage,
     private val storeRepository: StoreRepository = StoreRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
 ) {
 
     sealed class ImageUploadTarget {
@@ -198,6 +199,7 @@ class ProductRepository(
     suspend fun enrichCartLines(lines: List<CartLineFirestore>): Result<List<CartLineUi>> = runCatching {
         val valid = lines.filter { it.quantity > 0 && it.productId.isNotBlank() && it.variantId.isNotBlank() }
         if (valid.isEmpty()) return@runCatching emptyList()
+        val categoryTaxCache = mutableMapOf<String, Int>()
         coroutineScope {
             valid.map { line ->
                 async {
@@ -209,14 +211,27 @@ class ProductRepository(
                     val v = vSnap.toProductVariant()
                     if (!p.isActive || !v.isActive) return@async null
                     val img = displayImagesForVariant(p, v).firstOrNull().orEmpty()
+                    val categoryId = p.category["categoryId"].orEmpty()
+                    val taxRatePercent = if (categoryId.isBlank()) {
+                        0
+                    } else {
+                        categoryTaxCache[categoryId] ?: run {
+                            val catSnap = db.collection(COLLECTION_CATEGORIES).document(categoryId).get().await()
+                            val rate = (catSnap.getLong("taxRate") ?: 0L).toInt().coerceAtLeast(0)
+                            categoryTaxCache[categoryId] = rate
+                            rate
+                        }
+                    }
                     CartLineUi(
                         productId = line.productId,
                         storeId = p.storeId,
+                        categoryId = categoryId,
                         variantId = line.variantId,
                         quantity = line.quantity,
                         productName = p.name,
                         brandName = p.brand["name"]?.takeIf { !it.isNullOrBlank() },
                         unitPrice = v.price,
+                        taxRatePercent = taxRatePercent,
                         imageUrl = img,
                         attributes = v.attributes,
                         sku = v.sku,
@@ -392,6 +407,9 @@ class ProductRepository(
 
         val variantsCol = productRef.collection(SUBCOLLECTION_VARIANTS)
         val existingIds = variantsCol.get().await().documents.map { it.id }.toSet()
+        val existingPriceByVariantId = variantsCol.get().await().documents.associate { d ->
+            d.id to ((d.getDouble("price") ?: 0.0))
+        }
         val keepIds = input.variants.mapNotNull { it.firestoreVariantId?.takeIf { id -> id.isNotBlank() } }.toSet()
 
         val batch = db.batch()
@@ -429,6 +447,29 @@ class ProductRepository(
             }
         }
         batch.commit().await()
+
+        // Notify users who favorited this product when any existing variant price decreased.
+        val lowered = input.variants.any { v ->
+            val fid = v.firestoreVariantId?.takeIf { it.isNotBlank() } ?: return@any false
+            val oldPrice = existingPriceByVariantId[fid] ?: return@any false
+            v.price < oldPrice
+        }
+        if (lowered) {
+            val favSnap = db.collectionGroup("favorites")
+                .whereEqualTo("productId", productId)
+                .get()
+                .await()
+            val targetUserIds = favSnap.documents.mapNotNull { doc ->
+                doc.reference.parent.parent?.id
+            }.distinct()
+            notificationRepository.sendToUsers(
+                userIds = targetUserIds,
+                type = NotificationTypes.PRICE_DROP,
+                title = "Price drop alert",
+                body = "${input.name.trim().ifBlank { "A product" }} is now cheaper.",
+                productId = productId,
+            )
+        }
     }
 
     suspend fun deactivateProductForCurrentOwner(productId: String): Result<Unit> = runCatching {
@@ -520,6 +561,7 @@ class ProductRepository(
             categoryId = id,
             name = getString("name").orEmpty(),
             variantAttributes = attrs,
+            taxRate = (getLong("taxRate") ?: 0L).toInt().coerceAtLeast(0),
         )
     }
 

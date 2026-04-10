@@ -19,10 +19,14 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.AppRegistration
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -75,6 +79,7 @@ fun ProfileScreen(
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
     val orderCountText = orders.size.toString()
     val favoritesCountText = favoriteIds.size.toString()
+    val isAdmin = profile.role == UserRole.ADMIN
 
     val (badgeBg, badgeFg, badgeText) = when (profile.role) {
         UserRole.ADMIN -> Triple(Color(0xFFEDE9FE), Color(0xFF6D28D9), "Admin")
@@ -132,24 +137,45 @@ fun ProfileScreen(
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ProfileQuickCard(
-                    icon = Icons.Default.Inventory,
-                    iconBg = Color(0xFFE0E7FF),
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    value = orderCountText,
-                    label = "Order History",
-                    onClick = { onNavigate(AppRoutes.PROFILE_ORDERS) },
-                    modifier = Modifier.weight(1f),
-                )
-                ProfileQuickCard(
-                    icon = Icons.Default.Favorite,
-                    iconBg = Color(0xFFFEE2E2),
-                    iconTint = Color(0xFFEF4444),
-                    value = favoritesCountText,
-                    label = "Favorites",
-                    onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
-                    modifier = Modifier.weight(1f),
-                )
+                if (isAdmin) {
+                    ProfileQuickCard(
+                        icon = Icons.Default.Dashboard,
+                        iconBg = Color(0xFFE0E7FF),
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        value = null,
+                        label = "Dashboard",
+                        onClick = { onNavigate(AppRoutes.ADMIN_DASHBOARD) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProfileQuickCard(
+                        icon = Icons.Default.People,
+                        iconBg = Color(0xFFDCFCE7),
+                        iconTint = Color(0xFF16A34A),
+                        value = null,
+                        label = "Users",
+                        onClick = { onNavigate(AppRoutes.USER_MANAGEMENT) },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    ProfileQuickCard(
+                        icon = Icons.Default.Inventory,
+                        iconBg = Color(0xFFE0E7FF),
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        value = orderCountText,
+                        label = "Order History",
+                        onClick = { onNavigate(AppRoutes.PROFILE_ORDERS) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProfileQuickCard(
+                        icon = Icons.Default.Favorite,
+                        iconBg = Color(0xFFFEE2E2),
+                        iconTint = Color(0xFFEF4444),
+                        value = favoritesCountText,
+                        label = "Favorites",
+                        onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 
@@ -160,10 +186,17 @@ fun ProfileScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
                 Column {
-                    ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
-                    ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
-                    ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
-                    ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = Color(0xFFF59E0B)) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                    if (isAdmin) {
+                        ProfileMenuRow(icon = Icons.Default.People, label = "Manage Users", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.USER_MANAGEMENT) }
+                        ProfileMenuRow(icon = Icons.Default.Storefront, label = "Manage Stores", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.STORE_MANAGEMENT) }
+                        ProfileMenuRow(icon = Icons.Default.AppRegistration, label = "Store Applications", tint = Color(0xFF0D9488)) { onNavigate(AppRoutes.ADMIN_STORE_APPLICATIONS) }
+                        ProfileMenuRow(icon = Icons.Default.Inventory, label = "Inactive Products", tint = Color(0xFFEA580C)) { onNavigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) }
+                    } else {
+                        ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
+                        ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
+                        ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
+                        ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = Color(0xFFF59E0B)) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                    }
                     ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = Color(0xFF7C3AED)) { onNavigate(AppRoutes.PROFILE_HELP) }
                     ProfileMenuRow(icon = Icons.Default.Settings, label = "Settings", tint = Color(0xFF4B5563)) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
                 }

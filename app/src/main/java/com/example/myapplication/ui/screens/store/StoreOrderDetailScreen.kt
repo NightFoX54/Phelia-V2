@@ -171,31 +171,6 @@ private fun StoreOrderDetailBody(
         }
 
         item {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = horizontalCardPadding,
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
-            ) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Whole order (customer)", fontWeight = FontWeight.Bold)
-                    Text(
-                        orderStatusLabelEnglish(bundle.order.status),
-                        color = Color(0xFF15803D),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (bundle.order.status == com.example.myapplication.data.model.OrderStatus.IN_PROGRESS) {
-                        Text(
-                            "Other stores in this order may still be processing their packages.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
             InfoCardStore(
                 title = "Customer",
                 modifier = horizontalCardPadding,
@@ -245,15 +220,6 @@ private fun StoreOrderDetailBody(
                     SummaryRowStore("Total", total, bold = true)
                 }
             }
-        }
-
-        item {
-            Text(
-                "Customer order total (all stores): $" + String.format(Locale.US, "%.2f", bundle.order.totalPrice),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF9CA3AF),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
         }
 
         item { Spacer(Modifier.height(24.dp)) }

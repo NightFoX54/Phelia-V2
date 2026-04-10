@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,14 +21,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import java.util.Locale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 @Composable
 fun SimpleBarChart(
@@ -169,51 +175,52 @@ fun ReadableHorizontalBarChart(
 ) {
     if (values.isEmpty()) return
     val maxValue = values.maxOf { it.value }.coerceAtLeast(1f)
-    val roundedMax = ceil(maxValue / 150f) * 150f
-    val xTicks = 4
-    val tickValues = List(xTicks + 1) { i -> ((roundedMax / xTicks) * i).toInt().toString() }
+    val roundedMax = ceil(maxValue).coerceAtLeast(1f)
 
     Column(modifier = modifier.fillMaxWidth().height(height)) {
-        Row(modifier = Modifier.weight(1f)) {
-            Column(
-                modifier = Modifier.widthIn(min = 94.dp).fillMaxSize().padding(top = 12.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                values.forEach { item ->
-                    Text(item.label, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            Box(modifier = Modifier.weight(1f).fillMaxSize().padding(start = 8.dp, end = 4.dp, bottom = 16.dp)) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val dash = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
-                    val rowHeight = size.height / values.size
-                    repeat(xTicks + 1) { i ->
-                        val x = (size.width / xTicks) * i
-                        drawLine(Color(0xFFE5E7EB), Offset(x, 0f), Offset(x, size.height), pathEffect = dash)
-                    }
-                    values.forEachIndexed { index, item ->
-                        val barTop = index * rowHeight + (rowHeight * 0.2f)
-                        val barHeight = rowHeight * 0.62f
-                        val width = (item.value / roundedMax).coerceIn(0f, 1f) * size.width
-                        drawRoundRect(
-                            color = barColor,
-                            topLeft = Offset(0f, barTop),
-                            size = Size(width, barHeight),
-                            cornerRadius = CornerRadius(0f, 0f),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            values.forEach { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        item.label,
+                        color = Color(0xFF94A3B8),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(min = 110.dp, max = 140.dp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFFE5E7EB)),
+                    ) {
+                        val fill = (item.value / roundedMax).coerceIn(0f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fill)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(barColor),
                         )
-                        drawRoundRect(
-                            color = barColor,
-                            topLeft = Offset((width - 14f).coerceAtLeast(0f), barTop),
-                            size = Size(14f, barHeight),
-                            cornerRadius = CornerRadius(10f, 10f),
-                        )
                     }
+                    Text(
+                        text = if (item.value % 1f == 0f) item.value.toInt().toString() else String.format(Locale.US, "%.1f", item.value),
+                        color = Color(0xFF64748B),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.widthIn(min = 24.dp),
+                    )
                 }
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 110.dp, end = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            tickValues.forEach { tick ->
-                Text(tick, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

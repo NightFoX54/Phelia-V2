@@ -16,11 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mail
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
@@ -29,9 +25,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,34 +40,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.ui.components.LineChartEntry
 import com.example.myapplication.ui.components.ReadableLineChart
 import com.example.myapplication.ui.components.ReadableVerticalBarChart
 import com.example.myapplication.ui.components.VerticalBarEntry
-
-private data class StoreDetailsUi(
-    val id: String,
-    val name: String,
-    val ownerName: String,
-    val ownerEmail: String,
-    val ownerPhone: String,
-    val rating: Double,
-    val totalSales: String,
-    val totalProducts: Int,
-    val totalOrders: Int,
-    val status: String,
-    val joinDate: String,
-    val description: String,
-    val address: String,
-    val website: String,
-    val businessHours: String,
-    val monthlyRevenue: List<Float>,
-    val categoryDistribution: List<Float>,
-    val categoryLabels: List<String>,
-    val topProducts: List<Triple<String, String, String>>,
-    val recentOrders: List<Triple<String, String, String>>,
-)
+import com.example.myapplication.viewmodel.AdminStoreDetailUiState
+import com.example.myapplication.viewmodel.AdminStoreDetailViewModel
+import com.example.myapplication.viewmodel.AdminStoreDetailViewModelFactory
+import java.util.Locale
 
 @Composable
 fun StoreDetailScreen(
@@ -77,18 +57,30 @@ fun StoreDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val store = remember(storeId) { mockStoreDetails(storeId) }
+    val vm: AdminStoreDetailViewModel = viewModel(factory = AdminStoreDetailViewModelFactory(storeId))
+    val uiState by vm.uiState.collectAsState()
     var activeTab by remember { mutableStateOf("overview") }
-
-    if (store == null) {
+    if (uiState is AdminStoreDetailUiState.Loading) {
         Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
             Surface(color = Color.White, shadowElevation = 1.dp) {
-                AppTopBar(title = "Store Not Found", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "Store Details", onBack = onBack, containerColor = Color.White)
             }
-            Text("The requested store does not exist.", modifier = Modifier.padding(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) { CircularProgressIndicator() }
         }
         return
     }
+    if (uiState is AdminStoreDetailUiState.Error) {
+        val msg = (uiState as AdminStoreDetailUiState.Error).message
+        Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
+            Surface(color = Color.White, shadowElevation = 1.dp) { AppTopBar(title = "Store Details", onBack = onBack, containerColor = Color.White) }
+            Text(msg, modifier = Modifier.padding(20.dp), color = Color(0xFFDC2626))
+        }
+        return
+    }
+    val store = (uiState as AdminStoreDetailUiState.Ready).detail
 
     LazyColumn(
         modifier = modifier.background(Color(0xFFF9FAFB)),
@@ -132,9 +124,7 @@ fun StoreDetailScreen(
                                     Text(String.format("%.1f", store.rating), color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                                 }
                             }
-                            if (store.status == "active") {
-                                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4ADE80))
-                            }
+                            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4ADE80))
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(store.description, color = Color.White.copy(alpha = 0.9f), style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
@@ -142,7 +132,7 @@ fun StoreDetailScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             HeaderStat("Products", store.totalProducts.toString(), Modifier.weight(1f))
                             HeaderStat("Orders", store.totalOrders.toString(), Modifier.weight(1f))
-                            HeaderStat("Sales", store.totalSales, Modifier.weight(1f))
+                            HeaderStat("Sales", store.totalSalesLabel(), Modifier.weight(1f))
                         }
                     }
                 }
@@ -167,10 +157,7 @@ fun StoreDetailScreen(
                     title = "Contact Information",
                     rows = listOf(
                         Triple(Icons.Default.Mail, "Owner Email", store.ownerEmail),
-                        Triple(Icons.Default.Phone, "Phone", store.ownerPhone),
-                        Triple(Icons.Default.LocationOn, "Address", store.address),
-                        Triple(Icons.Default.Language, "Website", store.website),
-                        Triple(Icons.Default.Schedule, "Business Hours", store.businessHours),
+                        Triple(Icons.Default.Storefront, "Store ID", store.storeId),
                         Triple(Icons.Default.CalendarToday, "Join Date", store.joinDate),
                     ),
                 )
@@ -188,13 +175,17 @@ fun StoreDetailScreen(
             }
             item {
                 ChartCard("Product Categories", Icons.Default.Inventory, Color(0xFF4338CA)) {
-                    ReadableVerticalBarChart(
-                        values = store.categoryLabels.mapIndexed { idx, label ->
-                            VerticalBarEntry(label, store.categoryDistribution[idx])
-                        },
-                        barColor = Color(0xFF4338CA),
-                        height = 230.dp,
-                    )
+                    if (store.categoryLabels.isEmpty() || store.categoryDistribution.isEmpty()) {
+                        Text("Not enough category data yet.", color = Color(0xFF6B7280))
+                    } else {
+                        ReadableVerticalBarChart(
+                            values = store.categoryLabels.mapIndexed { idx, label ->
+                                VerticalBarEntry(label, store.categoryDistribution.getOrElse(idx) { 0f })
+                            },
+                            barColor = Color(0xFF4338CA),
+                            height = 230.dp,
+                        )
+                    }
                 }
             }
         }
@@ -255,8 +246,15 @@ fun StoreDetailScreen(
                 ChartCard("Order Statistics", Icons.Default.ShoppingCart, Color(0xFF4338CA)) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatRow("Total Orders", store.totalOrders.toString())
-                        StatRow("Total Revenue", store.totalSales)
-                        StatRow("Average Order Value", "$${(store.totalSales.filter { it.isDigit() }.toLongOrNull() ?: 0L) / store.totalOrders.coerceAtLeast(1)}")
+                        StatRow("Total Revenue", store.totalSalesLabel())
+                        StatRow(
+                            "Average Order Value",
+                            "$" + String.format(
+                                Locale.US,
+                                "%.2f",
+                                store.totalSales / store.totalOrders.coerceAtLeast(1),
+                            ),
+                        )
                     }
                 }
             }
@@ -336,69 +334,9 @@ private fun StatRow(label: String, value: String) {
     }
 }
 
-private fun mockStoreDetails(id: String): StoreDetailsUi? {
-    val map = mapOf(
-        "1" to StoreDetailsUi(
-            id = "1",
-            name = "TechStore Pro",
-            ownerName = "Store Owner",
-            ownerEmail = "store@test.com",
-            ownerPhone = "+1 (555) 123-4567",
-            rating = 4.9,
-            totalSales = "$2,548,000",
-            totalProducts = 145,
-            totalOrders = 1250,
-            status = "active",
-            joinDate = "2023-06-15",
-            description = "Premium technology store offering the latest gadgets and electronics from top brands.",
-            address = "123 Tech Street, Silicon Valley, CA 94025",
-            website = "www.techstorepro.com",
-            businessHours = "Mon-Fri: 9AM-6PM, Sat: 10AM-4PM",
-            monthlyRevenue = listOf(180f, 220f, 195f, 245f, 210f, 280f),
-            categoryDistribution = listOf(45f, 35f, 40f, 25f),
-            categoryLabels = listOf("Phones", "Laptops", "Acc.", "Tablets"),
-            topProducts = listOf(
-                Triple("iPhone 15 Pro Max", "234 sales", "$234,000"),
-                Triple("MacBook Pro M3", "156 sales", "$312,000"),
-                Triple("AirPods Pro 2", "189 sales", "$47,250"),
-            ),
-            recentOrders = listOf(
-                Triple("ORD-1234", "John Doe - 2024-03-20", "$1,299"),
-                Triple("ORD-1235", "Jane Smith - 2024-03-20", "$899"),
-                Triple("ORD-1236", "Mike Johnson - 2024-03-19", "$2,199"),
-            ),
-        ),
-        "2" to StoreDetailsUi(
-            id = "2",
-            name = "Gadget Hub",
-            ownerName = "Mike Anderson",
-            ownerEmail = "mike@store.com",
-            ownerPhone = "+1 (555) 234-5678",
-            rating = 4.8,
-            totalSales = "$1,823,500",
-            totalProducts = 98,
-            totalOrders = 890,
-            status = "active",
-            joinDate = "2023-08-20",
-            description = "One-stop shop for innovative gadgets and smart home devices.",
-            address = "456 Innovation Blvd, Austin, TX 78701",
-            website = "www.gadgethub.com",
-            businessHours = "Mon-Sat: 10AM-7PM, Sun: 11AM-5PM",
-            monthlyRevenue = listOf(145f, 165f, 178f, 189f, 195f, 210f),
-            categoryDistribution = listOf(28f, 22f, 30f, 18f),
-            categoryLabels = listOf("Home", "Wear", "Audio", "Game"),
-            topProducts = listOf(
-                Triple("Samsung Galaxy Watch", "178 sales", "$71,200"),
-                Triple("Google Nest Hub", "145 sales", "$21,750"),
-                Triple("Sony WH-1000XM5", "123 sales", "$49,200"),
-            ),
-            recentOrders = listOf(
-                Triple("ORD-2234", "Sarah Lee - 2024-03-20", "$399"),
-                Triple("ORD-2235", "Tom Brown - 2024-03-19", "$599"),
-                Triple("ORD-2236", "Lisa White - 2024-03-19", "$249"),
-            ),
-        ),
-    )
-    return map[id] ?: map["1"]
+private fun com.example.myapplication.data.repository.AdminStoreDetail.totalSalesLabel(): String = when {
+    totalSales >= 1_000_000.0 -> "$" + String.format(Locale.US, "%.2fM", totalSales / 1_000_000.0)
+    totalSales >= 1_000.0 -> "$" + String.format(Locale.US, "%.1fK", totalSales / 1_000.0)
+    else -> "$" + String.format(Locale.US, "%.0f", totalSales)
 }
 

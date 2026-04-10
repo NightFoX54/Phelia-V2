@@ -25,10 +25,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,10 +40,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.HorizontalBarEntry
 import com.example.myapplication.ui.components.LineChartEntry
 import com.example.myapplication.ui.components.ReadableHorizontalBarChart
 import com.example.myapplication.ui.components.ReadableLineChart
+import com.example.myapplication.viewmodel.AdminDashboardUiState
+import com.example.myapplication.viewmodel.AdminDashboardViewModel
+import java.util.Locale
 
 @Composable
 fun AdminDashboardScreen(
@@ -48,38 +56,16 @@ fun AdminDashboardScreen(
     onInactiveProducts: () -> Unit = {},
     onStoreApplications: () -> Unit = {},
     modifier: Modifier = Modifier,
+    viewModel: AdminDashboardViewModel = viewModel(),
 ) {
     val headerGradient = Brush.linearGradient(listOf(Color(0xFF6D28D9), Color(0xFF4338CA)))
-    val ordersOverTime = listOf(
-        LineChartEntry("Jan", 120f),
-        LineChartEntry("Feb", 190f),
-        LineChartEntry("Mar", 150f),
-        LineChartEntry("Apr", 250f),
-        LineChartEntry("May", 220f),
-        LineChartEntry("Jun", 300f),
-    )
-    val topSellingChart = listOf(
-        HorizontalBarEntry("iPhone 15 Pro", 450f),
-        HorizontalBarEntry("MacBook Pro", 320f),
-        HorizontalBarEntry("AirPods Pro", 280f),
-        HorizontalBarEntry("iPad Air", 210f),
-        HorizontalBarEntry("Apple Watch", 180f),
-    )
-    val topProducts = listOf(
-        Triple("iPhone 15 Pro Max", "1234 sales", "$1.23M"),
-        Triple("Samsung Galaxy S24", "987 sales", "$987K"),
-        Triple("MacBook Pro M3", "756 sales", "$1.51M"),
-    )
-    val worstProducts = listOf(
-        Triple("Old Phone Case", "12 sales", "$240"),
-        Triple("Screen Protector", "23 sales", "$345"),
-        Triple("USB Cable 2.0", "34 sales", "$170"),
-    )
-    val topStores = listOf(
-        Triple("TechStore Pro", "1250 orders", "$2.5M"),
-        Triple("Gadget Hub", "890 orders", "$1.8M"),
-        Triple("ElectroWorld", "720 orders", "$1.5M"),
-    )
+    val dashboardState by viewModel.uiState.collectAsState()
+    val overview = (dashboardState as? AdminDashboardUiState.Ready)?.overview
+    val ordersOverTime = overview?.ordersOverTime?.map { LineChartEntry(it.first, it.second) } ?: emptyList()
+    val topSellingChart = overview?.topSellingProducts?.map { HorizontalBarEntry(it.first, it.second) } ?: emptyList()
+    val topProducts = overview?.topProducts.orEmpty()
+    val worstProducts = overview?.worstProducts.orEmpty()
+    val topStores = overview?.topStores.orEmpty()
 
     LazyColumn(
         modifier = modifier
@@ -99,13 +85,37 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    StatCard(Icons.Default.People, "Total Users", "12,458", "+12% this month", modifier = Modifier.weight(1f))
-                    StatCard(Icons.Default.Storefront, "Total Stores", "234", "+8 new stores", modifier = Modifier.weight(1f))
+                    StatCard(
+                        Icons.Default.People,
+                        "Total Users",
+                        overview?.totalUsers?.toString() ?: "—",
+                        "Registered accounts",
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatCard(
+                        Icons.Default.Storefront,
+                        "Total Stores",
+                        overview?.totalStores?.toString() ?: "—",
+                        "Approved stores",
+                        modifier = Modifier.weight(1f),
+                    )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    StatCard(Icons.Default.TrendingUp, "Total Products", "8,932", "Across all stores", modifier = Modifier.weight(1f))
-                    StatCard(Icons.Default.ShoppingCart, "Total Orders", "45,231", "+23% this month", modifier = Modifier.weight(1f))
+                    StatCard(
+                        Icons.Default.TrendingUp,
+                        "Total Products",
+                        overview?.totalProducts?.toString() ?: "—",
+                        "Across all stores",
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatCard(
+                        Icons.Default.ShoppingCart,
+                        "Total Orders",
+                        overview?.totalOrders?.toString() ?: "—",
+                        "All-time orders",
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -118,7 +128,29 @@ fun AdminDashboardScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text("Orders Over Time", fontWeight = FontWeight.Bold)
-                    ReadableLineChart(points = ordersOverTime, lineColor = Color(0xFF7C3AED), height = 260.dp)
+                    when (dashboardState) {
+                        is AdminDashboardUiState.Loading -> {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Text("Loading real data…", color = Color(0xFF6B7280))
+                            }
+                        }
+                        is AdminDashboardUiState.Error -> {
+                            val msg = (dashboardState as AdminDashboardUiState.Error).message
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(msg, color = Color(0xFFDC2626))
+                            TextButton(onClick = { viewModel.refresh() }) { Text("Retry") }
+                        }
+                        is AdminDashboardUiState.Ready -> {
+                            if (ordersOverTime.size >= 2) {
+                                ReadableLineChart(points = ordersOverTime, lineColor = Color(0xFF7C3AED), height = 260.dp)
+                            } else {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("Not enough order data yet.", color = Color(0xFF6B7280))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -131,7 +163,12 @@ fun AdminDashboardScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text("Top Selling Products", fontWeight = FontWeight.Bold)
-                    ReadableHorizontalBarChart(values = topSellingChart, barColor = Color(0xFF4338CA), height = 280.dp)
+                    if (topSellingChart.isNotEmpty()) {
+                        ReadableHorizontalBarChart(values = topSellingChart, barColor = Color(0xFF4338CA), height = 280.dp)
+                    } else {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                    }
                 }
             }
         }
@@ -148,6 +185,9 @@ fun AdminDashboardScreen(
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("Top Products", fontWeight = FontWeight.Bold)
                     }
+                    if (topProducts.isEmpty()) {
+                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                    }
                     topProducts.forEachIndexed { idx, product ->
                         Row(
                             modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
@@ -155,10 +195,10 @@ fun AdminDashboardScreen(
                         ) {
                             Text("#${idx + 1}", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = 36.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(product.first, fontWeight = FontWeight.SemiBold)
-                                Text(product.second, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text(product.name, fontWeight = FontWeight.SemiBold)
+                                Text("${formatCompactNumber(product.unitsSold)} sales", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(product.third, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                            Text(formatCompactCurrency(product.revenue), color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -177,16 +217,19 @@ fun AdminDashboardScreen(
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("Worst Performing Products", fontWeight = FontWeight.Bold)
                     }
+                    if (worstProducts.isEmpty()) {
+                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                    }
                     worstProducts.forEach { product ->
                         Row(
                             modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(product.first, fontWeight = FontWeight.SemiBold)
-                                Text(product.second, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text(product.name, fontWeight = FontWeight.SemiBold)
+                                Text("${formatCompactNumber(product.unitsSold)} sales", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(product.third, color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+                            Text(formatCompactCurrency(product.revenue), color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -204,22 +247,19 @@ fun AdminDashboardScreen(
                         Text("Top Stores", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary)
                     }
+                    if (topStores.isEmpty()) {
+                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                    }
                     topStores.forEach { store ->
                         Row(
                             modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(store.first, fontWeight = FontWeight.SemiBold)
-                                Text(store.second, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text(store.storeName, fontWeight = FontWeight.SemiBold)
+                                Text("${formatCompactNumber(store.orderCount)} orders", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.size(2.dp))
-                                Text("4.8", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.size(8.dp))
-                                Text(store.third, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                            }
+                            Text(formatCompactCurrency(store.revenue), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -300,5 +340,17 @@ private fun StatCard(
             Text(sub, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
         }
     }
+}
+
+private fun formatCompactNumber(value: Int): String = when {
+    value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
+    value >= 1_000 -> String.format(Locale.US, "%.1fK", value / 1_000f)
+    else -> value.toString()
+}
+
+private fun formatCompactCurrency(value: Double): String = when {
+    value >= 1_000_000.0 -> "$" + String.format(Locale.US, "%.2fM", value / 1_000_000.0)
+    value >= 1_000.0 -> "$" + String.format(Locale.US, "%.1fK", value / 1_000.0)
+    else -> "$" + String.format(Locale.US, "%.0f", value)
 }
 

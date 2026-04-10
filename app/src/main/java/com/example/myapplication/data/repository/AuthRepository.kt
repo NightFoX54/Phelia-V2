@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.model.User
+import com.example.myapplication.data.model.StoreApplication
 import com.example.myapplication.data.model.toFirestoreMap
 import com.example.myapplication.data.model.toUser
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
@@ -16,6 +17,10 @@ class AuthRepository(
     private val auth: FirebaseAuth = FirebaseRemoteDataSource.auth,
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
 ) {
+    data class StoreOwnerGateResult(
+        val allowed: Boolean,
+        val message: String? = null,
+    )
 
     suspend fun signIn(email: String, password: String): Result<Unit> =
         runCatching {
@@ -26,8 +31,13 @@ class AuthRepository(
             onFailure = { e -> Result.failure(Exception(mapAuthError(e))) },
         )
 
-    /** Creates Firebase Auth user + `users/{uid}` with role `customer`. Returns new [User.uid]. */
-    suspend fun register(name: String, email: String, password: String): Result<String> =
+    /** Creates Firebase Auth user + `users/{uid}`. Returns new [User.uid]. */
+    suspend fun register(
+        name: String,
+        email: String,
+        password: String,
+        role: String = "customer",
+    ): Result<String> =
         runCatching {
             val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
             val uid = result.user?.uid ?: error("Could not create user")
@@ -35,7 +45,7 @@ class AuthRepository(
                 uid = uid,
                 name = name.trim(),
                 email = email.trim(),
-                role = "customer",
+                role = role.trim().ifBlank { "customer" },
                 createdAt = System.currentTimeMillis(),
             )
             db.collection(COLLECTION_USERS).document(uid).set(user.toFirestoreMap()).await()
@@ -60,6 +70,56 @@ class AuthRepository(
         )
     }
 
+    suspend fun evaluateStoreOwnerGate(uid: String): Result<StoreOwnerGateResult> = runCatching {
+        if (uid.isBlank()) return@runCatching StoreOwnerGateResult(allowed = false, message = "Invalid session.")
+
+        val hasStore = db.collection(COLLECTION_STORES)
+            .whereEqualTo(FIELD_OWNER_ID, uid)
+            .limit(1)
+            .get()
+            .await()
+            .documents
+            .isNotEmpty()
+        if (hasStore) return@runCatching StoreOwnerGateResult(allowed = true)
+
+        val appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
+            .whereEqualTo(FIELD_APPLICANT_USER_ID, uid)
+            .get()
+            .await()
+            .documents
+        if (appDocs.isEmpty()) {
+            return@runCatching StoreOwnerGateResult(
+                allowed = false,
+                message = "Store owner account is not ready yet. Please contact support.",
+            )
+        }
+        val latest = appDocs.maxByOrNull { (it.getLong(FIELD_CREATED_AT) ?: 0L) }
+        val status = latest?.getString(FIELD_STATUS)?.trim().orEmpty()
+        when (status) {
+            StoreApplication.STATUS_PENDING -> StoreOwnerGateResult(
+                allowed = false,
+                message = "Your store application has been received and is pending admin approval.",
+            )
+            StoreApplication.STATUS_REJECTED -> {
+                val reason = latest?.getString(FIELD_REJECTION_REASON)?.trim().orEmpty()
+                val msg = if (reason.isNotBlank()) {
+                    "Your store application was rejected: $reason"
+                } else {
+                    "Your store application was rejected."
+                }
+                StoreOwnerGateResult(allowed = false, message = msg)
+            }
+            StoreApplication.STATUS_APPROVED -> StoreOwnerGateResult(
+                allowed = false,
+                message = "Your application has been approved, but your store setup is not completed yet. Please try again later.",
+            )
+            else -> StoreOwnerGateResult(
+                allowed = false,
+                message = "Could not read your store application status.",
+            )
+        }
+    }
+
     fun signOut() {
         auth.signOut()
     }
@@ -73,6 +133,13 @@ class AuthRepository(
 
     companion object {
         private const val COLLECTION_USERS = "users"
+        private const val COLLECTION_STORES = "stores"
+        private const val COLLECTION_STORE_APPLICATIONS = "storeApplications"
+        private const val FIELD_OWNER_ID = "ownerId"
+        private const val FIELD_APPLICANT_USER_ID = "applicantUserId"
+        private const val FIELD_STATUS = "status"
+        private const val FIELD_CREATED_AT = "createdAt"
+        private const val FIELD_REJECTION_REASON = "rejectionReason"
         private const val PROFILE_FETCH_RETRIES = 8
     }
 }

@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -58,8 +60,9 @@ fun CartScreen(
 
     val lines = cartUi.lines
     val subtotal = lines.sumOf { it.unitPrice * it.quantity }
+    val tax = lines.sumOf { (it.unitPrice * it.quantity) * (it.taxRatePercent.coerceAtLeast(0) / 100.0) }
     val shipping = 15.0
-    val total = subtotal + shipping
+    val total = subtotal + tax + shipping
 
     Column(
         modifier = modifier
@@ -128,7 +131,12 @@ fun CartScreen(
                 }
             }
         } else {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ) {
                 lines.forEach { item ->
                     val atMax = item.quantity >= item.maxStock
                     Card(
@@ -214,6 +222,7 @@ fun CartScreen(
                         Text("Order summary", fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
                         SummaryRow("Subtotal", subtotal)
+                        SummaryRow("Tax", tax)
                         SummaryRow("Shipping", shipping)
                         Spacer(modifier = Modifier.height(12.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
@@ -224,8 +233,7 @@ fun CartScreen(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(86.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Surface(

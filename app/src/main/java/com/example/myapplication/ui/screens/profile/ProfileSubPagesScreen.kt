@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.screens.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,28 +20,58 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.AppTopBar
+import com.example.myapplication.data.repository.UserSettings
+import com.example.myapplication.data.repository.NotificationTypes
+import com.example.myapplication.navigation.AppRoutes
+import com.example.myapplication.viewmodel.UserSettingsViewModel
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun ProfileSubPagesScreen(
     title: String,
     onBack: () -> Unit,
+    onNavigateToRoute: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val settingsVm: UserSettingsViewModel = viewModel()
+    val userSettings by settingsVm.settings.collectAsState()
+    val notifications by settingsVm.notifications.collectAsState()
+    val loading by settingsVm.loading.collectAsState()
+    val message by settingsVm.message.collectAsState()
+
+    LaunchedEffect(title) {
+        when (title) {
+            "Settings" -> settingsVm.loadSettings()
+            "Notifications" -> settingsVm.loadNotifications()
+        }
+    }
+
     var name by remember { mutableStateOf("John Doe") }
     var email by remember { mutableStateOf("user@test.com") }
     var phone by remember { mutableStateOf("+90 5XX XXX XX XX") }
@@ -91,30 +122,57 @@ fun ProfileSubPagesScreen(
                     SecurityCard()
                 }
                 "Notifications" -> {
-                    var orderUpdates by remember { mutableStateOf(true) }
-                    var campaign by remember { mutableStateOf(true) }
-                    var priceDrop by remember { mutableStateOf(true) }
-                    var digest by remember { mutableStateOf(false) }
-                    var sms by remember { mutableStateOf(false) }
-                    listOf(
-                        "Order updates" to Pair(orderUpdates) { v: Boolean -> orderUpdates = v },
-                        "Campaign notifications" to Pair(campaign) { v: Boolean -> campaign = v },
-                        "Price drop alerts" to Pair(priceDrop) { v: Boolean -> priceDrop = v },
-                        "Weekly digest" to Pair(digest) { v: Boolean -> digest = v },
-                        "SMS notifications" to Pair(sms) { v: Boolean -> sms = v },
-                    ).forEach { (label, pair) ->
-                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(label)
-                                Switch(checked = pair.first, onCheckedChange = pair.second)
+                    if (loading) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalArrangement = Arrangement.Center,
+                        ) { CircularProgressIndicator() }
+                    }
+                    if (notifications.isEmpty() && !loading) {
+                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text("No notifications yet.", color = Color(0xFF6B7280))
                             }
                         }
                     }
-                    Button(onClick = {}, modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                        Text("Save Notification Preferences")
+                    notifications.forEach { n ->
+                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        settingsVm.markNotificationRead(n.id)
+                                        val route = when (n.type) {
+                                            NotificationTypes.NEW_ORDER_FOR_STORE ->
+                                                n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.storeOrderDetail(it) }
+                                            NotificationTypes.ORDER_STATUS_UPDATED ->
+                                                n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.profileOrderDetail(it) }
+                                            NotificationTypes.PRICE_DROP ->
+                                                n.productId.takeIf { it.isNotBlank() }?.let { AppRoutes.productDetail(it) }
+                                            NotificationTypes.STORE_APPLICATION_SUBMITTED ->
+                                                AppRoutes.ADMIN_STORE_APPLICATIONS
+                                            else -> null
+                                        }
+                                        if (route != null) onNavigateToRoute(route)
+                                    }
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Text(n.title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                    if (!n.isRead) {
+                                        BadgeLike("New")
+                                    }
+                                    IconButton(onClick = { settingsVm.deleteNotification(n.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete notification", tint = Color(0xFF9CA3AF))
+                                    }
+                                }
+                                if (n.body.isNotBlank()) {
+                                    Text(n.body, color = Color(0xFF4B5563))
+                                }
+                                Text(formatNotificationDate(n.createdAtMs), color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     }
                 }
                 "Help & Support" -> {
@@ -142,29 +200,50 @@ fun ProfileSubPagesScreen(
                     }
                 }
                 "Settings" -> {
-                    var darkMode by remember { mutableStateOf(false) }
-                    var biometric by remember { mutableStateOf(true) }
-                    var autoPlay by remember { mutableStateOf(false) }
                     Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("App Settings", fontWeight = FontWeight.Bold)
-                            SettingSwitch("Dark mode", darkMode) { darkMode = it }
-                            SettingSwitch("Biometric login", biometric) { biometric = it }
-                            SettingSwitch("Auto-play product videos", autoPlay) { autoPlay = it }
+                            Text("General settings", fontWeight = FontWeight.Bold)
+                            SettingSwitch("Dark mode", userSettings.darkMode) {
+                                settingsVm.updateSettings(userSettings.copy(darkMode = it))
+                            }
+                            SettingSwitch("Biometric login", userSettings.biometricLogin) {
+                                settingsVm.updateSettings(userSettings.copy(biometricLogin = it))
+                            }
+                            SettingSwitch("Auto-play product videos", userSettings.autoPlayProductVideos) {
+                                settingsVm.updateSettings(userSettings.copy(autoPlayProductVideos = it))
+                            }
                             DividerThin()
-                            SettingRow("Language", "English")
-                            SettingRow("Currency", "USD")
-                            SettingRow("Region", "United States")
-                        }
-                    }
-                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Privacy & Security", fontWeight = FontWeight.Bold)
-                            SettingRow("Change password", "")
-                            SettingRow("Two-factor authentication", "Enabled")
-                            SettingRow("Manage devices", "2 active sessions")
-                            SettingRow("Download my data", "")
-                            SettingRow("Delete account", "", warning = true)
+                            Text("Notification preferences", fontWeight = FontWeight.Bold)
+                            SettingSwitch("Order updates", userSettings.orderUpdates) {
+                                settingsVm.updateSettings(userSettings.copy(orderUpdates = it))
+                            }
+                            SettingSwitch("Campaign notifications", userSettings.campaignNotifications) {
+                                settingsVm.updateSettings(userSettings.copy(campaignNotifications = it))
+                            }
+                            SettingSwitch("Price drop alerts", userSettings.priceDropAlerts) {
+                                settingsVm.updateSettings(userSettings.copy(priceDropAlerts = it))
+                            }
+                            SettingSwitch("Weekly digest", userSettings.weeklyDigest) {
+                                settingsVm.updateSettings(userSettings.copy(weeklyDigest = it))
+                            }
+                            SettingSwitch("SMS notifications", userSettings.smsNotifications) {
+                                settingsVm.updateSettings(userSettings.copy(smsNotifications = it))
+                            }
+                            if (message != null) {
+                                Text(message!!, color = Color(0xFF16A34A), style = MaterialTheme.typography.bodySmall)
+                            }
+                            Button(
+                                onClick = { settingsVm.saveSettings() },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !loading,
+                            ) {
+                                if (loading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                                } else {
+                                    Text("Save Settings")
+                                }
+                            }
                         }
                     }
                 }
@@ -177,6 +256,13 @@ fun ProfileSubPagesScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+private fun formatNotificationDate(ms: Long): String {
+    if (ms <= 0L) return "Unknown date"
+    val dt = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDateTime()
+    val fmt = DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.US)
+    return dt.format(fmt)
 }
 
 @Composable

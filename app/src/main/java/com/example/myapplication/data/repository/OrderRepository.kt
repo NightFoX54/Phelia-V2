@@ -15,6 +15,7 @@ import com.example.myapplication.data.model.ShippingAddressDoc
 import com.example.myapplication.data.model.aggregateParentOrderStatus
 import com.example.myapplication.data.model.allowedNextSuborderStatuses
 import com.example.myapplication.data.model.normalizeOrderStatus
+import com.example.myapplication.data.model.orderStatusLabelEnglish
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.model.cartDocId
 import com.example.myapplication.data.model.StoreSalesDayBucket
@@ -41,6 +42,7 @@ class OrderRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
     private val productRepository: ProductRepository = ProductRepository(),
     private val productStatsRepository: ProductStatsRepository = ProductStatsRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
 ) {
 
     /**
@@ -139,7 +141,6 @@ class OrderRepository(
         shippingAddress: ShippingAddressDoc,
         paymentMethodId: String,
         shippingFee: Double,
-        taxRate: Double = DEFAULT_TAX_RATE,
     ): Result<String> = runCatching {
         require(lines.isNotEmpty()) { "Cart is empty" }
         lines.forEach { line ->
@@ -192,7 +193,7 @@ class OrderRepository(
             data class Calc(val line: CartLineUi, val lineMerch: Double, val lineTax: Double)
             val calcs = lines.map { line ->
                 val merch = line.unitPrice * line.quantity
-                val tax = merch * taxRate
+                val tax = merch * (line.taxRatePercent.coerceAtLeast(0) / 100.0)
                 Calc(line, merch, tax)
             }
             val productsSubtotal = calcs.sumOf { it.lineMerch }
@@ -275,6 +276,22 @@ class OrderRepository(
 
             null
         }.await()
+
+        // Notify each store owner that a new order package arrived.
+        val storeIds = lines.map { it.storeId }.filter { it.isNotBlank() }.distinct()
+        val ownerIds = mutableListOf<String>()
+        storeIds.forEach { sid ->
+            val s = db.collection(COLLECTION_STORES).document(sid).get().await()
+            val ownerId = s.getString(FIELD_OWNER_ID).orEmpty()
+            if (ownerId.isNotBlank()) ownerIds.add(ownerId)
+        }
+        notificationRepository.sendToUsers(
+            userIds = ownerIds.distinct(),
+            type = NotificationTypes.NEW_ORDER_FOR_STORE,
+            title = "New order received",
+            body = "A customer placed an order that includes your store items.",
+            orderId = orderId,
+        )
 
         orderId
     }
@@ -537,11 +554,14 @@ class OrderRepository(
         newStatus: String,
         storeId: String,
     ): Result<Unit> = runCatching {
+        var customerUserId = ""
         val orderRef = db.collection(COLLECTION_ORDERS).document(orderId)
         val allIds = orderRef.collection(SUBCOLLECTION_SUBORDERS).get().await().documents.map { it.id }
         val targetNorm = normalizeOrderStatus(newStatus)
         db.runTransaction { tx ->
             val subRef = orderRef.collection(SUBCOLLECTION_SUBORDERS).document(suborderFirestoreId)
+            val orderSnap = tx.get(orderRef)
+            customerUserId = orderSnap.getString(FIELD_USER_ID).orEmpty()
             val subSnap = tx.get(subRef)
             if (!subSnap.exists()) error("Suborder not found")
             if (subSnap.getString(FIELD_STORE_ID) != storeId) error("Not your store order")
@@ -562,6 +582,15 @@ class OrderRepository(
             tx.update(orderRef, mapOf(FIELD_STATUS to parentStatus, FIELD_UPDATED_AT to now))
             null
         }.await()
+        if (customerUserId.isNotBlank()) {
+            notificationRepository.sendToUser(
+                userId = customerUserId,
+                type = NotificationTypes.ORDER_STATUS_UPDATED,
+                title = "Order status updated",
+                body = "Your order has a new status: ${orderStatusLabelEnglish(newStatus)}.",
+                orderId = orderId,
+            )
+        }
     }
 
     private suspend fun fetchPrimaryProductImageUrl(productId: String): String? = runCatching {
@@ -608,6 +637,7 @@ class OrderRepository(
 
         private const val FIELD_SUBORDER_ID = "suborderId"
         private const val FIELD_STORE_ID = "storeId"
+        private const val FIELD_OWNER_ID = "ownerId"
         private const val FIELD_STOCK = "stock"
         private const val FIELD_IS_ACTIVE = "isActive"
 
@@ -625,6 +655,5 @@ class OrderRepository(
         private const val FIELD_ITEM_REVIEW_COMMENT = "comment"
         private const val FIELD_ITEM_REVIEW_CREATED_AT = "createdAt"
 
-        private const val DEFAULT_TAX_RATE = 0.08
     }
 }

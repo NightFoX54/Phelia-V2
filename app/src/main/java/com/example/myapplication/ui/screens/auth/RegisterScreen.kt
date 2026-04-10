@@ -327,7 +327,7 @@ fun RegisterScreen(
                                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBF7D0)),
                                 ) {
                                     Text(
-                                        "Account created. Your store application is pending admin review. You can sign in as a customer until it is approved.",
+                                        "Your application has been submitted. Your store will be opened after admin approval. You cannot sign in until then.",
                                         color = Color(0xFF166534),
                                         style = MaterialTheme.typography.bodySmall,
                                         modifier = Modifier.padding(12.dp),

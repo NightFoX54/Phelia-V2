@@ -25,6 +25,8 @@ class SessionViewModel(
 
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
+    private val _authNotice = MutableStateFlow<String?>(null)
+    val authNotice: StateFlow<String?> = _authNotice.asStateFlow()
 
     private val authListener = FirebaseAuth.AuthStateListener { firebaseUser ->
         if (firebaseUser == null) {
@@ -42,6 +44,21 @@ class SessionViewModel(
             _sessionState.value = SessionState.Loading
             authRepository.fetchUserProfile(uid).fold(
                 onSuccess = { profile ->
+                    if (profile.role == "store_owner") {
+                        val gate = authRepository.evaluateStoreOwnerGate(uid).getOrElse {
+                            authRepository.signOut()
+                            _user.value = null
+                            _sessionState.value = SessionState.SignedOut
+                            return@fold
+                        }
+                        if (!gate.allowed) {
+                            _authNotice.value = gate.message ?: "Store account is not ready yet."
+                            authRepository.signOut()
+                            _user.value = null
+                            _sessionState.value = SessionState.SignedOut
+                            return@fold
+                        }
+                    }
                     val ui = profile.toUiUser()
                     _user.value = ui
                     _sessionState.value = SessionState.SignedIn(ui)
@@ -67,13 +84,48 @@ class SessionViewModel(
 
     fun signIn(email: String, password: String, onResult: (Result<Unit>) -> Unit) {
         viewModelScope.launch {
-            onResult(authRepository.signIn(email, password))
+            val base = authRepository.signIn(email, password)
+            val checked = base.fold(
+                onSuccess = {
+                    val uid = auth.currentUser?.uid
+                    if (uid.isNullOrBlank()) {
+                        Result.failure(IllegalStateException("Could not start session."))
+                    } else {
+                        authRepository.fetchUserProfile(uid).fold(
+                            onFailure = {
+                                authRepository.signOut()
+                                Result.failure(it)
+                            },
+                            onSuccess = { profile ->
+                                if (profile.role == "store_owner") {
+                                    val gate = authRepository.evaluateStoreOwnerGate(uid).getOrElse { err ->
+                                        authRepository.signOut()
+                                        return@fold Result.failure(err)
+                                    }
+                                    if (!gate.allowed) {
+                                        authRepository.signOut()
+                                        val msg = gate.message ?: "Store account is not ready."
+                                        _authNotice.value = msg
+                                        Result.failure(IllegalStateException(msg))
+                                    } else {
+                                        Result.success(Unit)
+                                    }
+                                } else {
+                                    Result.success(Unit)
+                                }
+                            },
+                        )
+                    }
+                },
+                onFailure = { Result.failure(it) },
+            )
+            onResult(checked)
         }
     }
 
     fun register(name: String, email: String, password: String, onResult: (Result<Unit>) -> Unit) {
         viewModelScope.launch {
-            authRepository.register(name, email, password).fold(
+            authRepository.register(name, email, password, role = "customer").fold(
                 onSuccess = { onResult(Result.success(Unit)) },
                 onFailure = { onResult(Result.failure(it)) },
             )
@@ -94,7 +146,7 @@ class SessionViewModel(
         onResult: (Result<Unit>) -> Unit,
     ) {
         viewModelScope.launch {
-            authRepository.register(name, email, password).fold(
+            authRepository.register(name, email, password, role = "store_owner").fold(
                 onFailure = { onResult(Result.failure(it)) },
                 onSuccess = { uid ->
                     val appRepo = StoreApplicationRepository()
@@ -114,8 +166,15 @@ class SessionViewModel(
                             storeLogoUrl = logoUrl,
                         ).getOrThrow()
                     }.fold(
-                        onSuccess = { onResult(Result.success(Unit)) },
-                        onFailure = { e -> onResult(Result.failure(e)) },
+                        onSuccess = {
+                            _authNotice.value = "Your application has been submitted and is pending admin approval."
+                            authRepository.signOut()
+                            onResult(Result.success(Unit))
+                        },
+                        onFailure = { e ->
+                            authRepository.signOut()
+                            onResult(Result.failure(e))
+                        },
                     )
                 },
             )
@@ -124,6 +183,10 @@ class SessionViewModel(
 
     fun signOut() {
         authRepository.signOut()
+    }
+
+    fun clearAuthNotice() {
+        _authNotice.value = null
     }
 
     fun setRole(role: UserRole) {

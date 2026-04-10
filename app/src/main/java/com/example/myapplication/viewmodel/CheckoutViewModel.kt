@@ -28,7 +28,7 @@ class CheckoutViewModel(
     ) {
         val uid = auth.currentUser?.uid
         if (uid.isNullOrBlank()) {
-            onResult(Result.failure(IllegalStateException("Oturum yok")))
+            onResult(Result.failure(IllegalStateException("No active session")))
             return
         }
         viewModelScope.launch {

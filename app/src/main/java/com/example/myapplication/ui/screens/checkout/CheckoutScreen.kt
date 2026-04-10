@@ -93,7 +93,7 @@ fun CheckoutScreen(
     val lines = cartState.lines
     val subtotal = lines.sumOf { it.unitPrice * it.quantity }
     val shipping = if (subtotal > 0) 15.0 else 0.0
-    val tax = subtotal * 0.08
+    val tax = lines.sumOf { (it.unitPrice * it.quantity) * (it.taxRatePercent.coerceAtLeast(0) / 100.0) }
     val total = subtotal + shipping + tax
 
     val canPlaceOrder = lines.isNotEmpty() &&
@@ -215,7 +215,7 @@ fun CheckoutScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         PriceRow("Subtotal", subtotal)
                         PriceRow("Shipping", shipping)
-                        PriceRow("Tax (8%)", tax)
+                        PriceRow("Tax", tax)
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))

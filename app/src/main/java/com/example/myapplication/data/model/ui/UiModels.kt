@@ -53,11 +53,14 @@ data class CartItem(
 data class CartLineUi(
     val productId: String,
     val storeId: String,
+    val categoryId: String,
     val variantId: String,
     val quantity: Int,
     val productName: String,
     val brandName: String?,
     val unitPrice: Double,
+    /** Integer percent from category.taxRate (e.g. 20 => %20). */
+    val taxRatePercent: Int,
     val imageUrl: String,
     val attributes: Map<String, String>,
     val sku: String,
