@@ -48,6 +48,7 @@ object AppRoutes {
     const val STORE_DETAIL = "store/{storeId}"
     const val ADMIN_INACTIVE_PRODUCTS = "admin/inactive-products"
     const val ADMIN_STORE_APPLICATIONS = "admin/store-applications"
+    const val ADMIN_CATALOG = "admin/categories-brands"
 
     // Forms
     const val PRODUCT_FORM = "product-form"

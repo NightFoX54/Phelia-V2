@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
@@ -55,6 +56,7 @@ fun AdminDashboardScreen(
     onManageStores: () -> Unit,
     onInactiveProducts: () -> Unit = {},
     onStoreApplications: () -> Unit = {},
+    onCatalogMeta: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AdminDashboardViewModel = viewModel(),
 ) {
@@ -302,6 +304,17 @@ fun AdminDashboardScreen(
                 Icon(Icons.Default.AppRegistration, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
                 Text("Store applications", fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onCatalogMeta,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(Icons.Default.Category, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Categories & brands", fontWeight = FontWeight.SemiBold)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Button(

@@ -20,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.model.ui.UserRole
 import com.example.myapplication.ui.components.BottomNavBar
+import com.example.myapplication.ui.screens.admin.AdminCatalogScreen
 import com.example.myapplication.ui.screens.admin.AdminDashboardScreen
 import com.example.myapplication.ui.screens.admin.AdminInactiveProductsScreen
 import com.example.myapplication.ui.screens.admin.StoreDetailScreen
@@ -344,7 +345,11 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onManageStores = { navController.navigate(AppRoutes.STORE_MANAGEMENT) },
                     onInactiveProducts = { navController.navigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) },
                     onStoreApplications = { navController.navigate(AppRoutes.ADMIN_STORE_APPLICATIONS) },
+                    onCatalogMeta = { navController.navigate(AppRoutes.ADMIN_CATALOG) },
                 )
+            }
+            composable(AppRoutes.ADMIN_CATALOG) {
+                AdminCatalogScreen(onBack = { navController.popBackStack() })
             }
             composable(AppRoutes.ADMIN_STORE_APPLICATIONS) {
                 StoreApplicationsAdminScreen(onBack = { navController.popBackStack() })
