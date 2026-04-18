@@ -34,6 +34,9 @@ class StoreProductsViewModel(
     private val _weeklySales = MutableStateFlow<StoreWeeklySalesLoadState>(StoreWeeklySalesLoadState.Idle)
     val weeklySales: StateFlow<StoreWeeklySalesLoadState> = _weeklySales.asStateFlow()
 
+    private val _salesRangeDays = MutableStateFlow(7)
+    val salesRangeDays: StateFlow<Int> = _salesRangeDays.asStateFlow()
+
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
@@ -104,11 +107,12 @@ class StoreProductsViewModel(
         }
     }
 
-    fun refreshWeeklySales() {
+    fun refreshWeeklySales(days: Int = _salesRangeDays.value) {
         val sid = activeStoreId ?: return
+        _salesRangeDays.value = days
         viewModelScope.launch {
             _weeklySales.value = StoreWeeklySalesLoadState.Loading
-            orderRepository.fetchLastSevenDaysStoreSales(sid).fold(
+            orderRepository.fetchStoreSalesForRange(sid, days).fold(
                 onSuccess = { _weeklySales.value = StoreWeeklySalesLoadState.Ready(it) },
                 onFailure = { e ->
                     _weeklySales.value = StoreWeeklySalesLoadState.Error(

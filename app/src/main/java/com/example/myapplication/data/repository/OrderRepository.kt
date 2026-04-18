@@ -428,32 +428,32 @@ class OrderRepository(
     }
 
     /**
-     * Rolling last 7 calendar days in the device timezone (today and the 6 days before).
+     * Rolling last N calendar days in the device timezone (today and the N-1 days before).
      * Revenue per day = suborder `totalPrice` + `totalTax` (store’s share of the order).
      */
-    suspend fun fetchLastSevenDaysStoreSales(storeId: String): Result<StoreWeeklySalesSummary> = runCatching {
+    suspend fun fetchStoreSalesForRange(storeId: String, daysCount: Int): Result<StoreWeeklySalesSummary> = runCatching {
         if (storeId.isBlank()) error("Missing store")
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
-        val firstDay = today.minusDays(6)
+        val firstDay = today.minusDays((daysCount - 1).toLong())
         val sinceMillis = firstDay.atStartOfDay(zone).toInstant().toEpochMilli()
         val docs = fetchStoreSubordersCreatedSince(storeId, sinceMillis).getOrElse { throw it }
-        val revenue = DoubleArray(7)
-        val counts = IntArray(7)
+        val revenue = DoubleArray(daysCount)
+        val counts = IntArray(daysCount)
         val firstEpochDay = firstDay.toEpochDay()
         for (doc in docs) {
             val ms = doc.readMillis(FIELD_CREATED_AT)
             if (ms <= 0L) continue
             val d = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
             val idx = (d.toEpochDay() - firstEpochDay).toInt()
-            if (idx !in 0..6) continue
+            if (idx !in 0 until daysCount) continue
             val price = doc.getDouble(FIELD_TOTAL_PRICE) ?: 0.0
             val tax = doc.getDouble(FIELD_TOTAL_TAX) ?: 0.0
             revenue[idx] += price + tax
             counts[idx] += 1
         }
-        val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
-        val days = (0..6).map { i ->
+        val dayFmt = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+        val days = (0 until daysCount).map { i ->
             val d = firstDay.plusDays(i.toLong())
             StoreSalesDayBucket(
                 label = d.format(dayFmt),
@@ -470,6 +470,9 @@ class OrderRepository(
             rangeLabel = rangeLabel,
         )
     }
+
+    suspend fun fetchLastSevenDaysStoreSales(storeId: String): Result<StoreWeeklySalesSummary> =
+        fetchStoreSalesForRange(storeId, 7)
 
     suspend fun enrichStoreSuborderDocuments(
         docs: List<com.google.firebase.firestore.DocumentSnapshot>,

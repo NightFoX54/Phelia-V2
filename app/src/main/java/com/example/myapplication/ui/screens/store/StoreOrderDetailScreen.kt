@@ -122,10 +122,36 @@ private fun StoreOrderDetailBody(
     onStatusSelected: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var pendingStatusChange by remember { mutableStateOf<String?>(null) }
     val pkg = bundle.ourSuborder
     val horizontalCardPadding = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp)
+
+    pendingStatusChange?.let { status ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingStatusChange = null },
+            title = { Text("Update Order Status") },
+            text = {
+                Text("Are you sure you want to change the status to \"${orderStatusLabelEnglish(status)}\"? This action will notify the customer.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onStatusSelected(status)
+                        pendingStatusChange = null
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingStatusChange = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -152,7 +178,7 @@ private fun StoreOrderDetailBody(
                                         text = { Text(orderStatusLabelEnglish(st)) },
                                         onClick = {
                                             menuOpen = false
-                                            onStatusSelected(st)
+                                            pendingStatusChange = st
                                         },
                                     )
                                 }

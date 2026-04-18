@@ -65,6 +65,8 @@ fun StoreProductsScreen(
     modifier: Modifier = Modifier,
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var filterMenuExpanded by remember { mutableStateOf(false) }
     var confirmDeactivateId by remember { mutableStateOf<String?>(null) }
     val rows by viewModel.rows.collectAsState()
     val loadState by viewModel.loadState.collectAsState()
@@ -74,8 +76,17 @@ fun StoreProductsScreen(
         delay(5_000)
         viewModel.clearUserMessage()
     }
-    val filtered = remember(rows, searchQuery) {
-        rows.filter { it.name.contains(searchQuery, ignoreCase = true) }
+
+    val categories = remember(rows) {
+        rows.map { it.categoryName }.distinct().sorted()
+    }
+
+    val filtered = remember(rows, searchQuery, selectedCategory) {
+        rows.filter {
+            val matchesQuery = it.name.contains(searchQuery, ignoreCase = true)
+            val matchesCategory = selectedCategory == null || it.categoryName == selectedCategory
+            matchesQuery && matchesCategory
+        }
     }
 
     val st = loadState
@@ -132,7 +143,38 @@ fun StoreProductsScreen(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFFC7D2FE)) },
-                        trailingIcon = { IconButton(onClick = {}) { Icon(Icons.Default.FilterList, null, tint = Color.White) } },
+                        trailingIcon = {
+                            Box {
+                                IconButton(onClick = { filterMenuExpanded = true }) {
+                                    Icon(
+                                        Icons.Default.FilterList,
+                                        null,
+                                        tint = if (selectedCategory != null) Color.Yellow else Color.White
+                                    )
+                                }
+                                androidx.compose.material3.DropdownMenu(
+                                    expanded = filterMenuExpanded,
+                                    onDismissRequest = { filterMenuExpanded = false }
+                                ) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("All Categories") },
+                                        onClick = {
+                                            selectedCategory = null
+                                            filterMenuExpanded = false
+                                        }
+                                    )
+                                    categories.forEach { cat ->
+                                        androidx.compose.material3.DropdownMenuItem(
+                                            text = { Text(cat) },
+                                            onClick = {
+                                                selectedCategory = cat
+                                                filterMenuExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        },
                         placeholder = { Text("Search products...", color = Color(0xFFC7D2FE)) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(

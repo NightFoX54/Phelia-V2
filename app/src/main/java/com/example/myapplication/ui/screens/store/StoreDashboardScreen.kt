@@ -2,6 +2,7 @@ package com.example.myapplication.ui.screens.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,13 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
@@ -29,10 +32,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +46,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +78,7 @@ fun StoreDashboardScreen(
     val rows by storeProductsViewModel.rows.collectAsState()
     val loadState by storeProductsViewModel.loadState.collectAsState()
     val weeklySales by storeProductsViewModel.weeklySales.collectAsState()
+    val salesRangeDays by storeProductsViewModel.salesRangeDays.collectAsState()
     val loadSt = loadState
 
     val totalStock = rows.sumOf { it.totalStock }
@@ -122,6 +131,8 @@ fun StoreDashboardScreen(
             item {
                 SalesThisWeekSection(
                     state = weeklySales,
+                    currentRange = salesRangeDays,
+                    onRangeChange = { storeProductsViewModel.refreshWeeklySales(it) },
                     onRetry = { storeProductsViewModel.refreshWeeklySales() },
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
                 )
@@ -324,9 +335,22 @@ private fun MiniStat(value: String, label: String, bg: Color, fg: Color, modifie
 @Composable
 private fun SalesThisWeekSection(
     state: StoreWeeklySalesLoadState,
+    currentRange: Int,
+    onRangeChange: (Int) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    val rangeOptions = listOf(
+        1 to "Last Day",
+        7 to "Last 7 Days",
+        15 to "Last 15 Days",
+        30 to "Last Month",
+        90 to "Last 3 Months",
+        180 to "Last 6 Months",
+        365 to "Last Year"
+    )
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -340,16 +364,56 @@ private fun SalesThisWeekSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Sales (last 7 days)",
+                        "Sales Summary",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF111827),
                     )
                     Text(
-                        "Revenue from your store packages (suborders)",
+                        "Revenue from your store packages",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF6B7280),
                     )
+                }
+                Box {
+                    Surface(
+                        onClick = { expanded = true },
+                        color = Color(0xFFF3F4F6),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = rangeOptions.find { it.first == currentRange }?.second ?: "Last 7 Days",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF374151)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFF6B7280)
+                            )
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        rangeOptions.forEach { (days, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    onRangeChange(days)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
             when (state) {
@@ -404,7 +468,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
             modifier = Modifier.weight(1f),
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Week total", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4338CA))
+                Text("Total revenue", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4338CA))
                 Text(
                     "$" + String.format(Locale.US, "%.2f", summary.weekTotalRevenue),
                     style = MaterialTheme.typography.titleLarge,
@@ -434,13 +498,14 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(132.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .height(132.dp)
+            .then(if (summary.days.size > 7) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
+        horizontalArrangement = if (summary.days.size > 7) Arrangement.spacedBy(12.dp) else Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
         summary.days.forEach { day ->
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = if (summary.days.size > 7) Modifier.width(42.dp) else Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val barFrac = (day.revenue / maxRev).toFloat().coerceIn(0f, 1f)
@@ -453,7 +518,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(26.dp)
+                            .width(if (summary.days.size > 15) 16.dp else 26.dp)
                             .height(barH)
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                             .background(
@@ -470,6 +535,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                     color = Color(0xFF6B7280),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
                 )
                 Text(
                     "$" + String.format(Locale.US, "%.0f", day.revenue),
