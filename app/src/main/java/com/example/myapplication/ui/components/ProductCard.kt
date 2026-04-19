@@ -75,7 +75,8 @@ fun ProductCard(
                     onClick = onFavoriteClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(10.dp),
+                        .padding(10.dp)
+                        .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(12.dp)),
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

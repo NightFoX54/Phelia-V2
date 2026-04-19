@@ -23,6 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
@@ -33,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -221,6 +224,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "John Doe",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Email Address",
@@ -231,6 +235,7 @@ fun RegisterScreen(
                                     error = null 
                                 },
                                 placeholder = "your@email.com",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Password",
@@ -241,6 +246,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "••••••••",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Confirm Password",
@@ -251,6 +257,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "••••••••",
+                                enabled = !busy,
                             )
                             SubmitButton(
                                 busy = busy,
@@ -305,6 +312,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "John Doe",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Email Address",
@@ -315,6 +323,7 @@ fun RegisterScreen(
                                     error = null 
                                 },
                                 placeholder = "your@email.com",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Password",
@@ -325,6 +334,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "••••••••",
+                                enabled = !busy,
                             )
                             AuthLabeledField(
                                 label = "Confirm Password",
@@ -335,6 +345,7 @@ fun RegisterScreen(
                                     error = null
                                 },
                                 placeholder = "••••••••",
+                                enabled = !busy,
                             )
                             Button(
                                 onClick = {
@@ -399,61 +410,96 @@ fun RegisterScreen(
                                 minLines = 3,
                                 shape = RoundedCornerShape(14.dp),
                             )
-                            Text(
-                                "Store logo (1:1 center crop after upload)",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.5f)
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
-                                    .background(Color(0xFFF3F4F6)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                when (val u = pickedLogoUri) {
-                                    null -> Icon(Icons.Default.Image, null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(40.dp))
-                                    else -> AsyncImage(
-                                        model = u,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                }
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    pickLogo.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                    )
-                                },
-                                enabled = !busy,
+                            Card(
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
                             ) {
-                                Text("Choose logo")
-                            }
-                            if (storeApplySuccess) {
-                                Surface(
-                                    color = Color(0xFFF0FDF4),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBF7D0)),
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Text(
-                                        "Your application has been submitted. Your store will be opened after admin approval. You cannot sign in until then.",
-                                        color = Color(0xFF166534),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(12.dp),
+                                        "Store Identity",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF374151)
+                                    )
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .background(Color.White)
+                                            .border(2.dp, Color(0xFFF3F4F6), RoundedCornerShape(24.dp))
+                                            .clickable(enabled = !busy) {
+                                                pickLogo.launch(
+                                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        when (val u = pickedLogoUri) {
+                                            null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Icon(Icons.Default.AddPhotoAlternate, null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(32.dp))
+                                                Text("Add Logo", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
+                                            }
+                                            else -> AsyncImage(
+                                                model = u,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop,
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        "Click above to upload store logo",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF6B7280)
                                     )
                                 }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            
+                            if (storeApplySuccess) {
+                                Surface(
+                                    color = Color(0xFFECFDF5),
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f)),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = Color(0xFF10B981)
+                                        )
+                                        Text(
+                                            "Application submitted! We'll review your store and notify you soon.",
+                                            color = Color(0xFF065F46),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            ) {
                                 OutlinedButton(
                                     onClick = { storeStep = 0 },
                                     enabled = !busy,
-                                    modifier = Modifier.weight(1f),
-                                ) { Text("Back") }
+                                    modifier = Modifier.weight(1f).height(52.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                ) { Text("Back", fontWeight = FontWeight.SemiBold) }
+                                
                                 Button(
                                     onClick = {
                                         error = null
@@ -479,11 +525,18 @@ fun RegisterScreen(
                                             )
                                         }
                                     },
-                                    enabled = !busy,
+                                    enabled = !busy && !storeApplySuccess,
                                     modifier = Modifier.weight(1f).height(52.dp),
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (storeApplySuccess) Color(0xFF10B981) else MaterialTheme.colorScheme.primary
+                                    )
                                 ) {
-                                    Text(if (busy) "Submitting…" else "Submit application")
+                                    if (busy) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                                    } else {
+                                        Text(if (storeApplySuccess) "Submitted" else "Apply Now", fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                             if (busy) {

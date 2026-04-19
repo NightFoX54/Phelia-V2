@@ -2,6 +2,7 @@ package com.example.myapplication.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.model.User
 import com.example.myapplication.data.repository.UserNotificationItem
 import com.example.myapplication.data.repository.UserSettings
 import com.example.myapplication.data.repository.UserSettingsRepository
@@ -17,6 +18,9 @@ class UserSettingsViewModel(
 ) : ViewModel() {
     private val _settings = MutableStateFlow(UserSettings())
     val settings: StateFlow<UserSettings> = _settings.asStateFlow()
+
+    private val _userProfile = MutableStateFlow<User?>(null)
+    val userProfile: StateFlow<User?> = _userProfile.asStateFlow()
 
     private val _notifications = MutableStateFlow<List<UserNotificationItem>>(emptyList())
     val notifications: StateFlow<List<UserNotificationItem>> = _notifications.asStateFlow()
@@ -35,6 +39,47 @@ class UserSettingsViewModel(
             repository.fetchSettings(uid).fold(
                 onSuccess = { _settings.value = it },
                 onFailure = { _message.value = it.message ?: "Could not load settings." },
+            )
+            _loading.value = false
+        }
+    }
+
+    fun loadUserProfile() {
+        val uid = auth.currentUser?.uid.orEmpty()
+        if (uid.isBlank()) return
+        viewModelScope.launch {
+            _loading.value = true
+            repository.fetchUserProfile(uid).fold(
+                onSuccess = { _userProfile.value = it },
+                onFailure = { _message.value = it.message ?: "Could not load profile." }
+            )
+            _loading.value = false
+        }
+    }
+
+    fun updateProfile(name: String, email: String, onEmailTaken: () -> Unit, onSuccess: () -> Unit) {
+        val uid = auth.currentUser?.uid.orEmpty()
+        if (uid.isBlank()) return
+        viewModelScope.launch {
+            _loading.value = true
+            // 1. Check email availability
+            val availableResult = repository.checkEmailAvailability(email, uid)
+            val isAvailable = availableResult.getOrDefault(false)
+            
+            if (!isAvailable) {
+                onEmailTaken()
+                _loading.value = false
+                return@launch
+            }
+
+            // 2. Update profile
+            repository.updateUserProfile(uid, name, email).fold(
+                onSuccess = {
+                    _userProfile.value = _userProfile.value?.copy(name = name, email = email)
+                    _message.value = "Profile updated successfully."
+                    onSuccess()
+                },
+                onFailure = { _message.value = it.message ?: "Could not update profile." }
             )
             _loading.value = false
         }

@@ -47,9 +47,8 @@ import com.example.myapplication.data.repository.UserSettings
 import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.navigation.AppRoutes
 import com.example.myapplication.viewmodel.UserSettingsViewModel
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -61,6 +60,7 @@ fun ProfileSubPagesScreen(
 ) {
     val settingsVm: UserSettingsViewModel = viewModel()
     val userSettings by settingsVm.settings.collectAsState()
+    val userProfile by settingsVm.userProfile.collectAsState()
     val notifications by settingsVm.notifications.collectAsState()
     val loading by settingsVm.loading.collectAsState()
     val message by settingsVm.message.collectAsState()
@@ -69,13 +69,23 @@ fun ProfileSubPagesScreen(
         when (title) {
             "Settings" -> settingsVm.loadSettings()
             "Notifications" -> settingsVm.loadNotifications()
+            "Edit Profile" -> settingsVm.loadUserProfile()
         }
     }
 
-    var name by remember { mutableStateOf("John Doe") }
-    var email by remember { mutableStateOf("user@test.com") }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("+90 5XX XXX XX XX") }
     var bio by remember { mutableStateOf("Tech enthusiast and deal hunter.") }
+    var emailError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(userProfile) {
+        userProfile?.let {
+            name = it.name
+            email = it.email
+        }
+    }
+
     val scrollState = rememberScrollState()
 
     Column(
@@ -113,10 +123,44 @@ fun ProfileSubPagesScreen(
                                 }
                             }
                             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                value = email,
+                                onValueChange = {
+                                    email = it
+                                    emailError = null
+                                },
+                                label = { Text("Email") },
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = emailError != null,
+                                supportingText = {
+                                    emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                                }
+                            )
                             OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Bio") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                            Button(onClick = {}, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Save Changes") }
+                            Button(
+                                onClick = {
+                                    settingsVm.updateProfile(
+                                        name = name,
+                                        email = email,
+                                        onEmailTaken = {
+                                            emailError = "Please choose another email address."
+                                        },
+                                        onSuccess = {
+                                            // Optional: Handle success (e.g., show a toast or navigate back)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !loading
+                            ) {
+                                if (loading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Text("Save Changes")
+                                }
+                            }
                         }
                     }
                     SecurityCard()
@@ -260,9 +304,9 @@ fun ProfileSubPagesScreen(
 
 private fun formatNotificationDate(ms: Long): String {
     if (ms <= 0L) return "Unknown date"
-    val dt = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDateTime()
-    val fmt = DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.US)
-    return dt.format(fmt)
+    val date = Date(ms)
+    val fmt = SimpleDateFormat("MMM d, HH:mm", Locale.US)
+    return fmt.format(date)
 }
 
 @Composable

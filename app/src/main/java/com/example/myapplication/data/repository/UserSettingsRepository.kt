@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.model.readMillis
+import com.example.myapplication.data.model.User
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -31,6 +32,32 @@ data class UserNotificationItem(
 class UserSettingsRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
+    suspend fun fetchUserProfile(userId: String): Result<User> = runCatching {
+        if (userId.isBlank()) error("Not signed in")
+        val doc = db.collection(COLLECTION_USERS).document(userId).get().await()
+        if (!doc.exists()) error("User not found")
+        doc.toObject(User::class.java)!!
+    }
+
+    suspend fun checkEmailAvailability(email: String, currentUserId: String): Result<Boolean> = runCatching {
+        val query = db.collection(COLLECTION_USERS)
+            .whereEqualTo("email", email)
+            .get()
+            .await()
+        
+        // If email found, it must belong to the current user
+        query.documents.all { it.id == currentUserId }
+    }
+
+    suspend fun updateUserProfile(userId: String, name: String, email: String): Result<Unit> = runCatching {
+        db.collection(COLLECTION_USERS).document(userId).update(
+            mapOf(
+                "name" to name,
+                "email" to email
+            )
+        ).await()
+    }
+
     suspend fun fetchSettings(userId: String): Result<UserSettings> = runCatching {
         if (userId.isBlank()) error("Not signed in")
         val doc = db.collection(COLLECTION_USERS).document(userId)

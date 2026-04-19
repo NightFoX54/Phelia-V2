@@ -22,6 +22,7 @@ internal fun AuthLabeledField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    enabled: Boolean = true,
 ) {
     Column {
         Text(label, fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(bottom = 6.dp))
@@ -37,6 +38,7 @@ internal fun AuthLabeledField(
             ),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = enabled,
         )
     }
 }
