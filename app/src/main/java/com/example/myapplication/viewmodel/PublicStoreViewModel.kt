@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Store
+import com.example.myapplication.data.model.ui.Category
 import com.example.myapplication.data.model.ui.Product as UiProduct
 import com.example.myapplication.data.repository.ProductRepository
 import com.example.myapplication.data.repository.StoreRepository
@@ -17,7 +18,10 @@ data class PublicStoreUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val store: Store? = null,
+    val searchQuery: String = "",
+    val categories: List<Category> = emptyList(),
     val products: List<UiProduct> = emptyList(),
+    val allStoreProducts: List<UiProduct> = emptyList(),
 )
 
 class PublicStoreViewModel(
@@ -67,9 +71,54 @@ class PublicStoreViewModel(
                     brandName = s.brandName,
                 )
             }.sortedBy { it.name.lowercase() }
+
+            val distinctCategories = uiProducts.mapNotNull { it.category }.distinct().sorted()
+            val chips = listOf(Category(name = "All", isActive = true)) +
+                    distinctCategories.map { Category(name = it, isActive = false) }
+
             _uiState.update {
-                it.copy(isLoading = false, error = null, store = store, products = uiProducts)
+                it.copy(
+                    isLoading = false,
+                    error = null,
+                    store = store,
+                    products = uiProducts,
+                    allStoreProducts = uiProducts,
+                    categories = chips
+                )
             }
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        applyFilters()
+    }
+
+    fun setActiveCategory(name: String) {
+        _uiState.update { state ->
+            state.copy(
+                categories = state.categories.map { it.copy(isActive = it.name == name) }
+            )
+        }
+        applyFilters()
+    }
+
+    private fun applyFilters() {
+        _uiState.update { state ->
+            val activeCategory = state.categories.find { it.isActive }?.name ?: "All"
+            var filtered = if (activeCategory == "All") {
+                state.allStoreProducts
+            } else {
+                state.allStoreProducts.filter { it.category == activeCategory }
+            }
+
+            if (state.searchQuery.isNotBlank()) {
+                filtered = filtered.filter {
+                    it.name.contains(state.searchQuery, ignoreCase = true) ||
+                    (it.brandName?.contains(state.searchQuery, ignoreCase = true) == true)
+                }
+            }
+            state.copy(products = filtered)
         }
     }
 }

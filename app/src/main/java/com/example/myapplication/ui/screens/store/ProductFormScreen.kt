@@ -35,6 +35,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,11 +60,36 @@ import com.example.myapplication.ui.product.colorLabelAndComposeColor
 import com.example.myapplication.ui.product.isColorAttributeKey
 import kotlinx.coroutines.launch
 
-private val FormPresetColors = listOf(
-    Color(0xFF000000), Color(0xFFFFFFFF), Color(0xFFEF4444), Color(0xFF22C55E),
-    Color(0xFF3B82F6), Color(0xFFF59E0B), Color(0xFF8B5CF6), Color(0xFFEC4899),
-    Color(0xFF14B8A6), Color(0xFF64748B), Color(0xFF92400E), Color(0xFFFBBF24),
-    Color(0xFF1E293B), Color(0xFFF97316), Color(0xFF84CC16), Color(0xFF06B6D4),
+private val FormPresetColors: List<Color> = run {
+    val colors = mutableListOf<Color>()
+    // Black, Grays, White
+    colors.add(Color(0xFF000000))
+    colors.add(Color(0xFF4B5563))
+    colors.add(Color(0xFF9CA3AF))
+    colors.add(Color(0xFFD1D5DB))
+    colors.add(Color(0xFFF3F4F6))
+    colors.add(Color(0xFFFFFFFF))
+    
+    // Spectral wheel generation
+    val hues = 20
+    val saturations = listOf(0.3f, 0.6f, 1.0f)
+    val values = listOf(1.0f, 0.7f)
+    
+    for (s in saturations) {
+        for (h in 0 until hues) {
+            val hue = (h.toFloat() / hues) * 360f
+            colors.add(Color.hsv(hue, s, 1.0f))
+        }
+    }
+    for (h in 0 until hues) {
+        val hue = (h.toFloat() / hues) * 360f
+        colors.add(Color.hsv(hue, 1.0f, 0.6f))
+    }
+    colors
+}
+
+private val LanguageOptions = listOf(
+    "English", "Turkish", "German", "French", "Spanish", "Italian", "Arabic", "Chinese", "Japanese", "Russian"
 )
 
 private data class VariantFormState(
@@ -356,26 +382,29 @@ fun ProductFormScreen(
             onDismissRequest = { colorPickerContext = null },
             title = { Text("Pick color: $attrKey") },
             text = {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(FormPresetColors) { c ->
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(c)
-                                .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(10.dp))
-                                .clickable {
-                                    val hex = String.format("#%06X", 0xFFFFFF and c.toArgb())
-                                    updateVariant(variantId) {
-                                        it.copy(attributes = it.attributes + (attrKey to hex))
-                                    }
-                                    colorPickerContext = null
-                                },
-                        )
+                Box(modifier = Modifier.height(400.dp)) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(6),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(FormPresetColors) { c ->
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(c)
+                                    .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        val hex = String.format("#%06X", 0xFFFFFF and c.toArgb())
+                                        updateVariant(variantId) {
+                                            it.copy(attributes = it.attributes + (attrKey to hex))
+                                        }
+                                        colorPickerContext = null
+                                        error = null
+                                    },
+                            )
+                        }
                     }
                 }
             },
@@ -598,6 +627,7 @@ fun ProductFormScreen(
                                                         updateVariant(variant.id) {
                                                             it.copy(attributes = it.attributes + (key to text))
                                                         }
+                                                        error = null
                                                     },
                                                     label = { Text("$key (#hex or Label|#hex)") },
                                                     modifier = Modifier.weight(1f),
@@ -610,6 +640,41 @@ fun ProductFormScreen(
                                                     ),
                                                 ) { Text("From palette") }
                                             }
+                                        } else if (key.contains("Language", ignoreCase = true)) {
+                                            var langExpanded by remember { mutableStateOf(false) }
+                                            Box {
+                                                OutlinedTextField(
+                                                    value = variant.attributes[key].orEmpty(),
+                                                    onValueChange = {},
+                                                    readOnly = true,
+                                                    label = { Text(key) },
+                                                    modifier = Modifier.fillMaxWidth().clickable { langExpanded = true },
+                                                    enabled = false,
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    )
+                                                )
+                                                DropdownMenu(expanded = langExpanded, onDismissRequest = { langExpanded = false }) {
+                                                    LanguageOptions.forEach { lang ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(lang) },
+                                                            onClick = {
+                                                                updateVariant(variant.id) {
+                                                                    it.copy(attributes = it.attributes + (key to lang))
+                                                                }
+                                                                langExpanded = false
+                                                                error = null
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Button(
+                                                onClick = { langExpanded = true },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF), contentColor = Color(0xFF4338CA)),
+                                            ) { Text("Select $key") }
                                         } else {
                                             OutlinedTextField(
                                                 value = variant.attributes[key].orEmpty(),
@@ -617,6 +682,7 @@ fun ProductFormScreen(
                                                     updateVariant(variant.id) {
                                                         it.copy(attributes = it.attributes + (key to text))
                                                     }
+                                                    error = null
                                                 },
                                                 label = { Text(key) },
                                                 modifier = Modifier.fillMaxWidth(),

@@ -71,20 +71,46 @@ class StoreRepository(
         description: String,
         logoUrl: String,
     ): Result<Unit> = runCatching {
+        val trimmedName = name.trim()
         val snap = db.collection(COLLECTION_STORES)
             .whereEqualTo(FIELD_OWNER_ID, ownerId)
             .limit(1)
             .get()
             .await()
         val doc = snap.documents.firstOrNull() ?: error("No store found for this account.")
+        
+        // Check if name changed and if new name is unique
+        val currentName = doc.getString(FIELD_NAME).orEmpty()
+        if (trimmedName != currentName) {
+            // Check in stores
+            val existingStore = db.collection(COLLECTION_STORES)
+                .whereEqualTo(FIELD_NAME, trimmedName)
+                .get()
+                .await()
+            if (!existingStore.isEmpty) error("Please select different store name")
+
+            // Check in pending applications
+            val existingApp = db.collection(COLLECTION_STORE_APPLICATIONS)
+                .whereEqualTo("storeName", trimmedName)
+                .whereEqualTo("status", "pending")
+                .get()
+                .await()
+            if (!existingApp.isEmpty) error("Please select different store name")
+        }
+
         doc.reference.update(
             mapOf(
-                FIELD_NAME to name.trim(),
+                FIELD_NAME to trimmedName,
                 FIELD_DESCRIPTION to description.trim(),
                 FIELD_LOGO to logoUrl.trim(),
             ),
         ).await()
     }
+
+    suspend fun fetchAllStores(): List<Store> = runCatching {
+        val snap = db.collection(COLLECTION_STORES).get().await()
+        snap.documents.map { it.toStore() }
+    }.getOrDefault(emptyList())
 
     private fun DocumentSnapshot.toStore(): Store =
         Store(
@@ -100,6 +126,7 @@ class StoreRepository(
 
     companion object {
         private const val COLLECTION_STORES = "stores"
+        private const val COLLECTION_STORE_APPLICATIONS = "storeApplications"
         private const val FIELD_OWNER_ID = "ownerId"
         private const val FIELD_NAME = "name"
         private const val FIELD_DESCRIPTION = "description"

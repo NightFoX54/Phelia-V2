@@ -132,6 +132,18 @@ class SessionViewModel(
         }
     }
 
+    fun checkEmailAvailability(email: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            onResult(authRepository.checkEmailAvailability(email))
+        }
+    }
+
+    fun checkStoreNameAvailability(name: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            onResult(StoreApplicationRepository().checkStoreNameAvailability(name))
+        }
+    }
+
     /**
      * Registers a customer account, uploads optional square-cropped logo, writes [storeApplications] as pending.
      */
@@ -146,10 +158,18 @@ class SessionViewModel(
         onResult: (Result<Unit>) -> Unit,
     ) {
         viewModelScope.launch {
+            val appRepo = StoreApplicationRepository()
+            
+            // 1. Check store name availability BEFORE creating account
+            appRepo.checkStoreNameAvailability(storeName).onFailure {
+                onResult(Result.failure(it))
+                return@launch
+            }
+
+            // 2. Create account if store name is available
             authRepository.register(name, email, password, role = "store_owner").fold(
                 onFailure = { onResult(Result.failure(it)) },
                 onSuccess = { uid ->
-                    val appRepo = StoreApplicationRepository()
                     runCatching {
                         appRepo.ensureNoPendingApplication(uid).getOrThrow()
                         val logoUrl = if (localLogoUri != null) {
@@ -167,7 +187,7 @@ class SessionViewModel(
                         ).getOrThrow()
                     }.fold(
                         onSuccess = {
-                            _authNotice.value = "Your application has been submitted and is pending admin approval."
+                            //_authNotice.value = "Your application has been submitted and is pending admin approval."
                             authRepository.signOut()
                             onResult(Result.success(Unit))
                         },

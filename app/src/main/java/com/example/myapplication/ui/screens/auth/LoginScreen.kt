@@ -100,14 +100,20 @@ fun LoginScreen(
                         label = "Email Address",
                         icon = Icons.Default.Email,
                         value = email,
-                        onValueChange = { email = it },
+                        onValueChange = { 
+                            email = it
+                            error = null
+                        },
                         placeholder = "your@email.com",
                     )
                     AuthLabeledField(
                         label = "Password",
                         icon = Icons.Default.Lock,
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = { 
+                            password = it
+                            error = null
+                        },
                         placeholder = "••••••••",
                     )
                     Button(

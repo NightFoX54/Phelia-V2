@@ -39,7 +39,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.myapplication.data.model.Store
 import com.example.myapplication.ui.components.AppTopBar
+import com.example.myapplication.ui.components.CategoryChipsRow
 import com.example.myapplication.ui.components.ProductCard
+import com.example.myapplication.ui.components.SearchField
 import com.example.myapplication.viewmodel.FavoritesViewModel
 import com.example.myapplication.viewmodel.PublicStoreViewModel
 import com.example.myapplication.viewmodel.PublicStoreViewModelFactory
@@ -52,6 +54,7 @@ fun PublicStoreScreen(
     favoritesViewModel: FavoritesViewModel,
     modifier: Modifier = Modifier,
     viewModel: PublicStoreViewModel = viewModel(factory = PublicStoreViewModelFactory(storeId)),
+    onOpenStore: (String) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
@@ -99,7 +102,21 @@ fun PublicStoreScreen(
                 ) {
                     item(span = { GridItemSpan(maxCurrentLineSpan) }) {
                         if (store != null) {
-                            StoreProfileHeader(store = store)
+                            Column {
+                                StoreProfileHeader(store = store)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                SearchField(
+                                    value = uiState.searchQuery,
+                                    onValueChange = { viewModel.setSearchQuery(it) },
+                                    placeholder = "Search in this store...",
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                CategoryChipsRow(
+                                    categories = uiState.categories,
+                                    onSelect = { viewModel.setActiveCategory(it) },
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
                     }
                     items(uiState.products, key = { it.id }) { p ->

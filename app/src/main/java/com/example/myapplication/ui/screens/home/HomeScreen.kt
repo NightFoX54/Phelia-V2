@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,8 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.myapplication.ui.components.CategoryChipsRow
 import com.example.myapplication.ui.components.ProductCard
 import com.example.myapplication.ui.components.SearchField
@@ -43,9 +46,11 @@ import com.example.myapplication.viewmodel.FavoritesViewModel
 
 @Composable
 fun HomeScreen(
+    onOpenNotifications: () -> Unit,
     onOpenCart: () -> Unit,
     onOpenProducts: () -> Unit,
     onOpenProduct: (String) -> Unit,
+    onOpenStore: (String) -> Unit,
     favoritesViewModel: FavoritesViewModel,
     modifier: Modifier = Modifier,
     catalogViewModel: CatalogViewModel = viewModel(),
@@ -79,7 +84,7 @@ fun HomeScreen(
                             )
                         }
                         IconButton(
-                            onClick = onOpenCart,
+                            onClick = onOpenNotifications,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(Color(0xFFF3F4F6)),
@@ -94,8 +99,8 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
                     SearchField(
-                        value = "",
-                        onValueChange = {},
+                        value = uiState.searchQuery,
+                        onValueChange = { catalogViewModel.setSearchQuery(it) },
                         placeholder = "Search products...",
                     )
                 }
@@ -193,13 +198,65 @@ fun HomeScreen(
             }
         }
 
-        uiState.error?.let { err ->
-            item {
-                Text(
-                    text = err,
-                    color = Color(0xFFDC2626),
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                )
+        if (uiState.searchQuery.isNotEmpty()) {
+            if (uiState.filteredStores.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Stores",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+                items(uiState.filteredStores) { store ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 4.dp)
+                            .clickable { onOpenStore(store.storeId) }, // Correct navigation to store
+                        color = Color.White,
+                        shape = RoundedCornerShape(12.dp),
+                        shadowElevation = 1.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFF3F4F6)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (store.logo.isNotBlank()) {
+                                    AsyncImage(model = store.logo, contentDescription = null)
+                                } else {
+                                    Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF4338CA))
+                                }
+                            }
+                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                                Text(store.name, fontWeight = FontWeight.Bold)
+                                Text(
+                                    store.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (uiState.featuredProducts.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No stores or products found", color = Color.Gray)
+                    }
+                }
             }
         }
 

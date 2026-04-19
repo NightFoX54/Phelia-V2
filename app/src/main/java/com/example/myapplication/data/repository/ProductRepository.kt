@@ -28,10 +28,10 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class ProductRepository(
-    private val auth: FirebaseAuth = FirebaseRemoteDataSource.auth,
-    private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
-    private val storage: FirebaseStorage = FirebaseRemoteDataSource.storage,
-    private val storeRepository: StoreRepository = StoreRepository(),
+    val auth: FirebaseAuth = FirebaseRemoteDataSource.auth,
+    val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
+    val storage: FirebaseStorage = FirebaseRemoteDataSource.storage,
+    val storeRepository: StoreRepository = StoreRepository(),
     private val notificationRepository: NotificationRepository = NotificationRepository(),
 ) {
 

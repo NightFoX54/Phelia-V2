@@ -128,9 +128,11 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
         ) {
             composable(AppRoutes.HOME) {
                 HomeScreen(
+                    onOpenNotifications = { navController.navigate(AppRoutes.PROFILE_NOTIFICATIONS) },
                     onOpenCart = { navController.navigate(AppRoutes.CART) },
                     onOpenProducts = { navController.navigate(AppRoutes.PRODUCTS) },
                     onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
+                    onOpenStore = { storeId: String -> navController.navigate(AppRoutes.publicStore(storeId)) },
                     favoritesViewModel = favoritesViewModel,
                 )
             }
@@ -138,6 +140,7 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 ProductListingScreen(
                     onBack = { navController.popBackStack() },
                     onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
+                    onOpenStore = { storeId: String -> navController.navigate(AppRoutes.publicStore(storeId)) },
                     favoritesViewModel = favoritesViewModel,
                 )
             }
@@ -170,6 +173,7 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     storeId = sid,
                     onBack = { navController.popBackStack() },
                     onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
+                    onOpenStore = { storeId: String -> navController.navigate(AppRoutes.publicStore(storeId)) },
                     favoritesViewModel = favoritesViewModel,
                 )
             }

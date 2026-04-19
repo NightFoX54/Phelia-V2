@@ -31,6 +31,18 @@ class AuthRepository(
             onFailure = { e -> Result.failure(Exception(mapAuthError(e))) },
         )
 
+    suspend fun checkEmailAvailability(email: String): Result<Unit> = runCatching {
+        val emailTrim = email.trim()
+        if (emailTrim.isBlank()) return@runCatching
+        val existing = db.collection(COLLECTION_USERS)
+            .whereEqualTo("email", emailTrim)
+            .get()
+            .await()
+        if (!existing.isEmpty) {
+            error("Choose another mail address")
+        }
+    }
+
     /** Creates Firebase Auth user + `users/{uid}`. Returns new [User.uid]. */
     suspend fun register(
         name: String,
@@ -39,12 +51,21 @@ class AuthRepository(
         role: String = "customer",
     ): Result<String> =
         runCatching {
-            val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
+            val emailTrim = email.trim()
+            val existing = db.collection(COLLECTION_USERS)
+                .whereEqualTo("email", emailTrim)
+                .get()
+                .await()
+            if (!existing.isEmpty) {
+                error("Choose another mail address")
+            }
+
+            val result = auth.createUserWithEmailAndPassword(emailTrim, password).await()
             val uid = result.user?.uid ?: error("Could not create user")
             val user = User(
                 uid = uid,
                 name = name.trim(),
-                email = email.trim(),
+                email = emailTrim,
                 role = role.trim().ifBlank { "customer" },
                 createdAt = System.currentTimeMillis(),
             )
@@ -82,15 +103,30 @@ class AuthRepository(
             .isNotEmpty()
         if (hasStore) return@runCatching StoreOwnerGateResult(allowed = true)
 
-        val appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
+        var appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
             .whereEqualTo(FIELD_APPLICANT_USER_ID, uid)
             .get()
             .await()
             .documents
+
+        // Race condition fix: If the user just registered, the application document might take 
+        // a few seconds to appear in Firestore. We retry with increasing delays.
+        if (appDocs.isEmpty()) {
+            for (i in 1..5) {
+                delay(500L * i) 
+                appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
+                    .whereEqualTo(FIELD_APPLICANT_USER_ID, uid)
+                    .get()
+                    .await()
+                    .documents
+                if (appDocs.isNotEmpty()) break
+            }
+        }
+
         if (appDocs.isEmpty()) {
             return@runCatching StoreOwnerGateResult(
                 allowed = false,
-                message = "Store owner account is not ready yet. Please contact support.",
+                message = "Your application is being processed. Please wait a moment and try signing in again.",
             )
         }
         val latest = appDocs.maxByOrNull { (it.getLong(FIELD_CREATED_AT) ?: 0L) }
@@ -126,7 +162,7 @@ class AuthRepository(
 
     private fun mapAuthError(e: Throwable): String = when (e) {
         is FirebaseAuthInvalidCredentialsException -> "Invalid email or password."
-        is FirebaseAuthUserCollisionException -> "An account with this email already exists."
+        is FirebaseAuthUserCollisionException -> "Choose another mail address"
         is FirebaseAuthWeakPasswordException -> "Password is too weak (at least 6 characters)."
         else -> e.message ?: "Something went wrong."
     }

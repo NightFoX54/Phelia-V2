@@ -8,6 +8,7 @@ import com.example.myapplication.data.model.FIELD_REJECTION_REASON
 import com.example.myapplication.data.model.FIELD_REVIEWED_AT
 import com.example.myapplication.data.model.FIELD_REVIEWED_BY_USER_ID
 import com.example.myapplication.data.model.FIELD_STATUS
+import com.example.myapplication.data.model.FIELD_STORE_NAME
 import com.example.myapplication.data.model.StoreApplication
 import com.example.myapplication.data.model.toFirestoreMap
 import com.example.myapplication.data.model.toStoreApplication
@@ -46,6 +47,26 @@ class StoreApplicationRepository(
         if (!snap.isEmpty) error("You already have a pending store application.")
     }
 
+    suspend fun checkStoreNameAvailability(name: String): Result<Unit> = runCatching {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return Result.success(Unit)
+        
+        // Check in stores
+        val existingStore = db.collection(COLLECTION_STORES)
+            .whereEqualTo(FIELD_NAME, trimmed)
+            .get()
+            .await()
+        if (!existingStore.isEmpty) error("Please select different store name")
+
+        // Check in pending applications
+        val existingApp = db.collection(COLLECTION_STORE_APPLICATIONS)
+            .whereEqualTo(FIELD_STORE_NAME, trimmed)
+            .whereEqualTo(FIELD_STATUS, StoreApplication.STATUS_PENDING)
+            .get()
+            .await()
+        if (!existingApp.isEmpty) error("Please select different store name")
+    }
+
     suspend fun submitApplication(
         applicantUserId: String,
         applicantName: String,
@@ -54,7 +75,11 @@ class StoreApplicationRepository(
         storeDescription: String,
         storeLogoUrl: String,
     ): Result<String> = runCatching {
-        if (storeName.isBlank()) error("Store name is required.")
+        val trimmedName = storeName.trim()
+        if (trimmedName.isBlank()) error("Store name is required.")
+
+        checkStoreNameAvailability(trimmedName).getOrThrow()
+
         val ref = db.collection(COLLECTION_STORE_APPLICATIONS).document()
         val now = System.currentTimeMillis()
         val doc = StoreApplication(
@@ -62,7 +87,7 @@ class StoreApplicationRepository(
             applicantUserId = applicantUserId,
             applicantName = applicantName,
             applicantEmail = applicantEmail,
-            storeName = storeName.trim(),
+            storeName = trimmedName,
             storeDescription = storeDescription.trim(),
             storeLogoUrl = storeLogoUrl.trim(),
             status = StoreApplication.STATUS_PENDING,

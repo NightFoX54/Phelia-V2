@@ -41,11 +41,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,6 +83,46 @@ fun RegisterScreen(
 
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+
+    LaunchedEffect(email) {
+        if (email.length < 5 || !email.contains("@")) {
+            return@LaunchedEffect
+        }
+        delay(600)
+        sessionViewModel.checkEmailAvailability(email) { result ->
+            result.fold(
+                onSuccess = {
+                    if (error == "Choose another mail address") {
+                        error = null
+                    }
+                },
+                onFailure = { e ->
+                    if (e.message == "Choose another mail address") {
+                        error = e.message
+                    }
+                }
+            )
+        }
+    }
+
+    LaunchedEffect(storeName) {
+        if (storeName.isBlank()) return@LaunchedEffect
+        delay(600)
+        sessionViewModel.checkStoreNameAvailability(storeName) { result ->
+            result.fold(
+                onSuccess = {
+                    if (error == "Please select different store name") {
+                        error = null
+                    }
+                },
+                onFailure = { e ->
+                    if (e.message == "Please select different store name") {
+                        error = e.message
+                    }
+                }
+            )
+        }
+    }
     var storeApplySuccess by remember { mutableStateOf(false) }
 
     val pickLogo = rememberLauncherForActivityResult(
@@ -174,28 +216,40 @@ fun RegisterScreen(
                                 label = "Full Name",
                                 icon = Icons.Default.Person,
                                 value = name,
-                                onValueChange = { name = it },
+                                onValueChange = { 
+                                    name = it
+                                    error = null
+                                },
                                 placeholder = "John Doe",
                             )
                             AuthLabeledField(
                                 label = "Email Address",
                                 icon = Icons.Default.Email,
                                 value = email,
-                                onValueChange = { email = it },
+                                onValueChange = { 
+                                    email = it
+                                    error = null 
+                                },
                                 placeholder = "your@email.com",
                             )
                             AuthLabeledField(
                                 label = "Password",
                                 icon = Icons.Default.Lock,
                                 value = password,
-                                onValueChange = { password = it },
+                                onValueChange = { 
+                                    password = it
+                                    error = null
+                                },
                                 placeholder = "••••••••",
                             )
                             AuthLabeledField(
                                 label = "Confirm Password",
                                 icon = Icons.Default.Lock,
                                 value = confirmPassword,
-                                onValueChange = { confirmPassword = it },
+                                onValueChange = { 
+                                    confirmPassword = it
+                                    error = null
+                                },
                                 placeholder = "••••••••",
                             )
                             SubmitButton(
@@ -203,14 +257,40 @@ fun RegisterScreen(
                                 text = if (busy) "Creating account…" else "Create Account",
                                 onClick = {
                                     error = null
+                                    if (name.isBlank()) {
+                                        error = "Full Name is required"
+                                        return@SubmitButton
+                                    }
+                                    if (email.isBlank()) {
+                                        error = "Email Address is required"
+                                        return@SubmitButton
+                                    }
+                                    if (password.length < 6) {
+                                        error = "Password must be at least 6 characters"
+                                        return@SubmitButton
+                                    }
                                     if (password != confirmPassword) {
                                         error = "Passwords do not match"
                                         return@SubmitButton
                                     }
+
                                     busy = true
-                                    sessionViewModel.register(name, email, password) { result ->
-                                        busy = false
-                                        result.fold(onSuccess = { }, onFailure = { e -> error = e.message })
+                                    sessionViewModel.checkEmailAvailability(email) { availResult ->
+                                        availResult.fold(
+                                            onSuccess = {
+                                                sessionViewModel.register(name, email, password) { result ->
+                                                    busy = false
+                                                    result.fold(
+                                                        onSuccess = { },
+                                                        onFailure = { e -> error = e.message }
+                                                    )
+                                                }
+                                            },
+                                            onFailure = { e ->
+                                                busy = false
+                                                error = e.message
+                                            }
+                                        )
                                     }
                                 },
                             )
@@ -220,55 +300,86 @@ fun RegisterScreen(
                                 label = "Full Name",
                                 icon = Icons.Default.Person,
                                 value = name,
-                                onValueChange = { name = it },
+                                onValueChange = { 
+                                    name = it
+                                    error = null
+                                },
                                 placeholder = "John Doe",
                             )
                             AuthLabeledField(
                                 label = "Email Address",
                                 icon = Icons.Default.Email,
                                 value = email,
-                                onValueChange = { email = it },
+                                onValueChange = { 
+                                    email = it
+                                    error = null 
+                                },
                                 placeholder = "your@email.com",
                             )
                             AuthLabeledField(
                                 label = "Password",
                                 icon = Icons.Default.Lock,
                                 value = password,
-                                onValueChange = { password = it },
+                                onValueChange = { 
+                                    password = it
+                                    error = null
+                                },
                                 placeholder = "••••••••",
                             )
                             AuthLabeledField(
                                 label = "Confirm Password",
                                 icon = Icons.Default.Lock,
                                 value = confirmPassword,
-                                onValueChange = { confirmPassword = it },
+                                onValueChange = { 
+                                    confirmPassword = it
+                                    error = null
+                                },
                                 placeholder = "••••••••",
                             )
                             Button(
                                 onClick = {
                                     error = null
+                                    if (name.isBlank()) {
+                                        error = "Full Name is required"
+                                        return@Button
+                                    }
+                                    if (email.isBlank()) {
+                                        error = "Email Address is required"
+                                        return@Button
+                                    }
+                                    if (password.length < 6) {
+                                        error = "Password must be at least 6 characters"
+                                        return@Button
+                                    }
                                     if (password != confirmPassword) {
                                         error = "Passwords do not match"
                                         return@Button
                                     }
-                                    if (name.isBlank() || email.isBlank() || password.length < 6) {
-                                        error = "Fill all fields; password at least 6 characters."
-                                        return@Button
+                                    
+                                    busy = true
+                                    sessionViewModel.checkEmailAvailability(email) { result ->
+                                        busy = false
+                                        result.fold(
+                                            onSuccess = { storeStep = 1 },
+                                            onFailure = { e -> error = e.message }
+                                        )
                                     }
-                                    storeStep = 1
                                 },
                                 enabled = !busy,
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                             ) {
-                                Text("Continue", fontWeight = FontWeight.SemiBold)
+                                Text(if (busy) "Checking email..." else "Continue", fontWeight = FontWeight.SemiBold)
                             }
                         }
                         else -> {
                             OutlinedTextField(
                                 value = storeName,
-                                onValueChange = { storeName = it },
+                                onValueChange = { 
+                                    storeName = it
+                                    error = null
+                                },
                                 label = { Text("Store name") },
                                 leadingIcon = { Icon(Icons.Default.Storefront, null) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -278,7 +389,10 @@ fun RegisterScreen(
                             )
                             OutlinedTextField(
                                 value = storeDescription,
-                                onValueChange = { storeDescription = it },
+                                onValueChange = { 
+                                    storeDescription = it
+                                    error = null
+                                },
                                 label = { Text("Store description") },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
