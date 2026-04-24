@@ -5,7 +5,8 @@ import androidx.navigation.navArgument
 
 object AppRoutes {
     const val HOME = "home"
-    const val PRODUCTS = "products"
+    /** Customer catalog; navigate with [products]. */
+    const val PRODUCTS = "products?saleOnly={saleOnly}"
     const val PRODUCT_DETAIL = "product/{productId}"
     /** Customer: seller profile + that store's active products (distinct from admin [STORE_DETAIL]). */
     const val PUBLIC_STORE = "public-store/{storeId}"
@@ -26,7 +27,8 @@ object AppRoutes {
     const val PROFILE_NOTIFICATIONS = "profile/notifications"
     const val PROFILE_HELP = "profile/help"
     const val PROFILE_SETTINGS = "profile/settings"
-    const val PROFILE_ORDERS = "profile/orders"
+    /** Customer profile order history. Can pass tab=1 to show messages. */
+    const val PROFILE_ORDERS = "profile/orders?tab={tab}"
     /** Single order detail (from list: [PROFILE_ORDERS]). */
     const val PROFILE_ORDER_DETAIL = "profile/orders/{orderId}"
     const val PROFILE_FAVORITES = "profile/favorites"
@@ -36,7 +38,7 @@ object AppRoutes {
     // Store owner
     const val STORE_DASHBOARD = "store-dashboard"
     const val STORE_PRODUCTS = "store-products"
-    const val STORE_ORDERS = "store-orders"
+    const val STORE_ORDERS = "store-orders?tab={tab}"
     /** Store owner: product detail + Q&A / review replies. */
     const val STORE_PRODUCT_DETAIL = "store-product/{productId}"
     const val STORE_ORDER_DETAIL = "store-order/{orderId}"
@@ -49,10 +51,18 @@ object AppRoutes {
     const val ADMIN_INACTIVE_PRODUCTS = "admin/inactive-products"
     const val ADMIN_STORE_APPLICATIONS = "admin/store-applications"
     const val ADMIN_CATALOG = "admin/categories-brands"
+    const val ADMIN_STORE_UPDATE_REQUESTS = "admin/store-update-requests"
+
+    const val STORE_APPLICATION_RETRY = "store-application-retry"
+
+    // Messaging
+    const val MESSAGING = "messaging/{storeId}/{suborderId}"
 
     // Forms
     const val PRODUCT_FORM = "product-form"
     const val PRODUCT_FORM_EDIT = "product-form/{productId}"
+
+    fun products(saleOnly: Boolean = false) = "products?saleOnly=$saleOnly"
 
     fun productDetail(productId: String) = "product/$productId"
     fun publicStore(storeId: String) = "public-store/$storeId"
@@ -62,7 +72,17 @@ object AppRoutes {
     fun storeDetail(storeId: String) = "store/$storeId"
     fun orderSuccess(orderId: String) = "order_success/$orderId"
     fun profileOrderDetail(orderId: String) = "profile/orders/$orderId"
+    fun messaging(storeId: String, suborderId: String) = "messaging/$storeId/$suborderId"
 
+    fun profileOrders(tab: Int = 0) = "profile/orders?tab=$tab"
+    fun storeOrders(tab: Int = 0) = "store-orders?tab=$tab"
+
+    val productsArgs = listOf(
+        navArgument("saleOnly") {
+            type = NavType.BoolType
+            defaultValue = false
+        },
+    )
     val productDetailArgs = listOf(
         navArgument("productId") { type = NavType.StringType },
     )
@@ -86,6 +106,10 @@ object AppRoutes {
     )
     val profileOrderDetailArgs = listOf(
         navArgument("orderId") { type = NavType.StringType },
+    )
+    val messagingArgs = listOf(
+        navArgument("storeId") { type = NavType.StringType },
+        navArgument("suborderId") { type = NavType.StringType },
     )
 }
 

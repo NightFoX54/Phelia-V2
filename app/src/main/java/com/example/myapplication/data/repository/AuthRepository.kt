@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository(
-    private val auth: FirebaseAuth = FirebaseRemoteDataSource.auth,
+    val auth: FirebaseAuth = FirebaseRemoteDataSource.auth,
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
 ) {
     data class StoreOwnerGateResult(
@@ -101,59 +101,10 @@ class AuthRepository(
             .await()
             .documents
             .isNotEmpty()
-        if (hasStore) return@runCatching StoreOwnerGateResult(allowed = true)
-
-        var appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
-            .whereEqualTo(FIELD_APPLICANT_USER_ID, uid)
-            .get()
-            .await()
-            .documents
-
-        // Race condition fix: If the user just registered, the application document might take 
-        // a few seconds to appear in Firestore. We retry with increasing delays.
-        if (appDocs.isEmpty()) {
-            for (i in 1..5) {
-                delay(500L * i) 
-                appDocs = db.collection(COLLECTION_STORE_APPLICATIONS)
-                    .whereEqualTo(FIELD_APPLICANT_USER_ID, uid)
-                    .get()
-                    .await()
-                    .documents
-                if (appDocs.isNotEmpty()) break
-            }
-        }
-
-        if (appDocs.isEmpty()) {
-            return@runCatching StoreOwnerGateResult(
-                allowed = false,
-                message = "Your application is being processed. Please wait a moment and try signing in again.",
-            )
-        }
-        val latest = appDocs.maxByOrNull { (it.getLong(FIELD_CREATED_AT) ?: 0L) }
-        val status = latest?.getString(FIELD_STATUS)?.trim().orEmpty()
-        when (status) {
-            StoreApplication.STATUS_PENDING -> StoreOwnerGateResult(
-                allowed = false,
-                message = "Your store application has been received and is pending admin approval.",
-            )
-            StoreApplication.STATUS_REJECTED -> {
-                val reason = latest?.getString(FIELD_REJECTION_REASON)?.trim().orEmpty()
-                val msg = if (reason.isNotBlank()) {
-                    "Your store application was rejected: $reason"
-                } else {
-                    "Your store application was rejected."
-                }
-                StoreOwnerGateResult(allowed = false, message = msg)
-            }
-            StoreApplication.STATUS_APPROVED -> StoreOwnerGateResult(
-                allowed = false,
-                message = "Your application has been approved, but your store setup is not completed yet. Please try again later.",
-            )
-            else -> StoreOwnerGateResult(
-                allowed = false,
-                message = "Could not read your store application status.",
-            )
-        }
+        
+        // Always allow store owners to sign in so they can see their notifications 
+        // and application status in-app.
+        return@runCatching StoreOwnerGateResult(allowed = true)
     }
 
     fun signOut() {

@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.viewmodel.CartViewModel
+import java.util.Locale
 
 @Composable
 fun CartScreen(
@@ -147,12 +150,12 @@ fun CartScreen(
                             .fillMaxWidth()
                             .padding(bottom = 12.dp),
                     ) {
-                        Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AsyncImage(
                                 model = item.imageUrl.takeIf { it.isNotBlank() },
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .size(90.dp)
+                                    .size(84.dp)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(Color(0xFFF3F4F6)),
                             )
@@ -172,19 +175,28 @@ fun CartScreen(
                                         Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444))
                                     }
                                 }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                ) {
-                                    item.attributes.forEach { (k, v) ->
-                                        VariantPill("$k: $v")
-                                    }
+                                VariantPills(attributes = item.attributes, modifier = Modifier.padding(bottom = 8.dp))
+                                val pct = item.discountPercent.coerceIn(0, 100)
+                                if (pct > 0 && item.baseUnitPrice > item.unitPrice) {
+                                    val save = (item.baseUnitPrice - item.unitPrice).coerceAtLeast(0.0)
+                                    Text(
+                                        "$" + String.format(Locale.US, "%.2f", item.unitPrice),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    Text(
+                                        "Save $" + String.format(Locale.US, "%.2f", save) + " ($pct% OFF)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF065F46),
+                                        modifier = Modifier.padding(top = 2.dp),
+                                    )
+                                } else {
+                                    Text(
+                                        "$" + String.format(Locale.US, "%.2f", item.unitPrice),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
                                 }
-                                Text(
-                                    "$" + String.format("%.2f", item.unitPrice),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -252,6 +264,25 @@ fun CartScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun VariantPills(
+    attributes: Map<String, String>,
+    modifier: Modifier = Modifier,
+) {
+    if (attributes.isEmpty()) return
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxLines = 2,
+    ) {
+        attributes.forEach { (k, v) ->
+            VariantPill("$k: $v")
         }
     }
 }

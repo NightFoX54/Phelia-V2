@@ -16,12 +16,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.myapplication.data.model.Store
 import com.example.myapplication.navigation.AppRoutes
+import com.example.myapplication.viewmodel.FavoritesViewModel
+import com.example.myapplication.viewmodel.OrderHistoryViewModel
 import com.example.myapplication.viewmodel.SessionViewModel
 import com.example.myapplication.viewmodel.StoreOwnerProfileViewModel
 import java.util.Locale
@@ -52,11 +59,18 @@ import java.util.Locale
 fun StoreOwnerProfileScreen(
     sessionViewModel: SessionViewModel,
     storeOwnerProfileViewModel: StoreOwnerProfileViewModel,
+    orderHistoryViewModel: OrderHistoryViewModel,
+    favoritesViewModel: FavoritesViewModel,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val store by storeOwnerProfileViewModel.store.collectAsState()
     val loadError by storeOwnerProfileViewModel.storeLoadError.collectAsState()
+
+    val orders by orderHistoryViewModel.orders.collectAsState()
+    val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
+    val orderCountText = orders.size.toString()
+    val favoritesCountText = favoriteIds.size.toString()
 
     LazyColumn(
         modifier = modifier
@@ -78,24 +92,74 @@ fun StoreOwnerProfileScreen(
                     .padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ProfileQuickCard(
-                    icon = Icons.Default.Dashboard,
-                    iconBg = Color(0xFFE0E7FF),
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    value = null,
-                    label = "Dashboard",
-                    onClick = { onNavigate(AppRoutes.STORE_DASHBOARD) },
-                    modifier = Modifier.weight(1f),
-                )
-                ProfileQuickCard(
-                    icon = Icons.Default.Inventory,
-                    iconBg = Color(0xFFDCFCE7),
-                    iconTint = Color(0xFF16A34A),
-                    value = null,
-                    label = "Products",
-                    onClick = { onNavigate(AppRoutes.STORE_PRODUCTS) },
-                    modifier = Modifier.weight(1f),
-                )
+                if (store != null) {
+                    ProfileQuickCard(
+                        icon = Icons.Default.Dashboard,
+                        iconBg = Color(0xFFE0E7FF),
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        value = null,
+                        label = "Dashboard",
+                        onClick = { onNavigate(AppRoutes.STORE_DASHBOARD) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProfileQuickCard(
+                        icon = Icons.Default.Inventory,
+                        iconBg = Color(0xFFDCFCE7),
+                        iconTint = Color(0xFF16A34A),
+                        value = null,
+                        label = "Products",
+                        onClick = { onNavigate(AppRoutes.STORE_PRODUCTS) },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    ProfileQuickCard(
+                        icon = Icons.Default.ShoppingBag,
+                        iconBg = Color(0xFFF3E8FF),
+                        iconTint = Color(0xFF9333EA),
+                        value = orderCountText,
+                        label = "My Orders",
+                        onClick = { onNavigate(AppRoutes.profileOrders()) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProfileQuickCard(
+                        icon = Icons.Default.Favorite,
+                        iconBg = Color(0xFFFEE2E2),
+                        iconTint = Color(0xFFEF4444),
+                        value = favoritesCountText,
+                        label = "Favorites",
+                        onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        if (store != null) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ProfileQuickCard(
+                        icon = Icons.Default.ShoppingBag,
+                        iconBg = Color(0xFFF3E8FF),
+                        iconTint = Color(0xFF9333EA),
+                        value = orderCountText,
+                        label = "My Orders",
+                        onClick = { onNavigate(AppRoutes.profileOrders()) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ProfileQuickCard(
+                        icon = Icons.Default.Favorite,
+                        iconBg = Color(0xFFFEE2E2),
+                        iconTint = Color(0xFFEF4444),
+                        value = favoritesCountText,
+                        label = "Favorites",
+                        onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 
@@ -106,21 +170,70 @@ fun StoreOwnerProfileScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
                 Column {
+                    if (store != null) {
+                        Text(
+                            "Store Management",
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        ProfileMenuRow(
+                            icon = Icons.Default.Edit,
+                            label = "Edit store details",
+                            tint = MaterialTheme.colorScheme.primary,
+                        ) { onNavigate(AppRoutes.STORE_PROFILE_EDIT) }
+                        ProfileMenuRow(
+                            icon = Icons.Default.Storefront,
+                            label = "Store orders & chats",
+                            tint = Color(0xFF2563EB),
+                        ) { onNavigate(AppRoutes.storeOrders()) }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+                    }
+                    
+                    Text(
+                        "Personal Account",
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
                     ProfileMenuRow(
-                        icon = Icons.Default.Edit,
-                        label = "Edit store details",
-                        tint = MaterialTheme.colorScheme.primary,
-                    ) { onNavigate(AppRoutes.STORE_PROFILE_EDIT) }
+                        icon = Icons.Default.Person,
+                        label = "Edit personal profile",
+                        tint = Color(0xFF10B981),
+                    ) { onNavigate(AppRoutes.PROFILE_EDIT) }
                     ProfileMenuRow(
-                        icon = Icons.Default.Storefront,
-                        label = "Store orders",
-                        tint = Color(0xFF2563EB),
-                    ) { onNavigate(AppRoutes.STORE_ORDERS) }
+                        icon = Icons.Default.ShoppingBag,
+                        label = "My orders & chats",
+                        tint = Color(0xFF8B5CF6),
+                    ) { onNavigate(AppRoutes.profileOrders()) }
+                    ProfileMenuRow(
+                        icon = Icons.Default.Favorite,
+                        label = "My favorites",
+                        tint = Color(0xFFEF4444),
+                    ) { onNavigate(AppRoutes.PROFILE_FAVORITES) }
+                    ProfileMenuRow(
+                        icon = Icons.Default.LocationOn,
+                        label = "My addresses",
+                        tint = Color(0xFF6366F1),
+                    ) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
+                    ProfileMenuRow(
+                        icon = Icons.Default.CreditCard,
+                        label = "Payment methods",
+                        tint = Color(0xFFF59E0B),
+                    ) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
                     ProfileMenuRow(
                         icon = Icons.Default.Notifications,
                         label = "Notifications",
-                        tint = Color(0xFFF59E0B),
+                        tint = Color(0xFFEC4899),
                     ) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+
                     ProfileMenuRow(
                         icon = Icons.Default.Help,
                         label = "Help & Support",

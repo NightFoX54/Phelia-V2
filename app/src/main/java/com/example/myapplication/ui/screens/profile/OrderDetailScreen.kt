@@ -59,6 +59,7 @@ fun OrderDetailScreen(
     orderId: String,
     onBack: () -> Unit,
     onOpenProduct: (productId: String) -> Unit,
+    onMessageStore: (storeId: String, suborderId: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: OrderDetailViewModel = viewModel(
         key = orderId,
@@ -74,13 +75,23 @@ fun OrderDetailScreen(
     var reviewTarget by remember { mutableStateOf<ReviewTarget?>(null) }
     var reviewSubmitting by remember { mutableStateOf(false) }
 
+    val headerColor = if (state is OrderDetailUiState.Ready) {
+        statusMainColor((state as OrderDetailUiState.Ready).data.order.status)
+    } else {
+        Color.White
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF9FAFB)),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
-            AppTopBar(title = "Order details", onBack = onBack, containerColor = Color.White)
+        Surface(color = headerColor, shadowElevation = if (headerColor == Color.White) 1.dp else 0.dp) {
+            AppTopBar(
+                title = "Order details",
+                onBack = onBack,
+                containerColor = headerColor,
+            )
         }
         when (val s = state) {
             is OrderDetailUiState.Loading -> {
@@ -110,6 +121,7 @@ fun OrderDetailScreen(
                 OrderDetailContent(
                     data = s.data,
                     onOpenProduct = onOpenProduct,
+                    onMessageStore = onMessageStore,
                     onRequestWriteReview = { target -> reviewTarget = target },
                 )
             }
@@ -150,6 +162,7 @@ private data class ReviewTarget(
 private fun OrderDetailContent(
     data: OrderDetailBundle,
     onOpenProduct: (productId: String) -> Unit,
+    onMessageStore: (storeId: String, suborderId: String) -> Unit,
     onRequestWriteReview: (ReviewTarget) -> Unit,
 ) {
     val order = data.order
@@ -237,6 +250,7 @@ private fun OrderDetailContent(
                 parentOrderStatus = order.status,
                 sub = sub,
                 onOpenProduct = onOpenProduct,
+                onMessageStore = onMessageStore,
                 onRequestWriteReview = onRequestWriteReview,
             )
         }
@@ -248,6 +262,7 @@ private fun SuborderSection(
     parentOrderStatus: String,
     sub: SuborderDetailUi,
     onOpenProduct: (productId: String) -> Unit,
+    onMessageStore: (storeId: String, suborderId: String) -> Unit,
     onRequestWriteReview: (ReviewTarget) -> Unit,
 ) {
     val so = sub.suborder
@@ -271,14 +286,19 @@ private fun SuborderSection(
                         color = Color(0xFF6B7280),
                     )
                 }
-                Surface(color = badgeColors.first, shape = RoundedCornerShape(999.dp)) {
-                    Text(
-                        subLabel,
-                        color = badgeColors.second,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onMessageStore(so.storeId, so.suborderId) }) {
+                        Text("Message", style = MaterialTheme.typography.labelMedium)
+                    }
+                    Surface(color = badgeColors.first, shape = RoundedCornerShape(999.dp)) {
+                        Text(
+                            subLabel,
+                            color = badgeColors.second,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
                 }
             }
             sub.items.forEach { item ->
@@ -481,4 +501,15 @@ private fun statusBadgeColors(status: String): Pair<Color, Color> = when (status
     "order_confirmed", "confirmed" -> Color(0xFFE0E7FF) to Color(0xFF4338CA)
     "order_received", "pending" -> Color(0xFFF3F4F6) to Color(0xFF374151)
     else -> Color(0xFFF3F4F6) to Color(0xFF374151)
+}
+
+private fun statusMainColor(status: String): Color = when (status) {
+    OrderStatus.COMPLETED, "delivered" -> Color(0xFF10B981) // Green
+    OrderStatus.SHIPPED -> Color(0xFF3B82F6) // Blue
+    OrderStatus.CANCELLED -> Color(0xFFEF4444) // Red
+    OrderStatus.PREPARING, "processing" -> Color(0xFFF59E0B) // Orange
+    OrderStatus.ORDER_CONFIRMED, "confirmed" -> Color(0xFF6366F1) // Indigo
+    OrderStatus.ORDER_RECEIVED, "pending" -> Color(0xFF6B7280) // Gray
+    OrderStatus.IN_PROGRESS -> Color(0xFF0D9488) // Teal
+    else -> Color(0xFF6B7280)
 }

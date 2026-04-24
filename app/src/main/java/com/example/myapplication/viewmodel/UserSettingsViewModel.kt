@@ -31,6 +31,8 @@ class UserSettingsViewModel(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private var notificationsListener: com.google.firebase.firestore.ListenerRegistration? = null
+
     fun loadSettings() {
         val uid = auth.currentUser?.uid.orEmpty()
         if (uid.isBlank()) return
@@ -57,7 +59,15 @@ class UserSettingsViewModel(
         }
     }
 
-    fun updateProfile(name: String, email: String, onEmailTaken: () -> Unit, onSuccess: () -> Unit) {
+    fun updateProfile(
+        name: String,
+        email: String,
+        phone: String,
+        bio: String,
+        onEmailTaken: () -> Unit,
+        onSuccess: () -> Unit,
+        onSessionUpdate: (String, String) -> Unit = { _, _ -> }
+    ) {
         val uid = auth.currentUser?.uid.orEmpty()
         if (uid.isBlank()) return
         viewModelScope.launch {
@@ -73,10 +83,11 @@ class UserSettingsViewModel(
             }
 
             // 2. Update profile
-            repository.updateUserProfile(uid, name, email).fold(
+            repository.updateUserProfile(uid, name, email, phone, bio).fold(
                 onSuccess = {
-                    _userProfile.value = _userProfile.value?.copy(name = name, email = email)
+                    _userProfile.value = _userProfile.value?.copy(name = name, email = email, phone = phone, bio = bio)
                     _message.value = "Profile updated successfully."
+                    onSessionUpdate(name, email)
                     onSuccess()
                 },
                 onFailure = { _message.value = it.message ?: "Could not update profile." }
@@ -105,14 +116,17 @@ class UserSettingsViewModel(
     fun loadNotifications() {
         val uid = auth.currentUser?.uid.orEmpty()
         if (uid.isBlank()) return
-        viewModelScope.launch {
-            _loading.value = true
-            repository.fetchNotifications(uid).fold(
-                onSuccess = { _notifications.value = it },
-                onFailure = { _message.value = it.message ?: "Could not load notifications." },
-            )
+        notificationsListener?.remove()
+        _loading.value = true
+        notificationsListener = repository.listenNotifications(uid) {
+            _notifications.value = it
             _loading.value = false
         }
+    }
+
+    override fun onCleared() {
+        notificationsListener?.remove()
+        super.onCleared()
     }
 
     fun markNotificationRead(notificationId: String) {
@@ -123,6 +137,15 @@ class UserSettingsViewModel(
             _notifications.value = _notifications.value.map { n ->
                 if (n.id == notificationId) n.copy(isRead = true) else n
             }
+        }
+    }
+
+    fun markAllNotificationsRead() {
+        val uid = auth.currentUser?.uid.orEmpty()
+        if (uid.isBlank()) return
+        viewModelScope.launch {
+            repository.markAllNotificationsAsRead(uid)
+            _notifications.value = _notifications.value.map { it.copy(isRead = true) }
         }
     }
 

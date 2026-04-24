@@ -10,6 +10,7 @@ import com.example.myapplication.data.model.Product
 import com.example.myapplication.data.model.ProductDetailBundle
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.model.ProductVariant
+import com.example.myapplication.data.model.finalPrice
 import com.example.myapplication.data.model.Store
 import com.example.myapplication.data.model.StoreOwnerProductRow
 import com.example.myapplication.data.model.displayImagesForVariant
@@ -97,7 +98,10 @@ class ProductRepository(
                         .map { it.toProductVariant() }
                     val active = variants.filter { it.isActive }
                     if (active.isEmpty()) return@async null
-                    val minPrice = active.minOfOrNull { it.price } ?: 0.0
+                    val minVariant = active.minByOrNull { it.finalPrice() } ?: return@async null
+                    val minPrice = minVariant.finalPrice()
+                    val minBasePrice = minVariant.price
+                    val minDiscountPercent = minVariant.discountPercent.coerceIn(0, 100)
                     val imageUrl = p.publicImages.firstOrNull()
                         ?: active.flatMap { it.images }.firstOrNull()
                         ?: ""
@@ -111,6 +115,8 @@ class ProductRepository(
                         reviewCount = reviewCnt,
                         imageUrl = imageUrl,
                         minPrice = minPrice,
+                        minBasePrice = minBasePrice,
+                        minDiscountPercent = minDiscountPercent,
                     )
                 }
             }.awaitAll().filterNotNull()
@@ -134,7 +140,10 @@ class ProductRepository(
                         .map { it.toProductVariant() }
                     val active = variants.filter { it.isActive }
                     if (active.isEmpty()) return@async null
-                    val minPrice = active.minOfOrNull { it.price } ?: 0.0
+                    val minVariant = active.minByOrNull { it.finalPrice() } ?: return@async null
+                    val minPrice = minVariant.finalPrice()
+                    val minBasePrice = minVariant.price
+                    val minDiscountPercent = minVariant.discountPercent.coerceIn(0, 100)
                     val imageUrl = p.publicImages.firstOrNull()
                         ?: active.flatMap { it.images }.firstOrNull()
                         ?: ""
@@ -148,6 +157,8 @@ class ProductRepository(
                         reviewCount = reviewCnt,
                         imageUrl = imageUrl,
                         minPrice = minPrice,
+                        minBasePrice = minBasePrice,
+                        minDiscountPercent = minDiscountPercent,
                     )
                 }
             }.awaitAll().filterNotNull()
@@ -174,7 +185,10 @@ class ProductRepository(
                             .map { it.toProductVariant() }
                         val active = variants.filter { it.isActive }
                         if (active.isEmpty()) return@async null
-                        val minPrice = active.minOfOrNull { it.price } ?: 0.0
+                        val minVariant = active.minByOrNull { it.finalPrice() } ?: return@async null
+                        val minPrice = minVariant.finalPrice()
+                        val minBasePrice = minVariant.price
+                        val minDiscountPercent = minVariant.discountPercent.coerceIn(0, 100)
                         val imageUrl = p.publicImages.firstOrNull()
                             ?: active.flatMap { it.images }.firstOrNull()
                             ?: ""
@@ -188,6 +202,8 @@ class ProductRepository(
                             reviewCount = reviewCnt,
                             imageUrl = imageUrl,
                             minPrice = minPrice,
+                            minBasePrice = minBasePrice,
+                            minDiscountPercent = minDiscountPercent,
                         )
                     }
                 }.awaitAll().filterNotNull().forEach { (id, summary) -> byId[id] = summary }
@@ -230,7 +246,9 @@ class ProductRepository(
                         quantity = line.quantity,
                         productName = p.name,
                         brandName = p.brand["name"]?.takeIf { !it.isNullOrBlank() },
-                        unitPrice = v.price,
+                        unitPrice = v.finalPrice(),
+                        baseUnitPrice = v.price,
+                        discountPercent = v.discountPercent.coerceIn(0, 100),
                         taxRatePercent = taxRatePercent,
                         imageUrl = img,
                         attributes = v.attributes,
@@ -256,7 +274,7 @@ class ProductRepository(
                     val variants = doc.reference.collection(SUBCOLLECTION_VARIANTS).get().await().documents
                         .map { it.toProductVariant() }
                     val active = variants.filter { it.isActive }
-                    val minPrice = active.minOfOrNull { it.price } ?: 0.0
+                    val minPrice = active.minOfOrNull { it.finalPrice() } ?: 0.0
                     val totalStock = active.sumOf { it.stock }
                     val img = p.publicImages.firstOrNull()?.takeIf { it.isNotBlank() }
                         ?: active.flatMap { it.images }.firstOrNull { it.isNotBlank() }.orEmpty()
@@ -351,6 +369,7 @@ class ProductRepository(
                 sku = draft.sku.trim(),
                 attributes = draft.attributes,
                 price = draft.price,
+                discountPercent = draft.discountPercent,
                 stock = draft.stock,
                 images = draft.images,
                 isActive = true,
@@ -368,6 +387,7 @@ class ProductRepository(
         val sku: String,
         val attributes: Map<String, String>,
         val price: Double,
+        val discountPercent: Int,
         val stock: Int,
         val images: List<String>,
     )
@@ -427,6 +447,7 @@ class ProductRepository(
                     sku = v.sku.trim(),
                     attributes = v.attributes,
                     price = v.price,
+                    discountPercent = v.discountPercent,
                     stock = v.stock,
                     images = v.images,
                     isActive = true,
@@ -439,6 +460,7 @@ class ProductRepository(
                     sku = v.sku.trim(),
                     attributes = v.attributes,
                     price = v.price,
+                    discountPercent = v.discountPercent,
                     stock = v.stock,
                     images = v.images,
                     isActive = true,
@@ -613,6 +635,7 @@ class ProductRepository(
             sku = getString("sku").orEmpty(),
             attributes = attrs,
             price = getDouble("price") ?: 0.0,
+            discountPercent = (getLong("discountPercent") ?: 0L).toInt().coerceIn(0, 100),
             stock = (getLong("stock") ?: 0L).toInt(),
             images = imgs,
             isActive = readIsActiveField(),
@@ -655,6 +678,7 @@ class ProductRepository(
             "sku" to sku,
             "attributes" to attributes,
             "price" to price,
+            "discountPercent" to discountPercent.coerceIn(0, 100),
             "stock" to stock,
             "images" to images,
             FIELD_IS_ACTIVE to isActive,
@@ -664,6 +688,7 @@ class ProductRepository(
         val sku: String,
         val attributes: Map<String, String>,
         val price: Double,
+        val discountPercent: Int,
         val stock: Int,
         val images: List<String>,
     )

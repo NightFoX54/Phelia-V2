@@ -125,6 +125,8 @@ class CatalogViewModel(
             id = productId,
             name = name,
             price = minPrice,
+            basePrice = minBasePrice,
+            discountPercent = minDiscountPercent,
             imageUrl = imageUrl,
             rating = rating,
             reviewCount = reviewCount,

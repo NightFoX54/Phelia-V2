@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.screens.profile
 
+import com.example.myapplication.data.model.ui.UserRole
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +28,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,13 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.AppTopBar
-import com.example.myapplication.data.repository.UserSettings
 import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.navigation.AppRoutes
 import com.example.myapplication.viewmodel.UserSettingsViewModel
@@ -51,12 +54,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import com.example.myapplication.viewmodel.SessionViewModel
+
 @Composable
 fun ProfileSubPagesScreen(
     title: String,
     onBack: () -> Unit,
-    onNavigateToRoute: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    onNavigateToRoute: (String) -> Unit = {},
+    sessionViewModel: SessionViewModel? = null,
 ) {
     val settingsVm: UserSettingsViewModel = viewModel()
     val userSettings by settingsVm.settings.collectAsState()
@@ -83,6 +89,8 @@ fun ProfileSubPagesScreen(
         userProfile?.let {
             name = it.name
             email = it.email
+            phone = it.phone
+            bio = it.bio
         }
     }
 
@@ -114,12 +122,13 @@ fun ProfileSubPagesScreen(
                                     modifier = Modifier
                                         .size(68.dp)
                                         .background(Color(0xFFE0E7FF), CircleShape),
-                                )
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Person, null, modifier = Modifier.size(36.dp), tint = Color(0xFF4338CA))
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Profile Photo", fontWeight = FontWeight.SemiBold)
-                                    Text("Upload, remove or update avatar", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Button(onClick = {}, shape = RoundedCornerShape(12.dp)) { Text("Change Photo") }
+                                    Text("Personal Information", fontWeight = FontWeight.SemiBold)
+                                    Text("Keep your profile details up to date", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
@@ -143,11 +152,16 @@ fun ProfileSubPagesScreen(
                                     settingsVm.updateProfile(
                                         name = name,
                                         email = email,
+                                        phone = phone,
+                                        bio = bio,
                                         onEmailTaken = {
                                             emailError = "Please choose another email address."
                                         },
                                         onSuccess = {
                                             // Optional: Handle success (e.g., show a toast or navigate back)
+                                        },
+                                        onSessionUpdate = { n, e ->
+                                            sessionViewModel?.updateProfileInfo(n, e)
                                         }
                                     )
                                 },
@@ -178,6 +192,18 @@ fun ProfileSubPagesScreen(
                                 Text("No notifications yet.", color = Color(0xFF6B7280))
                             }
                         }
+                    } else if (!loading) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = { settingsVm.markAllNotificationsRead() },
+                                enabled = notifications.any { !it.isRead }
+                            ) {
+                                Text("Mark all as read")
+                            }
+                        }
                     }
                     notifications.forEach { n ->
                         Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -186,6 +212,7 @@ fun ProfileSubPagesScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         settingsVm.markNotificationRead(n.id)
+                                        val userRole = sessionViewModel?.user?.value?.role
                                         val route = when (n.type) {
                                             NotificationTypes.NEW_ORDER_FOR_STORE ->
                                                 n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.storeOrderDetail(it) }
@@ -194,7 +221,27 @@ fun ProfileSubPagesScreen(
                                             NotificationTypes.PRICE_DROP ->
                                                 n.productId.takeIf { it.isNotBlank() }?.let { AppRoutes.productDetail(it) }
                                             NotificationTypes.STORE_APPLICATION_SUBMITTED ->
-                                                AppRoutes.ADMIN_STORE_APPLICATIONS
+                                                if (userRole == UserRole.ADMIN) AppRoutes.ADMIN_STORE_APPLICATIONS else null
+                                            NotificationTypes.STORE_APPLICATION_APPROVED ->
+                                                AppRoutes.STORE_DASHBOARD
+                                            NotificationTypes.STORE_APPLICATION_REJECTED,
+                                            NotificationTypes.STORE_APPLICATION_UPDATE_REQUESTED ->
+                                                AppRoutes.STORE_APPLICATION_RETRY
+                                            NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED ->
+                                                if (userRole == UserRole.ADMIN) AppRoutes.ADMIN_STORE_UPDATE_REQUESTS else null
+                                            NotificationTypes.STORE_UPDATE_REQUEST_APPROVED ->
+                                                AppRoutes.STORE_DASHBOARD
+                                            NotificationTypes.STORE_UPDATE_REQUEST_REJECTED ->
+                                                AppRoutes.STORE_PROFILE_EDIT
+                                            NotificationTypes.NEW_MESSAGE -> {
+                                                if (n.orderId.isNotBlank() && n.storeId.isNotBlank()) {
+                                                    AppRoutes.messaging(n.storeId, n.orderId)
+                                                } else if (userRole == UserRole.STORE_OWNER) {
+                                                    AppRoutes.storeOrders(tab = 1)
+                                                } else {
+                                                    AppRoutes.profileOrders(tab = 1)
+                                                }
+                                            }
                                             else -> null
                                         }
                                         if (route != null) onNavigateToRoute(route)

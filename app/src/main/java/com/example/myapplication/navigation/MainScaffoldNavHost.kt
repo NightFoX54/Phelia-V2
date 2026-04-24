@@ -7,6 +7,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import com.example.myapplication.viewmodel.UserSettingsViewModel
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -20,11 +22,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.model.ui.UserRole
 import com.example.myapplication.ui.components.BottomNavBar
+import com.google.firebase.Timestamp
 import com.example.myapplication.ui.screens.admin.AdminCatalogScreen
 import com.example.myapplication.ui.screens.admin.AdminDashboardScreen
 import com.example.myapplication.ui.screens.admin.AdminInactiveProductsScreen
 import com.example.myapplication.ui.screens.admin.StoreDetailScreen
 import com.example.myapplication.ui.screens.admin.StoreManagementScreen
+import com.example.myapplication.ui.screens.admin.StoreUpdateRequestsScreen
 import com.example.myapplication.ui.screens.admin.StoreApplicationsAdminScreen
 import com.example.myapplication.ui.screens.admin.UserManagementScreen
 import com.example.myapplication.ui.screens.cart.CartScreen
@@ -42,11 +46,13 @@ import com.example.myapplication.ui.screens.profile.EditStoreScreen
 import com.example.myapplication.ui.screens.profile.ProfileScreen
 import com.example.myapplication.ui.screens.profile.ProfileSubPagesScreen
 import com.example.myapplication.ui.screens.profile.ShippingAddressesScreen
+import com.example.myapplication.ui.screens.profile.StoreApplicationRetryScreen
 import com.example.myapplication.ui.screens.store.ProductFormScreen
 import com.example.myapplication.ui.screens.store.StoreDashboardScreen
 import com.example.myapplication.ui.screens.store.StoreOrderDetailScreen
 import com.example.myapplication.ui.screens.store.StoreOrdersScreen
 import com.example.myapplication.ui.screens.store.PublicStoreScreen
+import com.example.myapplication.ui.screens.messaging.MessagingScreen
 import com.example.myapplication.ui.screens.store.StoreProductsScreen
 import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.CheckoutViewModel
@@ -74,6 +80,7 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
     val storeOwnerProfileViewModel: StoreOwnerProfileViewModel = viewModel(viewModelStoreOwner = activity)
     val storeProductsViewModel: StoreProductsViewModel = viewModel(viewModelStoreOwner = activity)
     val storeOrdersViewModel: StoreOrdersViewModel = viewModel(viewModelStoreOwner = activity)
+    val userSettingsViewModel: UserSettingsViewModel = viewModel(viewModelStoreOwner = activity)
     val user by sessionViewModel.user.collectAsState()
     val profile = user
     if (profile == null) {
@@ -127,17 +134,38 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             modifier = Modifier.padding(padding),
         ) {
             composable(AppRoutes.HOME) {
+                val notifications by userSettingsViewModel.notifications.collectAsState()
+                val customerChats by orderHistoryViewModel.chats.collectAsState()
+                LaunchedEffect(Unit) {
+                    userSettingsViewModel.loadNotifications()
+                }
+
+                val uid = orderHistoryViewModel.getCurrentUserId()
+                val unreadThreads = if (uid.isBlank()) 0 else customerChats.count { chat ->
+                    val lastRead: Timestamp? = chat.lastReadBy[uid]
+                    lastRead == null || lastRead.seconds < chat.lastMessageTimestamp.seconds
+                }
                 HomeScreen(
+                    userName = profile.name,
+                    unreadNotificationsCount = notifications.count { !it.isRead },
+                    unreadMessagesCount = unreadThreads,
                     onOpenNotifications = { navController.navigate(AppRoutes.PROFILE_NOTIFICATIONS) },
+                    onOpenMessages = { navController.navigate(AppRoutes.profileOrders(tab = 1)) },
                     onOpenCart = { navController.navigate(AppRoutes.CART) },
-                    onOpenProducts = { navController.navigate(AppRoutes.PRODUCTS) },
+                    onOpenProducts = { navController.navigate(AppRoutes.products(saleOnly = false)) },
+                    onOpenSaleProducts = { navController.navigate(AppRoutes.products(saleOnly = true)) },
                     onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
                     onOpenStore = { storeId: String -> navController.navigate(AppRoutes.publicStore(storeId)) },
                     favoritesViewModel = favoritesViewModel,
                 )
             }
-            composable(AppRoutes.PRODUCTS) {
+            composable(
+                route = AppRoutes.PRODUCTS,
+                arguments = AppRoutes.productsArgs,
+            ) { backStackEntry ->
+                val saleOnly = backStackEntry.arguments?.getBoolean("saleOnly") ?: false
                 ProductListingScreen(
+                    showOnlyDiscounted = saleOnly,
                     onBack = { navController.popBackStack() },
                     onOpenProduct = { navController.navigate(AppRoutes.productDetail(it)) },
                     onOpenStore = { storeId: String -> navController.navigate(AppRoutes.publicStore(storeId)) },
@@ -231,7 +259,13 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(AppRoutes.PROFILE_EDIT) { ProfileSubPagesScreen("Edit Profile", onBack = { navController.popBackStack() }) }
+            composable(AppRoutes.PROFILE_EDIT) { 
+                ProfileSubPagesScreen(
+                    "Edit Profile", 
+                    onBack = { navController.popBackStack() },
+                    sessionViewModel = sessionViewModel
+                ) 
+            }
             composable(AppRoutes.PROFILE_ADDRESS) {
                 ShippingAddressesScreen(
                     accountViewModel = customerAccountViewModel,
@@ -253,6 +287,9 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             }
             composable(AppRoutes.PROFILE_HELP) { ProfileSubPagesScreen("Help & Support", onBack = { navController.popBackStack() }) }
             composable(AppRoutes.PROFILE_SETTINGS) { ProfileSubPagesScreen("Settings", onBack = { navController.popBackStack() }) }
+            composable(AppRoutes.STORE_APPLICATION_RETRY) {
+                StoreApplicationRetryScreen(onBack = { navController.popBackStack() })
+            }
             composable(
                 route = AppRoutes.PROFILE_ORDER_DETAIL,
                 arguments = AppRoutes.profileOrderDetailArgs,
@@ -264,13 +301,41 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onOpenProduct = { productId ->
                         navController.navigate(AppRoutes.productDetail(productId))
                     },
+                    onMessageStore = { storeId, suborderId ->
+                        navController.navigate(AppRoutes.messaging(storeId, suborderId))
+                    }
                 )
             }
-            composable(AppRoutes.PROFILE_ORDERS) {
+            composable(
+                route = AppRoutes.MESSAGING,
+                arguments = AppRoutes.messagingArgs,
+            ) { backStackEntry ->
+                val storeId = backStackEntry.arguments?.getString("storeId").orEmpty()
+                val suborderId = backStackEntry.arguments?.getString("suborderId").orEmpty()
+                MessagingScreen(
+                    storeId = storeId,
+                    suborderId = suborderId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = AppRoutes.PROFILE_ORDERS,
+                arguments = listOf(
+                    androidx.navigation.navArgument("tab") {
+                        type = androidx.navigation.NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                 OrderHistoryScreen(
                     viewModel = orderHistoryViewModel,
                     onBack = { navController.popBackStack() },
                     onOpenOrderDetail = { id -> navController.navigate(AppRoutes.profileOrderDetail(id)) },
+                    onOpenChat = { storeId, suborderId ->
+                        navController.navigate(AppRoutes.messaging(storeId, suborderId))
+                    },
+                    initialTab = initialTab,
                 )
             }
             composable(AppRoutes.PROFILE_FAVORITES) {
@@ -284,14 +349,23 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
             composable(AppRoutes.STORE_DASHBOARD) {
                 StoreDashboardScreen(
                     storeProductsViewModel = storeProductsViewModel,
+                    userSettingsViewModel = userSettingsViewModel,
                     onAddProduct = { navController.navigate(AppRoutes.PRODUCT_FORM) },
                     onOpenProductDetail = { navController.navigate(AppRoutes.storeProductDetail(it)) },
                     onEditProduct = { navController.navigate(AppRoutes.productFormEdit(it)) },
+                    onNavigateToRetry = { navController.navigate(AppRoutes.STORE_APPLICATION_RETRY) },
+                    onOpenNotifications = { navController.navigate(AppRoutes.PROFILE_NOTIFICATIONS) },
+                    onBack = {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable(AppRoutes.STORE_PRODUCTS) {
                 StoreProductsScreen(
                     viewModel = storeProductsViewModel,
+                    onBack = { navController.popBackStack() },
                     onAddProduct = { navController.navigate(AppRoutes.PRODUCT_FORM) },
                     onEditProduct = { navController.navigate(AppRoutes.productFormEdit(it)) },
                     onOpenProductDetail = { id -> navController.navigate(AppRoutes.storeProductDetail(id)) },
@@ -319,10 +393,24 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onEditProduct = { navController.navigate(AppRoutes.productFormEdit(productId)) },
                 )
             }
-            composable(AppRoutes.STORE_ORDERS) {
+            composable(
+                route = AppRoutes.STORE_ORDERS,
+                arguments = listOf(
+                    androidx.navigation.navArgument("tab") {
+                        type = androidx.navigation.NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                 StoreOrdersScreen(
                     viewModel = storeOrdersViewModel,
+                    onBack = { navController.popBackStack() },
                     onOpenOrder = { navController.navigate(AppRoutes.storeOrderDetail(it)) },
+                    onOpenChat = { storeId, suborderId ->
+                        navController.navigate(AppRoutes.messaging(storeId, suborderId))
+                    },
+                    initialTab = initialTab
                 )
             }
             composable(
@@ -340,6 +428,9 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 StoreOrderDetailScreen(
                     viewModel = detailVm,
                     onBack = { navController.popBackStack() },
+                    onMessageBuyer = { storeId, suborderId ->
+                        navController.navigate(AppRoutes.messaging(storeId, suborderId))
+                    }
                 )
             }
 
@@ -347,10 +438,14 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                 AdminDashboardScreen(
                     onManageUsers = { navController.navigate(AppRoutes.USER_MANAGEMENT) },
                     onManageStores = { navController.navigate(AppRoutes.STORE_MANAGEMENT) },
+                    onStoreUpdateRequests = { navController.navigate(AppRoutes.ADMIN_STORE_UPDATE_REQUESTS) },
                     onInactiveProducts = { navController.navigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) },
                     onStoreApplications = { navController.navigate(AppRoutes.ADMIN_STORE_APPLICATIONS) },
                     onCatalogMeta = { navController.navigate(AppRoutes.ADMIN_CATALOG) },
                 )
+            }
+            composable(AppRoutes.ADMIN_STORE_UPDATE_REQUESTS) {
+                StoreUpdateRequestsScreen(onBack = { navController.popBackStack() })
             }
             composable(AppRoutes.ADMIN_CATALOG) {
                 AdminCatalogScreen(onBack = { navController.popBackStack() })

@@ -262,6 +262,8 @@ private fun AddressFormDialog(
     var country by remember { mutableStateOf(initial?.country.orEmpty().ifBlank { "TR" }) }
     var isDefault by remember { mutableStateOf(initial?.isDefault ?: true) }
 
+    var errors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
     LaunchedEffect(initial?.addressId) {
         label = initial?.label.orEmpty()
         fullName = initial?.fullName.orEmpty()
@@ -273,6 +275,7 @@ private fun AddressFormDialog(
         postalCode = initial?.postalCode.orEmpty()
         country = initial?.country.orEmpty().ifBlank { "TR" }
         isDefault = initial?.isDefault ?: true
+        errors = emptyMap()
     }
 
     AlertDialog(
@@ -285,15 +288,71 @@ private fun AddressFormDialog(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Label (e.g. Home)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = line1, onValueChange = { line1 = it }, label = { Text("Address line 1") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it; errors = errors - "label" },
+                    label = { Text("Label (e.g. Home) *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("label"),
+                    supportingText = { errors["label"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = fullName,
+                    onValueChange = { fullName = it; errors = errors - "fullName" },
+                    label = { Text("Full name *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("fullName"),
+                    supportingText = { errors["fullName"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it; errors = errors - "phone" },
+                    label = { Text("Phone *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("phone"),
+                    supportingText = { errors["phone"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = line1,
+                    onValueChange = { line1 = it; errors = errors - "line1" },
+                    label = { Text("Address line 1 *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("line1"),
+                    supportingText = { errors["line1"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
                 OutlinedTextField(value = line2, onValueChange = { line2 = it }, label = { Text("Address line 2 (optional)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = district, onValueChange = { district = it }, label = { Text("District") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text("City") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = postalCode, onValueChange = { postalCode = it }, label = { Text("Postal code") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = country, onValueChange = { country = it }, label = { Text("Country") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = district,
+                    onValueChange = { district = it; errors = errors - "district" },
+                    label = { Text("District *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("district"),
+                    supportingText = { errors["district"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it; errors = errors - "city" },
+                    label = { Text("City *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("city"),
+                    supportingText = { errors["city"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = postalCode,
+                    onValueChange = { postalCode = it; errors = errors - "postalCode" },
+                    label = { Text("Postal code *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("postalCode"),
+                    supportingText = { errors["postalCode"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
+                OutlinedTextField(
+                    value = country,
+                    onValueChange = { country = it; errors = errors - "country" },
+                    label = { Text("Country *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errors.containsKey("country"),
+                    supportingText = { errors["country"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isDefault, onCheckedChange = { isDefault = it })
                     Text("Set as default address")
@@ -303,9 +362,20 @@ private fun AddressFormDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (line1.isBlank() || city.isBlank() || fullName.isBlank()) return@TextButton
+                    val newErrors = buildMap {
+                        if (label.isBlank()) put("label", "Label is required (e.g. Home).")
+                        if (fullName.isBlank()) put("fullName", "Full name is required.")
+                        if (phone.isBlank()) put("phone", "Phone is required.")
+                        if (line1.isBlank()) put("line1", "Address line 1 is required.")
+                        if (district.isBlank()) put("district", "District is required.")
+                        if (city.isBlank()) put("city", "City is required.")
+                        if (postalCode.isBlank()) put("postalCode", "Postal code is required.")
+                        if (country.isBlank()) put("country", "Country is required.")
+                    }
+                    errors = newErrors
+                    if (newErrors.isNotEmpty()) return@TextButton
                     val input = ShippingAddressInput(
-                        label = label.ifBlank { "Address" },
+                        label = label.trim(),
                         fullName = fullName,
                         phone = phone,
                         line1 = line1,

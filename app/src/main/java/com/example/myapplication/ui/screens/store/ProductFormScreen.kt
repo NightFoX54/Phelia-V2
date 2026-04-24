@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +100,7 @@ private data class VariantFormState(
     val firestoreVariantId: String? = null,
     val sku: String = "",
     val price: String = "",
+    val discountPercent: String = "",
     val stock: String = "",
     val attributes: Map<String, String> = emptyMap(),
     val imageInput: String = "",
@@ -139,7 +141,7 @@ fun ProductFormScreen(
 
     var variants by remember {
         mutableStateOf(
-            listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null)),
+            listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null, discountPercent = "0")),
         )
     }
 
@@ -204,12 +206,20 @@ fun ProductFormScreen(
                         firestoreVariantId = v.variantId,
                         sku = v.sku,
                         price = v.price.toString(),
+                        discountPercent = v.discountPercent.toString(),
                         stock = v.stock.toString(),
                         attributes = keys.associateWith { k -> v.attributes[k].orEmpty() },
                         images = v.images,
                     )
                 }.ifEmpty {
-                    listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null, attributes = keys.associateWith { "" }))
+                    listOf(
+                        VariantFormState(
+                            id = newLocalVariantId(),
+                            firestoreVariantId = null,
+                            discountPercent = "0",
+                            attributes = keys.associateWith { "" },
+                        ),
+                    )
                 }
             },
             onFailure = { e ->
@@ -282,6 +292,7 @@ fun ProductFormScreen(
         val variantDraftsUpdate = mutableListOf<ProductRepository.VariantDraftPersisted>()
         variants.forEachIndexed { i, v ->
             val p = v.price.toDoubleOrNull()
+            val disc = v.discountPercent.toIntOrNull()
             val s = v.stock.toIntOrNull()
             if (v.sku.isBlank()) {
                 error = "Variant ${i + 1}: SKU is required"
@@ -289,6 +300,10 @@ fun ProductFormScreen(
             }
             if (p == null) {
                 error = "Variant ${i + 1}: price must be a valid number"
+                return
+            }
+            if (disc == null || disc !in 0..100) {
+                error = "Variant ${i + 1}: discount must be a whole number 0 to 100"
                 return
             }
             if (s == null) {
@@ -303,6 +318,7 @@ fun ProductFormScreen(
                         sku = v.sku,
                         attributes = attrs,
                         price = p,
+                        discountPercent = disc,
                         stock = s,
                         images = v.images,
                     ),
@@ -313,6 +329,7 @@ fun ProductFormScreen(
                         sku = v.sku,
                         attributes = attrs,
                         price = p,
+                        discountPercent = disc,
                         stock = s,
                         images = v.images,
                     ),
@@ -366,7 +383,7 @@ fun ProductFormScreen(
                         selectedCategoryId = if (categories.isNotEmpty()) categories.first().categoryId else ""
                         publicImageInput = ""
                         publicImages = emptyList()
-                        variants = listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null))
+                        variants = listOf(VariantFormState(id = newLocalVariantId(), firestoreVariantId = null, discountPercent = "0"))
                     },
                     onFailure = { e ->
                         error = e.message ?: "Could not save product"
@@ -559,6 +576,7 @@ fun ProductFormScreen(
                                     variants = variants + VariantFormState(
                                         id = newLocalVariantId(),
                                         firestoreVariantId = null,
+                                        discountPercent = "0",
                                         attributes = variantAttributeKeys.associateWith { "" },
                                     )
                                 },
@@ -597,6 +615,31 @@ fun ProductFormScreen(
                                             label = { Text("Price") },
                                             modifier = Modifier.weight(1f),
                                         )
+                                        OutlinedTextField(
+                                            value = variant.discountPercent,
+                                            onValueChange = { text -> updateVariant(variant.id) { it.copy(discountPercent = text) } },
+                                            label = { Text("Discount %") },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+
+                                    val finalPriceText by remember(variant.price, variant.discountPercent) {
+                                        derivedStateOf {
+                                            val base = variant.price.toDoubleOrNull()
+                                            val pct = variant.discountPercent.toIntOrNull()
+                                            if (base == null || pct == null) return@derivedStateOf "Final price: —"
+                                            val clamped = pct.coerceIn(0, 100)
+                                            val final = base * (1.0 - (clamped / 100.0))
+                                            "Final price: $" + String.format(java.util.Locale.US, "%.2f", final)
+                                        }
+                                    }
+                                    Text(
+                                        finalPriceText,
+                                        color = Color(0xFF374151),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         OutlinedTextField(
                                             value = variant.stock,
                                             onValueChange = { text -> updateVariant(variant.id) { it.copy(stock = text) } },

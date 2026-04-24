@@ -4,6 +4,14 @@ import android.content.Context
 import android.net.Uri
 import com.example.myapplication.data.model.COLLECTION_STORE_APPLICATIONS
 import com.example.myapplication.data.model.FIELD_APPLICANT_USER_ID
+import com.example.myapplication.data.model.FIELD_APPLICANT_NAME
+import com.example.myapplication.data.model.FIELD_APPLICANT_EMAIL
+import com.example.myapplication.data.model.FIELD_APPLICANT_PHONE
+import com.example.myapplication.data.model.FIELD_BUSINESS_ADDRESS
+import com.example.myapplication.data.model.FIELD_CREATED_AT
+import com.example.myapplication.data.model.FIELD_STORE_DESCRIPTION
+import com.example.myapplication.data.model.FIELD_STORE_LOGO_URL
+import com.example.myapplication.data.model.FIELD_TAX_NUMBER
 import com.example.myapplication.data.model.FIELD_REJECTION_REASON
 import com.example.myapplication.data.model.FIELD_REVIEWED_AT
 import com.example.myapplication.data.model.FIELD_REVIEWED_BY_USER_ID
@@ -71,9 +79,12 @@ class StoreApplicationRepository(
         applicantUserId: String,
         applicantName: String,
         applicantEmail: String,
+        applicantPhone: String = "",
         storeName: String,
         storeDescription: String,
         storeLogoUrl: String,
+        taxNumber: String = "",
+        businessAddress: String = "",
     ): Result<String> = runCatching {
         val trimmedName = storeName.trim()
         if (trimmedName.isBlank()) error("Store name is required.")
@@ -87,9 +98,12 @@ class StoreApplicationRepository(
             applicantUserId = applicantUserId,
             applicantName = applicantName,
             applicantEmail = applicantEmail,
+            applicantPhone = applicantPhone,
             storeName = trimmedName,
             storeDescription = storeDescription.trim(),
             storeLogoUrl = storeLogoUrl.trim(),
+            taxNumber = taxNumber.trim(),
+            businessAddress = businessAddress.trim(),
             status = StoreApplication.STATUS_PENDING,
             createdAtMs = now,
         )
@@ -157,6 +171,7 @@ class StoreApplicationRepository(
 
             val storeRef = db.collection(COLLECTION_STORES).document()
             val now = System.currentTimeMillis()
+            val storeId = storeRef.id
             tx.set(
                 storeRef,
                 mapOf(
@@ -180,10 +195,24 @@ class StoreApplicationRepository(
                     FIELD_REVIEWED_AT to now,
                     FIELD_REVIEWED_BY_USER_ID to adminUserId,
                     FIELD_REJECTION_REASON to "",
+                    "storeId" to storeId, // Link store ID in application too
                 ),
             )
             null
         }.await()
+
+        // We need the storeId for the notification. Let's fetch the app again or trust our transaction.
+        val finalApp = db.collection(COLLECTION_STORE_APPLICATIONS).document(applicationId).get().await()
+        val finalStoreId = finalApp.getString("storeId").orEmpty()
+
+        notificationRepository.sendToUser(
+            userId = uid,
+            type = NotificationTypes.STORE_APPLICATION_APPROVED,
+            title = "Store application approved!",
+            body = "Your application to become a store owner has been approved. You can now access your store dashboard.",
+            storeApplicationId = applicationId,
+            storeId = finalStoreId
+        )
     }
 
     suspend fun rejectApplication(
@@ -210,6 +239,80 @@ class StoreApplicationRepository(
             )
             null
         }.await()
+
+        // Get applicant ID from pre-read data or re-fetch (we already have it from the transaction pre-check if we were careful)
+        // Let's re-fetch the applicant ID to be sure
+        val pre = db.collection(COLLECTION_STORE_APPLICATIONS).document(applicationId).get().await().toStoreApplication()
+        pre?.let {
+            notificationRepository.sendToUser(
+                userId = it.applicantUserId,
+                type = NotificationTypes.STORE_APPLICATION_REJECTED,
+                title = "Store application rejected",
+                body = "Your application was rejected: $reason",
+                storeApplicationId = applicationId,
+            )
+        }
+    }
+
+    suspend fun requestUpdate(applicationId: String, reviewerId: String, reason: String): Result<Unit> = runCatching {
+        val ref = db.collection(COLLECTION_STORE_APPLICATIONS).document(applicationId)
+        val snap = ref.get().await()
+        val app = snap.toStoreApplication() ?: error("Application not found")
+
+        ref.update(
+            mapOf(
+                FIELD_STATUS to StoreApplication.STATUS_UPDATE_REQUESTED,
+                FIELD_REVIEWED_AT to System.currentTimeMillis(),
+                FIELD_REVIEWED_BY_USER_ID to reviewerId,
+                FIELD_REJECTION_REASON to reason,
+            )
+        ).await()
+
+        notificationRepository.sendToUser(
+            userId = app.applicantUserId,
+            type = NotificationTypes.STORE_APPLICATION_UPDATE_REQUESTED,
+            title = "Update requested for your store application",
+            body = "The admin requested an update: $reason",
+            storeApplicationId = applicationId,
+        )
+    }
+
+    suspend fun getApplicationForUser(userId: String): Result<StoreApplication?> = runCatching {
+        if (userId.isBlank()) return@runCatching null
+        val snap = db.collection(COLLECTION_STORE_APPLICATIONS)
+            .whereEqualTo(FIELD_APPLICANT_USER_ID, userId)
+            .get()
+            .await()
+        
+        // Return the latest one if multiple exist (unlikely given current logic)
+        snap.documents.mapNotNull { it.toStoreApplication() }
+            .sortedByDescending { it.createdAtMs }
+            .firstOrNull()
+    }
+
+    suspend fun resubmitApplication(
+        applicationId: String,
+        storeName: String,
+        storeDescription: String,
+        storeLogoUrl: String,
+        taxNumber: String,
+        businessAddress: String,
+        applicantPhone: String,
+    ): Result<Unit> = runCatching {
+        val ref = db.collection(COLLECTION_STORE_APPLICATIONS).document(applicationId)
+        ref.update(
+            mapOf(
+                FIELD_STORE_NAME to storeName.trim(),
+                FIELD_STORE_DESCRIPTION to storeDescription.trim(),
+                FIELD_STORE_LOGO_URL to storeLogoUrl.trim(),
+                FIELD_TAX_NUMBER to taxNumber.trim(),
+                FIELD_BUSINESS_ADDRESS to businessAddress.trim(),
+                FIELD_APPLICANT_PHONE to applicantPhone.trim(),
+                FIELD_STATUS to StoreApplication.STATUS_PENDING,
+                FIELD_CREATED_AT to System.currentTimeMillis(),
+                FIELD_REJECTION_REASON to "",
+            )
+        ).await()
     }
 
     companion object {

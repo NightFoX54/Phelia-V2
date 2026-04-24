@@ -82,6 +82,9 @@ fun RegisterScreen(
 
     var storeName by remember { mutableStateOf("") }
     var storeDescription by remember { mutableStateOf("") }
+    var taxNumber by remember { mutableStateOf("") }
+    var businessAddress by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var pickedLogoUri by remember { mutableStateOf<Uri?>(null) }
 
     var error by remember { mutableStateOf<String?>(null) }
@@ -398,6 +401,38 @@ fun RegisterScreen(
                                 singleLine = true,
                                 shape = RoundedCornerShape(14.dp),
                             )
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = taxNumber,
+                                    onValueChange = { taxNumber = it },
+                                    label = { Text("Tax Number (Vergi No)") },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !busy,
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(14.dp),
+                                )
+                                OutlinedTextField(
+                                    value = phone,
+                                    onValueChange = { phone = it },
+                                    label = { Text("Phone") },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !busy,
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(14.dp),
+                                )
+                            }
+
+                            OutlinedTextField(
+                                value = businessAddress,
+                                onValueChange = { businessAddress = it },
+                                label = { Text("Business Address") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !busy,
+                                minLines = 2,
+                                shape = RoundedCornerShape(14.dp),
+                            )
+
                             OutlinedTextField(
                                 value = storeDescription,
                                 onValueChange = { 
@@ -507,6 +542,10 @@ fun RegisterScreen(
                                             error = "Store name is required"
                                             return@Button
                                         }
+                                        if (taxNumber.isBlank()) {
+                                            error = "Tax number is required"
+                                            return@Button
+                                        }
                                         busy = true
                                         storeApplySuccess = false
                                         sessionViewModel.registerStoreApplication(
@@ -517,6 +556,9 @@ fun RegisterScreen(
                                             storeName = storeName,
                                             storeDescription = storeDescription,
                                             localLogoUri = pickedLogoUri,
+                                            applicantPhone = phone,
+                                            taxNumber = taxNumber,
+                                            businessAddress = businessAddress,
                                         ) { result ->
                                             busy = false
                                             result.fold(

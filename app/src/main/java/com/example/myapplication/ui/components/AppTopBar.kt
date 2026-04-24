@@ -25,10 +25,22 @@ fun AppTopBar(
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     containerColor: Color = Color.White,
+    contentColor: Color = Color.Unspecified,
 ) {
+    val actualContentColor = if (contentColor == Color.Unspecified) {
+        if (containerColor == Color.White) Color.Black else Color.White
+    } else {
+        contentColor
+    }
+
     CenterAlignedTopAppBar(
         title = {
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = actualContentColor
+            )
         },
         navigationIcon = {
             if (onBack != null) {
@@ -36,6 +48,7 @@ fun AppTopBar(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(id = R.string.back),
+                        tint = actualContentColor
                     )
                 }
             }
@@ -43,6 +56,9 @@ fun AppTopBar(
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = containerColor,
+            titleContentColor = actualContentColor,
+            navigationIconContentColor = actualContentColor,
+            actionIconContentColor = actualContentColor,
         ),
         modifier = modifier,
     )

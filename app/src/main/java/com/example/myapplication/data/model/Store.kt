@@ -9,4 +9,8 @@ data class Store(
     val rating: Double = 0.0,
     val reviewCount: Int = 0,
     val createdAt: Long = 0L,
+    val email: String = "",
+    val phone: String = "",
+    val taxNumber: String = "",
+    val businessAddress: String = "",
 )

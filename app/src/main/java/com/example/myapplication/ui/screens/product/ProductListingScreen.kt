@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -57,6 +58,8 @@ fun ProductListingScreen(
     onOpenProduct: (String) -> Unit,
     onOpenStore: (String) -> Unit,
     favoritesViewModel: FavoritesViewModel,
+    /** When true, only products on sale (non-zero discount) are listed. */
+    showOnlyDiscounted: Boolean = false,
     modifier: Modifier = Modifier,
     catalogViewModel: CatalogViewModel = viewModel(),
 ) {
@@ -67,6 +70,7 @@ fun ProductListingScreen(
     val (selectedPriceRange, setSelectedPriceRange) = remember { mutableIntStateOf(0) }
     val (selectedSort, setSelectedSort) = remember { mutableStateOf("featured") }
     val (showFilters, setShowFilters) = remember { mutableStateOf(false) }
+    var onSaleOnly by remember(showOnlyDiscounted) { mutableStateOf(showOnlyDiscounted) }
 
     val categories = uiState.categories.map { it.name }
     val priceRanges = listOf(
@@ -89,7 +93,8 @@ fun ProductListingScreen(
         val matchesSearch = p.name.contains(query, ignoreCase = true)
         val matchesCategory = activeCategoryName == "All" || p.category == activeCategoryName
         val matchesPrice = p.price >= priceRange.first && p.price <= priceRange.second
-        matchesSearch && matchesCategory && matchesPrice
+        val matchesSaleFilter = !onSaleOnly || p.discountPercent > 0
+        matchesSearch && matchesCategory && matchesPrice && matchesSaleFilter
     }
     filtered = when (selectedSort) {
         "price-asc" -> filtered.sortedBy { it.price }
@@ -101,7 +106,8 @@ fun ProductListingScreen(
     val activeFiltersCount =
         (if (activeCategoryName != "All") 1 else 0) +
             (if (selectedPriceRange != 0) 1 else 0) +
-            (if (selectedSort != "featured") 1 else 0)
+            (if (selectedSort != "featured") 1 else 0) +
+            (if (onSaleOnly) 1 else 0)
 
     Column(
         modifier = modifier
@@ -110,7 +116,11 @@ fun ProductListingScreen(
     ) {
         Surface(color = Color.White, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                AppTopBar(title = "Products", onBack = onBack, containerColor = Color.White)
+                AppTopBar(
+                    title = if (onSaleOnly) "Special offers" else "Products",
+                    onBack = onBack,
+                    containerColor = Color.White,
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -162,8 +172,14 @@ fun ProductListingScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier
-                                    .padding(8.dp)
-                                    .background(Color.Transparent),
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        catalogViewModel.setActiveCategory("All")
+                                        setSelectedPriceRange(0)
+                                        setSelectedSort("featured")
+                                        onSaleOnly = false
+                                    }
+                                    .padding(8.dp),
                             )
                         }
                     }
@@ -180,6 +196,13 @@ fun ProductListingScreen(
                         items = priceRanges.map { it.first },
                         selectedIndex = selectedPriceRange,
                         onSelectIndex = setSelectedPriceRange,
+                    )
+
+                    Text("On sale", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                    FlowChips(
+                        items = listOf("All products", "On sale only"),
+                        selected = if (onSaleOnly) "On sale only" else "All products",
+                        onSelect = { label -> onSaleOnly = (label == "On sale only") },
                     )
 
                     Text("Sort By", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
@@ -269,7 +292,11 @@ fun ProductListingScreen(
 
             item(span = { GridItemSpan(maxCurrentLineSpan) }) {
                 Text(
-                    text = if (uiState.searchQuery.isEmpty()) "All Products" else "Product Results",
+                    text = when {
+                        onSaleOnly -> "On sale"
+                        uiState.searchQuery.isEmpty() -> "All Products"
+                        else -> "Product Results"
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(vertical = 8.dp),

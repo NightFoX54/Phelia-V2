@@ -14,7 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -23,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -52,7 +63,9 @@ fun StoreApplicationsAdminScreen(
     val applications by viewModel.applications.collectAsState()
     val listError by viewModel.listError.collectAsState()
     var rejectTarget by remember { mutableStateOf<StoreApplication?>(null) }
-    var rejectReason by remember { mutableStateOf("") }
+    var updateTarget by remember { mutableStateOf<StoreApplication?>(null) }
+    var detailTarget by remember { mutableStateOf<StoreApplication?>(null) }
+    var actionReason by remember { mutableStateOf("") }
     var actionError by remember { mutableStateOf<String?>(null) }
     var busyId by remember { mutableStateOf<String?>(null) }
 
@@ -106,9 +119,17 @@ fun StoreApplicationsAdminScreen(
                         },
                         onReject = {
                             rejectTarget = app
-                            rejectReason = ""
+                            actionReason = ""
                             actionError = null
                         },
+                        onRequestUpdate = {
+                            updateTarget = app
+                            actionReason = ""
+                            actionError = null
+                        },
+                        onViewDetail = {
+                            detailTarget = app
+                        }
                     )
                 }
             }
@@ -129,8 +150,8 @@ fun StoreApplicationsAdminScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = rejectReason,
-                        onValueChange = { rejectReason = it },
+                        value = actionReason,
+                        onValueChange = { actionReason = it },
                         label = { Text("Reason (optional)") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
@@ -142,7 +163,7 @@ fun StoreApplicationsAdminScreen(
                 Button(
                     onClick = {
                         busyId = app.applicationId
-                        viewModel.reject(app.applicationId, rejectReason) { r ->
+                        viewModel.reject(app.applicationId, actionReason) { r ->
                             busyId = null
                             r.fold(
                                 onSuccess = { rejectTarget = null },
@@ -161,6 +182,94 @@ fun StoreApplicationsAdminScreen(
             },
         )
     }
+
+    updateTarget?.let { app ->
+        AlertDialog(
+            onDismissRequest = { if (busyId == null) updateTarget = null },
+            title = { Text("Request Update") },
+            text = {
+                Column {
+                    Text(
+                        "Ask ${app.applicantName} to update their information. They will receive a notification.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF6B7280),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = actionReason,
+                        onValueChange = { actionReason = it },
+                        label = { Text("Message to applicant") },
+                        placeholder = { Text("e.g. Please provide a clearer tax number.") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        enabled = busyId == null,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (actionReason.isBlank()) {
+                            actionError = "Please provide a reason for the update request."
+                            return@Button
+                        }
+                        busyId = app.applicationId
+                        viewModel.requestUpdate(app.applicationId, actionReason) { r ->
+                            busyId = null
+                            r.fold(
+                                onSuccess = { updateTarget = null },
+                                onFailure = { e -> actionError = e.message ?: "Request update failed" },
+                            )
+                        }
+                    },
+                    enabled = busyId == null,
+                ) { Text("Send Request") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { updateTarget = null },
+                    enabled = busyId == null,
+                ) { Text("Cancel") }
+            },
+        )
+    }
+
+    detailTarget?.let { app ->
+        AlertDialog(
+            onDismissRequest = { detailTarget = null },
+            title = { Text("Application Detail") },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { DetailRow(Icons.Default.Person, "Applicant Name", app.applicantName) }
+                    item { DetailRow(Icons.Default.Email, "Applicant Email", app.applicantEmail) }
+                    item { DetailRow(Icons.Default.Phone, "Applicant Phone", app.applicantPhone.ifBlank { "N/A" }) }
+                    item { Spacer(Modifier.height(4.dp)) }
+                    item { DetailRow(Icons.Default.Business, "Store Name", app.storeName) }
+                    item { DetailRow(Icons.Default.Info, "Tax Number", app.taxNumber.ifBlank { "N/A" }) }
+                    item { DetailRow(Icons.Default.LocationOn, "Business Address", app.businessAddress.ifBlank { "N/A" }) }
+                    item { DetailRow(Icons.Default.Description, "Store Description", app.storeDescription) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { detailTarget = null }) { Text("Close") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(icon, null, modifier = Modifier.size(18.dp), tint = Color(0xFF6B7280))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 @Composable
@@ -169,6 +278,8 @@ private fun StoreApplicationCard(
     busy: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit,
+    onRequestUpdate: () -> Unit,
+    onViewDetail: () -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -212,13 +323,44 @@ private fun StoreApplicationCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                application.storeDescription.ifBlank { "—" },
+                application.storeDescription.ifBlank { "No description provided." },
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF374151),
-                maxLines = 4,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Surface(
+                onClick = onViewDetail,
+                color = Color(0xFFF3F4F6),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF4B5563)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "View Full Details & Tax Information",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFF4B5563),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -226,17 +368,36 @@ private fun StoreApplicationCard(
                 Button(
                     onClick = onApprove,
                     enabled = !busy,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1.2f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
                 ) {
-                    Text(if (busy) "…" else "Approve")
+                    Text(if (busy) "…" else "Approve", fontWeight = FontWeight.Bold)
                 }
+                
+                OutlinedButton(
+                    onClick = onRequestUpdate,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6366F1)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6366F1)),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
+                ) {
+                    Text("Update", fontWeight = FontWeight.SemiBold)
+                }
+
                 OutlinedButton(
                     onClick = onReject,
                     enabled = !busy,
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
                 ) {
-                    Text("Reject")
+                    Text("Reject", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

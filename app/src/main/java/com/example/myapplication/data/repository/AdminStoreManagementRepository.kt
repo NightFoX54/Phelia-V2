@@ -1,6 +1,9 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.model.StoreUpdateRequest
 import com.example.myapplication.data.model.readMillis
+import com.example.myapplication.data.repository.NotificationRepository
+import com.example.myapplication.data.repository.NotificationTypes
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
@@ -31,6 +34,11 @@ data class AdminStoreDetail(
     val totalOrders: Int,
     val joinDate: String,
     val description: String,
+    val email: String,
+    val phone: String,
+    val taxNumber: String,
+    val businessAddress: String,
+    val logo: String,
     val monthlyRevenue: List<Float>,
     val categoryDistribution: List<Float>,
     val categoryLabels: List<String>,
@@ -189,12 +197,92 @@ class AdminStoreManagementRepository(
             totalOrders = totalOrders,
             joinDate = formatDate(storeSnap.readMillis(FIELD_CREATED_AT)),
             description = storeSnap.getString(FIELD_DESCRIPTION).orEmpty(),
+            email = storeSnap.getString(FIELD_EMAIL).orEmpty(),
+            phone = storeSnap.getString(FIELD_PHONE).orEmpty(),
+            taxNumber = storeSnap.getString(FIELD_TAX_NUMBER).orEmpty(),
+            businessAddress = storeSnap.getString(FIELD_BUSINESS_ADDRESS).orEmpty(),
+            logo = storeSnap.getString(FIELD_LOGO).orEmpty(),
             monthlyRevenue = monthlyRevenue,
             categoryDistribution = categoryDistribution,
             categoryLabels = categoryLabels,
             topProducts = topProducts,
             recentOrders = recentOrders,
         )
+    }
+
+    suspend fun fetchUpdateRequests(): Result<List<StoreUpdateRequest>> = runCatching {
+        val snap = db.collection(COLLECTION_STORE_UPDATE_REQUESTS)
+            .whereEqualTo("status", "pending")
+            .get()
+            .await()
+        snap.documents.map { doc ->
+            StoreUpdateRequest(
+                requestId = doc.id,
+                storeId = doc.getString("storeId").orEmpty(),
+                name = doc.getString("name").orEmpty(),
+                description = doc.getString("description").orEmpty(),
+                logo = doc.getString("logo").orEmpty(),
+                email = doc.getString("email").orEmpty(),
+                phone = doc.getString("phone").orEmpty(),
+                taxNumber = doc.getString("taxNumber").orEmpty(),
+                businessAddress = doc.getString("businessAddress").orEmpty(),
+                status = doc.getString("status").orEmpty(),
+                createdAt = doc.getLong("createdAt") ?: 0L
+            )
+        }
+    }
+
+    suspend fun approveUpdateRequest(requestId: String): Result<Unit> = runCatching {
+        val requestRef = db.collection(COLLECTION_STORE_UPDATE_REQUESTS).document(requestId)
+        val requestSnap = requestRef.get().await()
+        if (!requestSnap.exists()) error("Request not found")
+
+        val storeId = requestSnap.getString("storeId") ?: error("Missing storeId")
+        val ownerId = requestSnap.getString("ownerId") ?: ""
+        val storeName = requestSnap.getString("name") ?: "Store"
+        val updateData = mapOf(
+            FIELD_NAME to requestSnap.getString("name"),
+            FIELD_DESCRIPTION to requestSnap.getString("description"),
+            FIELD_LOGO to requestSnap.getString("logo"),
+            FIELD_EMAIL to requestSnap.getString("email"),
+            FIELD_PHONE to requestSnap.getString("phone"),
+            FIELD_TAX_NUMBER to requestSnap.getString("taxNumber"),
+            FIELD_BUSINESS_ADDRESS to requestSnap.getString("businessAddress")
+        )
+
+        db.runBatch { batch ->
+            batch.update(db.collection(COLLECTION_STORES).document(storeId), updateData)
+            batch.update(requestRef, "status", "approved")
+        }.await()
+
+        if (ownerId.isNotBlank()) {
+            NotificationRepository(db).sendToUser(
+                userId = ownerId,
+                type = NotificationTypes.STORE_UPDATE_REQUEST_APPROVED,
+                title = "Update Approved",
+                body = "Your update request for \"$storeName\" has been approved.",
+                storeId = storeId
+            )
+        }
+    }
+
+    suspend fun rejectUpdateRequest(requestId: String): Result<Unit> = runCatching {
+        val requestRef = db.collection(COLLECTION_STORE_UPDATE_REQUESTS).document(requestId)
+        val requestSnap = requestRef.get().await()
+        val ownerId = requestSnap.getString("ownerId") ?: ""
+        val storeName = requestSnap.getString("name") ?: "Store"
+
+        requestRef.update("status", "rejected").await()
+
+        if (ownerId.isNotBlank()) {
+            NotificationRepository(db).sendToUser(
+                userId = ownerId,
+                type = NotificationTypes.STORE_UPDATE_REQUEST_REJECTED,
+                title = "Update Rejected",
+                body = "Your update request for \"$storeName\" has been rejected.",
+                storeId = requestSnap.getString("storeId")
+            )
+        }
     }
 
     private fun formatDate(ms: Long): String {
@@ -215,6 +303,7 @@ class AdminStoreManagementRepository(
         private const val COLLECTION_STORES = "stores"
         private const val COLLECTION_USERS = "users"
         private const val COLLECTION_PRODUCTS = "products"
+        private const val COLLECTION_STORE_UPDATE_REQUESTS = "storeUpdateRequests"
         private const val SUBCOLLECTION_SUBORDERS = "suborders"
         private const val SUBCOLLECTION_ITEMS = "items"
 
@@ -222,6 +311,10 @@ class AdminStoreManagementRepository(
         private const val FIELD_STORE_ID = "storeId"
         private const val FIELD_NAME = "name"
         private const val FIELD_EMAIL = "email"
+        private const val FIELD_PHONE = "phone"
+        private const val FIELD_TAX_NUMBER = "taxNumber"
+        private const val FIELD_BUSINESS_ADDRESS = "businessAddress"
+        private const val FIELD_LOGO = "logo"
         private const val FIELD_DESCRIPTION = "description"
         private const val FIELD_CATEGORY = "category"
         private const val FIELD_RATING = "rating"

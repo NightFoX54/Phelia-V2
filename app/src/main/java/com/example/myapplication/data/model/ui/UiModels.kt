@@ -25,7 +25,12 @@ data class Category(
 data class Product(
     val id: String,
     val name: String,
+    /** Final (discounted) price shown to customers. */
     val price: Double,
+    /** Optional base price (before discount) for list views. */
+    val basePrice: Double? = null,
+    /** 0..100 percent off. */
+    val discountPercent: Int = 0,
     val imageUrl: String,
     val rating: Double,
     val reviewCount: Int = 0,
@@ -58,7 +63,12 @@ data class CartLineUi(
     val quantity: Int,
     val productName: String,
     val brandName: String?,
+    /** Final (discounted) unit price. */
     val unitPrice: Double,
+    /** Base (non-discounted) unit price. */
+    val baseUnitPrice: Double,
+    /** 0..100 percent off. */
+    val discountPercent: Int,
     /** Integer percent from category.taxRate (e.g. 20 => %20). */
     val taxRatePercent: Int,
     val imageUrl: String,

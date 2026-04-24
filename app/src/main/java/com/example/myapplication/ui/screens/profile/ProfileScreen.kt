@@ -67,6 +67,8 @@ fun ProfileScreen(
             StoreOwnerProfileScreen(
                 sessionViewModel = sessionViewModel,
                 storeOwnerProfileViewModel = storeOwnerProfileViewModel,
+                orderHistoryViewModel = orderHistoryViewModel,
+                favoritesViewModel = favoritesViewModel,
                 onNavigate = onNavigate,
                 modifier = modifier,
             )
@@ -163,7 +165,7 @@ fun ProfileScreen(
                         iconTint = MaterialTheme.colorScheme.primary,
                         value = orderCountText,
                         label = "Order History",
-                        onClick = { onNavigate(AppRoutes.PROFILE_ORDERS) },
+                        onClick = { onNavigate(AppRoutes.profileOrders()) },
                         modifier = Modifier.weight(1f),
                     )
                     ProfileQuickCard(
@@ -187,6 +189,7 @@ fun ProfileScreen(
             ) {
                 Column {
                     if (isAdmin) {
+                        ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
                         ProfileMenuRow(icon = Icons.Default.People, label = "Manage Users", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.USER_MANAGEMENT) }
                         ProfileMenuRow(icon = Icons.Default.Storefront, label = "Manage Stores", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.STORE_MANAGEMENT) }
                         ProfileMenuRow(icon = Icons.Default.AppRegistration, label = "Store Applications", tint = Color(0xFF0D9488)) { onNavigate(AppRoutes.ADMIN_STORE_APPLICATIONS) }

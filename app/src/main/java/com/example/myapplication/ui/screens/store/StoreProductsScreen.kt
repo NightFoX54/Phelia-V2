@@ -1,5 +1,16 @@
 package com.example.myapplication.ui.screens.store
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextAlign
+import com.example.myapplication.data.model.StoreApplication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +70,7 @@ import java.util.Locale
 @Composable
 fun StoreProductsScreen(
     viewModel: StoreProductsViewModel,
+    onBack: () -> Unit,
     onAddProduct: () -> Unit,
     onEditProduct: (String) -> Unit,
     onOpenProductDetail: (String) -> Unit,
@@ -90,6 +102,8 @@ fun StoreProductsScreen(
     }
 
     val st = loadState
+    val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    
     confirmDeactivateId?.let { pid ->
         AlertDialog(
             onDismissRequest = { confirmDeactivateId = null },
@@ -120,12 +134,22 @@ fun StoreProductsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF4338CA), Color(0xFF7C3AED))))
+                        .background(brush = Brush.linearGradient(listOf(Color(0xFF4338CA), Color(0xFF7C3AED))))
+                        .padding(top = topPadding)
                         .padding(horizontal = 20.dp, vertical = 18.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("My Products", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                            Text("My Products", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text("${rows.size} products", color = Color.White.copy(alpha = 0.85f))
                         }
                         Button(
@@ -138,7 +162,7 @@ fun StoreProductsScreen(
                             Text("Add")
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -152,11 +176,11 @@ fun StoreProductsScreen(
                                         tint = if (selectedCategory != null) Color.Yellow else Color.White
                                     )
                                 }
-                                androidx.compose.material3.DropdownMenu(
+                                DropdownMenu(
                                     expanded = filterMenuExpanded,
                                     onDismissRequest = { filterMenuExpanded = false }
                                 ) {
-                                    androidx.compose.material3.DropdownMenuItem(
+                                    DropdownMenuItem(
                                         text = { Text("All Categories") },
                                         onClick = {
                                             selectedCategory = null
@@ -164,7 +188,7 @@ fun StoreProductsScreen(
                                         }
                                     )
                                     categories.forEach { cat ->
-                                        androidx.compose.material3.DropdownMenuItem(
+                                        DropdownMenuItem(
                                             text = { Text(cat) },
                                             onClick = {
                                                 selectedCategory = cat
@@ -213,13 +237,28 @@ fun StoreProductsScreen(
                         }
                     }
                 }
-                StoreProductsLoadState.NoStore -> {
+                is StoreProductsLoadState.NoStore -> {
                     item {
-                        Text(
-                            "No store linked to this account.",
-                            modifier = Modifier.padding(24.dp),
-                            color = Color(0xFFDC2626),
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val statusText = when (st.applicationStatus) {
+                                StoreApplication.STATUS_PENDING -> "Your store application is currently under review."
+                                StoreApplication.STATUS_UPDATE_REQUESTED -> "Your application needs some updates. Please check your dashboard."
+                                StoreApplication.STATUS_REJECTED -> "Your application was rejected. Please check your dashboard."
+                                else -> "No store is linked to this account."
+                            }
+                            Text(
+                                statusText,
+                                modifier = Modifier.padding(24.dp),
+                                color = Color(0xFFDC2626),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
                 is StoreProductsLoadState.Error -> {

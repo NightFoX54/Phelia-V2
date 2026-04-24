@@ -34,6 +34,11 @@ fun BottomNavBar(
     role: UserRole,
 ) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val rootRouteForRole = when (role) {
+        UserRole.CUSTOMER -> AppRoutes.HOME
+        UserRole.STORE_OWNER -> AppRoutes.STORE_DASHBOARD
+        UserRole.ADMIN -> AppRoutes.ADMIN_DASHBOARD
+    }
 
     val items = when (role) {
         UserRole.CUSTOMER -> listOf(
@@ -42,16 +47,16 @@ fun BottomNavBar(
             BottomNavItem(AppRoutes.PROFILE, "Profile", Icons.Default.AccountCircle),
         )
         UserRole.STORE_OWNER -> listOf(
+            BottomNavItem(AppRoutes.HOME, "Shop", Icons.Default.Home),
             BottomNavItem(AppRoutes.STORE_DASHBOARD, "Dashboard", Icons.Default.Dashboard),
-            BottomNavItem(AppRoutes.STORE_PRODUCTS, "Products", Icons.Default.Inventory),
             BottomNavItem(AppRoutes.STORE_ORDERS, "Orders", Icons.Default.ShoppingCart),
-            BottomNavItem(AppRoutes.PROFILE, "Store", Icons.Default.AccountCircle),
+            BottomNavItem(AppRoutes.PROFILE, "Me", Icons.Default.AccountCircle),
         )
         UserRole.ADMIN -> listOf(
             BottomNavItem(AppRoutes.ADMIN_DASHBOARD, "Dashboard", Icons.Default.InsertChart),
             BottomNavItem(AppRoutes.USER_MANAGEMENT, "Users", Icons.Default.People),
             BottomNavItem(AppRoutes.STORE_MANAGEMENT, "Stores", Icons.Default.Storefront),
-            BottomNavItem(AppRoutes.PROFILE, "Analytics", Icons.Default.AccountCircle),
+            BottomNavItem(AppRoutes.PROFILE, "Profile", Icons.Default.AccountCircle),
         )
     }
 
@@ -61,10 +66,16 @@ fun BottomNavBar(
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    if (currentRoute == item.route) {
+                        // If already on this route, pop back to its start to "refresh" or just stay
+                    } else {
+                        navController.navigate(item.route) {
+                            popUpTo(rootRouteForRole) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
                 icon = { androidx.compose.material3.Icon(item.icon, contentDescription = null) },

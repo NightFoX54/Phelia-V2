@@ -25,6 +25,7 @@ data class UserNotificationItem(
     val orderId: String,
     val productId: String,
     val storeApplicationId: String,
+    val storeId: String,
     val createdAtMs: Long,
     val isRead: Boolean,
 )
@@ -49,11 +50,13 @@ class UserSettingsRepository(
         query.documents.all { it.id == currentUserId }
     }
 
-    suspend fun updateUserProfile(userId: String, name: String, email: String): Result<Unit> = runCatching {
+    suspend fun updateUserProfile(userId: String, name: String, email: String, phone: String, bio: String): Result<Unit> = runCatching {
         db.collection(COLLECTION_USERS).document(userId).update(
             mapOf(
                 "name" to name,
-                "email" to email
+                "email" to email,
+                "phone" to phone,
+                "bio" to bio
             )
         ).await()
     }
@@ -98,6 +101,34 @@ class UserSettingsRepository(
             .await()
     }
 
+    fun listenNotifications(
+        userId: String,
+        onUpdate: (List<UserNotificationItem>) -> Unit,
+    ): com.google.firebase.firestore.ListenerRegistration =
+        db.collection(COLLECTION_USERS).document(userId)
+            .collection(SUBCOLLECTION_NOTIFICATIONS)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    onUpdate(emptyList())
+                    return@addSnapshotListener
+                }
+                val list = snap?.documents?.map { d ->
+                    UserNotificationItem(
+                        id = d.id,
+                        type = d.getString(FIELD_TYPE).orEmpty(),
+                        title = d.getString(FIELD_TITLE).orEmpty().ifBlank { "Notification" },
+                        body = d.getString(FIELD_BODY).orEmpty(),
+                        orderId = d.getString(FIELD_ORDER_ID).orEmpty(),
+                        productId = d.getString(FIELD_PRODUCT_ID).orEmpty(),
+                        storeApplicationId = d.getString(FIELD_STORE_APPLICATION_ID).orEmpty(),
+                        storeId = d.getString(FIELD_STORE_ID).orEmpty(),
+                        createdAtMs = d.readMillis(FIELD_CREATED_AT),
+                        isRead = d.getBoolean(FIELD_IS_READ) == true,
+                    )
+                }?.sortedByDescending { it.createdAtMs } ?: emptyList()
+                onUpdate(list)
+            }
+
     suspend fun fetchNotifications(userId: String): Result<List<UserNotificationItem>> = runCatching {
         if (userId.isBlank()) error("Not signed in")
         val snap = db.collection(COLLECTION_USERS).document(userId)
@@ -113,6 +144,7 @@ class UserSettingsRepository(
                 orderId = d.getString(FIELD_ORDER_ID).orEmpty(),
                 productId = d.getString(FIELD_PRODUCT_ID).orEmpty(),
                 storeApplicationId = d.getString(FIELD_STORE_APPLICATION_ID).orEmpty(),
+                storeId = d.getString(FIELD_STORE_ID).orEmpty(),
                 createdAtMs = d.readMillis(FIELD_CREATED_AT),
                 isRead = d.getBoolean(FIELD_IS_READ) == true,
             )
@@ -125,6 +157,23 @@ class UserSettingsRepository(
             .collection(SUBCOLLECTION_NOTIFICATIONS).document(notificationId)
             .update(FIELD_IS_READ, true)
             .await()
+    }
+
+    suspend fun markAllNotificationsAsRead(userId: String): Result<Unit> = runCatching {
+        if (userId.isBlank()) error("Invalid request")
+        val unread = db.collection(COLLECTION_USERS).document(userId)
+            .collection(SUBCOLLECTION_NOTIFICATIONS)
+            .whereEqualTo(FIELD_IS_READ, false)
+            .get()
+            .await()
+
+        if (unread.isEmpty) return@runCatching
+
+        val batch = db.batch()
+        unread.documents.forEach { doc ->
+            batch.update(doc.reference, FIELD_IS_READ, true)
+        }
+        batch.commit().await()
     }
 
     suspend fun deleteNotification(userId: String, notificationId: String): Result<Unit> = runCatching {
@@ -157,6 +206,7 @@ class UserSettingsRepository(
         private const val FIELD_ORDER_ID = "orderId"
         private const val FIELD_PRODUCT_ID = "productId"
         private const val FIELD_STORE_APPLICATION_ID = "storeApplicationId"
+        private const val FIELD_STORE_ID = "storeId"
         private const val FIELD_CREATED_AT = "createdAt"
         private const val FIELD_IS_READ = "isRead"
     }

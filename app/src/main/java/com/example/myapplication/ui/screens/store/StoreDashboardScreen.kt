@@ -1,6 +1,9 @@
 package com.example.myapplication.ui.screens.store
 
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
+import com.example.myapplication.navigation.AppRoutes
+import com.example.myapplication.data.model.StoreApplication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,16 +20,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,23 +64,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.myapplication.data.model.StoreOwnerProductRow
 import com.example.myapplication.data.model.StoreWeeklySalesSummary
+import com.example.myapplication.data.repository.UserNotificationItem
 import com.example.myapplication.viewmodel.StoreProductsLoadState
 import com.example.myapplication.viewmodel.StoreProductsViewModel
 import com.example.myapplication.viewmodel.StoreWeeklySalesLoadState
+import com.example.myapplication.viewmodel.UserSettingsViewModel
 import java.util.Locale
 
 @Composable
 fun StoreDashboardScreen(
     storeProductsViewModel: StoreProductsViewModel,
+    userSettingsViewModel: UserSettingsViewModel,
     onAddProduct: () -> Unit,
     onOpenProductDetail: (String) -> Unit,
     onEditProduct: (String) -> Unit,
+    onNavigateToRetry: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val headerGradient = Brush.linearGradient(listOf(Color(0xFF4338CA), Color(0xFF7C3AED)))
@@ -79,7 +93,13 @@ fun StoreDashboardScreen(
     val loadState by storeProductsViewModel.loadState.collectAsState()
     val weeklySales by storeProductsViewModel.weeklySales.collectAsState()
     val salesRangeDays by storeProductsViewModel.salesRangeDays.collectAsState()
+    val notifications by userSettingsViewModel.notifications.collectAsState()
+    val unreadCount = notifications.count { !it.isRead }
     val loadSt = loadState
+
+    LaunchedEffect(Unit) {
+        userSettingsViewModel.loadNotifications()
+    }
 
     val totalStock = rows.sumOf { it.totalStock }
     val totalReviews = rows.sumOf { it.reviewCount }
@@ -100,30 +120,76 @@ fun StoreDashboardScreen(
                         .padding(horizontal = 20.dp, vertical = 18.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        if (onBack != null) {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            }
+                        }
                         Column(modifier = Modifier.weight(1f)) {
                             Text("My Store", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                             Text("Store Dashboard", color = Color.White.copy(alpha = 0.85f))
                         }
-                        Button(
-                            onClick = onAddProduct,
-                            shape = RoundedCornerShape(999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary),
+                        IconButton(
+                            onClick = onOpenNotifications,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(Color.White.copy(alpha = 0.2f)),
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.size(6.dp))
-                            Text("Add", fontWeight = FontWeight.SemiBold)
+                            BadgedBox(
+                                badge = {
+                                    if (unreadCount > 0) {
+                                        Badge(containerColor = Color.Red, contentColor = Color.White) {
+                                            Text(unreadCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = Color.White,
+                                )
+                            }
+                        }
+                        if (loadSt is StoreProductsLoadState.Ready) {
+                            Button(
+                                onClick = onAddProduct,
+                                shape = RoundedCornerShape(999.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary),
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text("Add", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        StatCard(Icons.Default.Inventory, "Products", rows.size.toString(), modifier = Modifier.weight(1f))
-                        StatCard(Icons.Default.TrendingUp, "In stock", totalStock.toString(), modifier = Modifier.weight(1f))
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        StatCard(Icons.Default.Star, "Reviews", totalReviews.toString(), modifier = Modifier.weight(1f))
-                        StatCard(Icons.Default.Inventory, "Variants", totalVariants.toString(), modifier = Modifier.weight(1f))
+                    if (loadSt is StoreProductsLoadState.Ready) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            StatCard(Icons.Default.Inventory, "Products", rows.size.toString(), modifier = Modifier.weight(1f))
+                            StatCard(Icons.Default.TrendingUp, "In stock", totalStock.toString(), modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            StatCard(Icons.Default.Star, "Reviews", totalReviews.toString(), modifier = Modifier.weight(1f))
+                            StatCard(Icons.Default.Inventory, "Variants", totalVariants.toString(), modifier = Modifier.weight(1f))
+                        }
+                    } else if (loadSt is StoreProductsLoadState.NoStore) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            "Complete your store application to start selling products and viewing statistics.",
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
@@ -159,13 +225,46 @@ fun StoreDashboardScreen(
                         }
                     }
                 }
-                StoreProductsLoadState.NoStore -> {
+                is StoreProductsLoadState.NoStore -> {
                     item {
-                        Text(
-                            "No store linked to this account.",
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            color = Color(0xFFDC2626),
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Inventory,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.Gray
+                            )
+                            
+                            val statusText = when (loadSt.applicationStatus) {
+                                StoreApplication.STATUS_PENDING -> "Your account is ready, you will be notified when your store is approved."
+                                StoreApplication.STATUS_UPDATE_REQUESTED -> "Your application needs some updates. Please review and resubmit."
+                                StoreApplication.STATUS_REJECTED -> "Your application was unfortunately rejected. You can view details and try again."
+                                else -> "No store is linked to this account."
+                            }
+                            
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF4B5563)
+                            )
+                            
+                            if (loadSt.applicationStatus == StoreApplication.STATUS_UPDATE_REQUESTED || 
+                                loadSt.applicationStatus == StoreApplication.STATUS_REJECTED) {
+                                Button(
+                                    onClick = onNavigateToRetry,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("View Application")
+                                }
+                            }
+                        }
                     }
                 }
                 is StoreProductsLoadState.Error -> {
@@ -201,13 +300,15 @@ fun StoreDashboardScreen(
             item { Spacer(modifier = Modifier.height(88.dp)) }
         }
 
-        FloatingActionButton(
-            onClick = onAddProduct,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 88.dp),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
+        if (loadSt is StoreProductsLoadState.Ready) {
+            FloatingActionButton(
+                onClick = onAddProduct,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 88.dp),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+            }
         }
     }
 }
@@ -390,7 +491,9 @@ private fun SalesThisWeekSection(
                                 text = rangeOptions.find { it.first == currentRange }?.second ?: "Last 7 Days",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF374151)
+                                color = Color(0xFF374151),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDropDown,
@@ -457,6 +560,13 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
         style = MaterialTheme.typography.labelMedium,
         color = Color(0xFF6B7280),
     )
+    val days = summary.days
+    val nonZeroDays = days.filter { it.revenue > 0.0 }
+    val avgPerDay = if (days.isEmpty()) 0.0 else summary.weekTotalRevenue / days.size.toDouble()
+    val best = nonZeroDays.maxByOrNull { it.revenue }
+    val firstHalf = days.take(maxOf(1, days.size / 2)).sumOf { it.revenue }
+    val secondHalf = days.drop(days.size / 2).sumOf { it.revenue }
+    val trendUp = secondHalf >= firstHalf
     Spacer(modifier = Modifier.height(10.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -475,6 +585,12 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E1B4B),
                 )
+                Text(
+                    "Avg/day $" + String.format(Locale.US, "%.2f", avgPerDay),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF4338CA),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
         }
         Surface(
@@ -489,6 +605,14 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF14532D),
+                )
+                val arrow = if (trendUp) "▲" else "▼"
+                val trendColor = if (trendUp) Color(0xFF16A34A) else Color(0xFFDC2626)
+                Text(
+                    "$arrow Trend",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = trendColor,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -510,6 +634,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
             ) {
                 val barFrac = (day.revenue / maxRev).toFloat().coerceIn(0f, 1f)
                 val barH = maxOf(4.dp, 100.dp * barFrac)
+                val isBest = best?.label == day.label && best.revenue == day.revenue && day.revenue > 0.0
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -523,7 +648,11 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(accent.copy(alpha = 0.85f), accent.copy(alpha = 0.55f)),
+                                    if (isBest) {
+                                        listOf(Color(0xFFF59E0B), Color(0xFFFBBF24))
+                                    } else {
+                                        listOf(accent.copy(alpha = 0.85f), accent.copy(alpha = 0.55f))
+                                    },
                                 ),
                             ),
                     )

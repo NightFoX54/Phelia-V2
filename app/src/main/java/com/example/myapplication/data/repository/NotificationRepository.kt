@@ -9,7 +9,14 @@ object NotificationTypes {
     const val NEW_ORDER_FOR_STORE = "new_order_for_store"
     const val ORDER_STATUS_UPDATED = "order_status_updated"
     const val PRICE_DROP = "price_drop"
+    const val NEW_MESSAGE = "new_message"
     const val STORE_APPLICATION_SUBMITTED = "store_application_submitted"
+    const val STORE_APPLICATION_APPROVED = "store_application_approved"
+    const val STORE_APPLICATION_REJECTED = "store_application_rejected"
+    const val STORE_APPLICATION_UPDATE_REQUESTED = "store_application_update_requested"
+    const val STORE_UPDATE_REQUEST_SUBMITTED = "store_update_request_submitted"
+    const val STORE_UPDATE_REQUEST_APPROVED = "store_update_request_approved"
+    const val STORE_UPDATE_REQUEST_REJECTED = "store_update_request_rejected"
 }
 
 class NotificationRepository(
@@ -23,6 +30,7 @@ class NotificationRepository(
         orderId: String? = null,
         productId: String? = null,
         storeApplicationId: String? = null,
+        storeId: String? = null,
     ): Result<Unit> = runCatching {
         if (userId.isBlank()) return@runCatching
         val ref = db.collection(COLLECTION_USERS).document(userId)
@@ -36,6 +44,7 @@ class NotificationRepository(
                 FIELD_ORDER_ID to orderId.orEmpty(),
                 FIELD_PRODUCT_ID to productId.orEmpty(),
                 FIELD_STORE_APPLICATION_ID to storeApplicationId.orEmpty(),
+                FIELD_STORE_ID to storeId.orEmpty(),
                 FIELD_IS_READ to false,
                 FIELD_CREATED_AT to FieldValue.serverTimestamp(),
             ),
@@ -50,6 +59,7 @@ class NotificationRepository(
         orderId: String? = null,
         productId: String? = null,
         storeApplicationId: String? = null,
+        storeId: String? = null,
     ): Result<Unit> = runCatching {
         userIds.filter { it.isNotBlank() }.distinct().forEach { uid ->
             sendToUser(
@@ -60,8 +70,17 @@ class NotificationRepository(
                 orderId = orderId,
                 productId = productId,
                 storeApplicationId = storeApplicationId,
+                storeId = storeId,
             ).getOrThrow()
         }
+    }
+
+    suspend fun markAsRead(userId: String, notificationId: String): Result<Unit> = runCatching {
+        if (userId.isBlank() || notificationId.isBlank()) return@runCatching
+        db.collection(COLLECTION_USERS).document(userId)
+            .collection(SUBCOLLECTION_NOTIFICATIONS).document(notificationId)
+            .update(FIELD_IS_READ, true)
+            .await()
     }
 
     private companion object {
@@ -74,6 +93,7 @@ class NotificationRepository(
         private const val FIELD_ORDER_ID = "orderId"
         private const val FIELD_PRODUCT_ID = "productId"
         private const val FIELD_STORE_APPLICATION_ID = "storeApplicationId"
+        private const val FIELD_STORE_ID = "storeId"
         private const val FIELD_IS_READ = "isRead"
         private const val FIELD_CREATED_AT = "createdAt"
     }

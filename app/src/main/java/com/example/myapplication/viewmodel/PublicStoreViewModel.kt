@@ -64,6 +64,8 @@ class PublicStoreViewModel(
                     id = s.productId,
                     name = s.name,
                     price = s.minPrice,
+                    basePrice = s.minBasePrice,
+                    discountPercent = s.minDiscountPercent,
                     imageUrl = s.imageUrl,
                     rating = s.rating,
                     reviewCount = s.reviewCount,

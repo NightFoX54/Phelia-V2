@@ -8,7 +8,12 @@ data class CatalogProductSummary(
     val rating: Double,
     val reviewCount: Int,
     val imageUrl: String,
+    /** Minimum final price among active variants. */
     val minPrice: Double,
+    /** Base price (non-discounted) for the variant that produced [minPrice]. */
+    val minBasePrice: Double,
+    /** Discount percent (0..100) for the variant that produced [minPrice]. */
+    val minDiscountPercent: Int,
 )
 
 data class ProductDetailBundle(

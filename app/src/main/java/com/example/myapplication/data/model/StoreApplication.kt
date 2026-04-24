@@ -7,9 +7,12 @@ data class StoreApplication(
     val applicantUserId: String,
     val applicantName: String,
     val applicantEmail: String,
+    val applicantPhone: String = "",
     val storeName: String,
     val storeDescription: String,
     val storeLogoUrl: String,
+    val taxNumber: String = "",
+    val businessAddress: String = "",
     val status: String,
     val createdAtMs: Long,
     val reviewedAtMs: Long = 0L,
@@ -20,6 +23,7 @@ data class StoreApplication(
         const val STATUS_PENDING = "pending"
         const val STATUS_APPROVED = "approved"
         const val STATUS_REJECTED = "rejected"
+        const val STATUS_UPDATE_REQUESTED = "update_requested"
     }
 }
 
@@ -27,9 +31,12 @@ fun StoreApplication.toFirestoreMap(): Map<String, Any> = mapOf(
     FIELD_APPLICANT_USER_ID to applicantUserId,
     FIELD_APPLICANT_NAME to applicantName,
     FIELD_APPLICANT_EMAIL to applicantEmail,
+    FIELD_APPLICANT_PHONE to applicantPhone,
     FIELD_STORE_NAME to storeName,
     FIELD_STORE_DESCRIPTION to storeDescription,
     FIELD_STORE_LOGO_URL to storeLogoUrl,
+    FIELD_TAX_NUMBER to taxNumber,
+    FIELD_BUSINESS_ADDRESS to businessAddress,
     FIELD_STATUS to status,
     FIELD_CREATED_AT to createdAtMs,
     FIELD_REVIEWED_AT to reviewedAtMs,
@@ -44,9 +51,12 @@ fun DocumentSnapshot.toStoreApplication(): StoreApplication? {
         applicantUserId = getString(FIELD_APPLICANT_USER_ID).orEmpty(),
         applicantName = getString(FIELD_APPLICANT_NAME).orEmpty(),
         applicantEmail = getString(FIELD_APPLICANT_EMAIL).orEmpty(),
+        applicantPhone = getString(FIELD_APPLICANT_PHONE).orEmpty(),
         storeName = getString(FIELD_STORE_NAME).orEmpty(),
         storeDescription = getString(FIELD_STORE_DESCRIPTION).orEmpty(),
         storeLogoUrl = getString(FIELD_STORE_LOGO_URL).orEmpty(),
+        taxNumber = getString(FIELD_TAX_NUMBER).orEmpty(),
+        businessAddress = getString(FIELD_BUSINESS_ADDRESS).orEmpty(),
         status = getString(FIELD_STATUS) ?: StoreApplication.STATUS_PENDING,
         createdAtMs = readMillis(FIELD_CREATED_AT),
         reviewedAtMs = readMillis(FIELD_REVIEWED_AT),
@@ -60,9 +70,12 @@ internal const val COLLECTION_STORE_APPLICATIONS = "storeApplications"
 internal const val FIELD_APPLICANT_USER_ID = "applicantUserId"
 internal const val FIELD_APPLICANT_NAME = "applicantName"
 internal const val FIELD_APPLICANT_EMAIL = "applicantEmail"
+internal const val FIELD_APPLICANT_PHONE = "applicantPhone"
 internal const val FIELD_STORE_NAME = "storeName"
 internal const val FIELD_STORE_DESCRIPTION = "storeDescription"
 internal const val FIELD_STORE_LOGO_URL = "storeLogoUrl"
+internal const val FIELD_TAX_NUMBER = "taxNumber"
+internal const val FIELD_BUSINESS_ADDRESS = "businessAddress"
 internal const val FIELD_STATUS = "status"
 internal const val FIELD_CREATED_AT = "createdAt"
 internal const val FIELD_REVIEWED_AT = "reviewedAt"

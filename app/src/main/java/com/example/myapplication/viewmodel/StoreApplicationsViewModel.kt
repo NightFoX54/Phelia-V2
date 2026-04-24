@@ -53,6 +53,17 @@ class StoreApplicationsViewModel(
         }
     }
 
+    fun requestUpdate(applicationId: String, reason: String, onResult: (Result<Unit>) -> Unit) {
+        val adminUid = auth.currentUser?.uid.orEmpty()
+        if (adminUid.isBlank()) {
+            onResult(Result.failure(IllegalStateException("Not signed in")))
+            return
+        }
+        viewModelScope.launch {
+            onResult(repository.requestUpdate(applicationId, adminUid, reason))
+        }
+    }
+
     override fun onCleared() {
         listener?.remove()
         super.onCleared()

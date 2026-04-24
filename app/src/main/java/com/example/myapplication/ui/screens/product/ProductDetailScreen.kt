@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +84,7 @@ import com.example.myapplication.data.model.ProductDetailBundle
 import com.example.myapplication.data.model.ProductVariant
 import com.example.myapplication.data.model.VariantSelection
 import com.example.myapplication.data.model.displayImagesForVariant
+import com.example.myapplication.data.model.finalPrice
 import com.example.myapplication.data.repository.ProductRepository
 import com.example.myapplication.data.repository.ProductStatsRepository
 import com.example.myapplication.ui.product.colorLabelAndComposeColor
@@ -369,7 +371,7 @@ private fun ProductDetailContent(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF111827),
                     )
-                    val price = resolvedVariant?.price ?: variants.minOfOrNull { it.price } ?: 0.0
+                    val price = resolvedVariant?.finalPrice() ?: variants.minOfOrNull { it.finalPrice() } ?: 0.0
                     Text(
                         "$" + String.format("%.2f", price),
                         style = MaterialTheme.typography.headlineMedium,
@@ -377,6 +379,35 @@ private fun ProductDetailContent(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 6.dp),
                     )
+                    resolvedVariant?.let { v ->
+                        val pct = v.discountPercent.coerceIn(0, 100)
+                        if (pct > 0 && v.price > v.finalPrice()) {
+                            val save = (v.price - v.finalPrice()).coerceAtLeast(0.0)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text(
+                                    text = "$" + String.format("%.2f", v.price),
+                                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.LineThrough),
+                                    color = Color(0xFF6B7280),
+                                )
+                                Surface(
+                                    color = Color(0xFFECFDF5),
+                                    shape = RoundedCornerShape(999.dp),
+                                ) {
+                                    Text(
+                                        text = "Save $" + String.format(java.util.Locale.US, "%.2f", save) + " ($pct% OFF)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF065F46),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -467,8 +498,8 @@ private fun ProductDetailContent(
                                             label = {
                                                 Text(
                                                     value,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Clip,
                                                 )
                                             },
                                             modifier = Modifier.alpha(if (available) 1f else 0.45f),
@@ -490,8 +521,8 @@ private fun ProductDetailContent(
                                         label = {
                                             Text(
                                                 value,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Clip,
                                             )
                                         },
                                         modifier = Modifier.alpha(if (available) 1f else 0.45f),
@@ -646,7 +677,7 @@ private fun ProductDetailContent(
         }
 
         if (!isStoreManagement) {
-            val priceVal = resolvedVariant?.price ?: variants.minOfOrNull { it.price } ?: 0.0
+            val priceVal = resolvedVariant?.finalPrice() ?: variants.minOfOrNull { it.finalPrice() } ?: 0.0
             val stockLine = resolvedVariant?.let {
                 if (it.stock > 0) "In stock: ${it.stock}" else "Out of stock"
             } ?: "Select options"
@@ -692,7 +723,7 @@ private fun ProductDetailContent(
                         val label = when {
                             resolvedVariant == null -> "Select options"
                             resolvedVariant.stock <= 0 -> "Out of stock"
-                            else -> "Add to cart — $" + String.format("%.2f", resolvedVariant.price)
+                            else -> "Add to cart — $" + String.format("%.2f", resolvedVariant.finalPrice())
                         }
                         Text(label, fontWeight = FontWeight.Bold)
                     }

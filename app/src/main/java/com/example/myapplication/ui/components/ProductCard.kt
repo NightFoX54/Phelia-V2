@@ -19,12 +19,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -132,6 +135,38 @@ fun ProductCard(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 6.dp),
             )
+            val pct = product.discountPercent.coerceIn(0, 100)
+            val base = product.basePrice
+            if (pct > 0 && base != null && base > product.price) {
+                val save = (base - product.price).coerceAtLeast(0.0)
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "$" + String.format(Locale.US, "%.2f", base),
+                        style = MaterialTheme.typography.bodySmall.merge(
+                            TextStyle(textDecoration = TextDecoration.LineThrough),
+                        ),
+                        color = Color(0xFF6B7280),
+                    )
+                    Surface(
+                        color = Color(0xFFECFDF5),
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(
+                            text = "-$pct% · Save $" + String.format(Locale.US, "%.2f", save),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = Color(0xFF065F46),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -52,6 +52,7 @@ import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.CheckoutViewModel
 import com.example.myapplication.viewmodel.CustomerAccountViewModel
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun CheckoutScreen(
@@ -194,6 +195,15 @@ fun CheckoutScreen(
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,
                                         )
+                                        val pct = line.discountPercent.coerceIn(0, 100)
+                                        if (pct > 0 && line.baseUnitPrice > line.unitPrice) {
+                                            val save = (line.baseUnitPrice - line.unitPrice).coerceAtLeast(0.0)
+                                            Text(
+                                                "Discount: $pct% (save $" + String.format(Locale.US, "%.2f", save) + " each)",
+                                                color = Color(0xFF065F46),
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        }
                                         Text(
                                             "Qty: ${line.quantity}",
                                             color = Color(0xFF6B7280),

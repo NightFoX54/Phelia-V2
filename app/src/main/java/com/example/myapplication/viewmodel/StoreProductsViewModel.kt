@@ -8,6 +8,7 @@ import com.example.myapplication.data.remote.FirebaseRemoteDataSource
 import com.example.myapplication.data.repository.OrderRepository
 import com.example.myapplication.data.repository.ProductRepository
 import com.example.myapplication.data.repository.StoreRepository
+import com.example.myapplication.data.repository.StoreApplicationRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -23,6 +24,7 @@ class StoreProductsViewModel(
     private val storeRepository: StoreRepository = StoreRepository(),
     private val productRepository: ProductRepository = ProductRepository(),
     private val orderRepository: OrderRepository = OrderRepository(),
+    private val storeApplicationRepository: StoreApplicationRepository = StoreApplicationRepository(),
 ) : ViewModel() {
 
     private val _rows = MutableStateFlow<List<StoreOwnerProductRow>>(emptyList())
@@ -60,7 +62,8 @@ class StoreProductsViewModel(
             _loadState.value = StoreProductsLoadState.Loading
             val storeId = storeRepository.getStoreIdForOwner(uid)
             if (storeId.isNullOrBlank()) {
-                _loadState.value = StoreProductsLoadState.NoStore
+                val app = storeApplicationRepository.getApplicationForUser(uid).getOrNull()
+                _loadState.value = StoreProductsLoadState.NoStore(app?.status)
                 return@launch
             }
             activeStoreId = storeId
@@ -164,7 +167,7 @@ sealed interface StoreProductsLoadState {
     data object Idle : StoreProductsLoadState
     data object Loading : StoreProductsLoadState
     data object Ready : StoreProductsLoadState
-    data object NoStore : StoreProductsLoadState
+    data class NoStore(val applicationStatus: String? = null) : StoreProductsLoadState
     data class Error(val message: String) : StoreProductsLoadState
 }
 

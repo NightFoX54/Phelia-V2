@@ -4,6 +4,8 @@ import android.net.Uri
 import com.example.myapplication.data.model.Store
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
+import com.example.myapplication.data.repository.NotificationRepository
+import com.example.myapplication.data.repository.NotificationTypes
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -65,6 +67,50 @@ class StoreRepository(
         ref.downloadUrl.await().toString()
     }
 
+    suspend fun submitStoreUpdateRequest(
+        ownerId: String,
+        name: String,
+        description: String,
+        logoUrl: String,
+        email: String,
+        phone: String,
+        taxNumber: String,
+        businessAddress: String,
+    ): Result<Unit> = runCatching {
+        val storeId = getStoreIdForOwner(ownerId) ?: error("No store found for this account.")
+        
+        val updateData = mapOf(
+            "storeId" to storeId,
+            "ownerId" to ownerId,
+            "name" to name.trim(),
+            "description" to description.trim(),
+            "logo" to logoUrl.trim(),
+            "email" to email.trim(),
+            "phone" to phone.trim(),
+            "taxNumber" to taxNumber.trim(),
+            "businessAddress" to businessAddress.trim(),
+            "status" to "pending",
+            "createdAt" to System.currentTimeMillis()
+        )
+
+        db.collection(COLLECTION_STORE_UPDATE_REQUESTS)
+            .add(updateData)
+            .await()
+
+        // Notify admins
+        val admins = db.collection("users").whereEqualTo("role", "admin").get().await()
+        val notificationRepo = NotificationRepository(db)
+        admins.documents.forEach { adminDoc ->
+            notificationRepo.sendToUser(
+                userId = adminDoc.id,
+                type = NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED,
+                title = "Store Update Request",
+                body = "Store \"$name\" has submitted a change request for approval.",
+                storeId = storeId
+            )
+        }
+    }
+
     suspend fun updateStoreForOwner(
         ownerId: String,
         name: String,
@@ -122,11 +168,16 @@ class StoreRepository(
             rating = getDouble(FIELD_RATING) ?: 0.0,
             reviewCount = (getLong(FIELD_REVIEW_COUNT) ?: 0L).toInt(),
             createdAt = readMillis(FIELD_CREATED_AT),
+            email = getString(FIELD_EMAIL).orEmpty(),
+            phone = getString(FIELD_PHONE).orEmpty(),
+            taxNumber = getString(FIELD_TAX_NUMBER).orEmpty(),
+            businessAddress = getString(FIELD_BUSINESS_ADDRESS).orEmpty(),
         )
 
     companion object {
         private const val COLLECTION_STORES = "stores"
         private const val COLLECTION_STORE_APPLICATIONS = "storeApplications"
+        private const val COLLECTION_STORE_UPDATE_REQUESTS = "storeUpdateRequests"
         private const val FIELD_OWNER_ID = "ownerId"
         private const val FIELD_NAME = "name"
         private const val FIELD_DESCRIPTION = "description"
@@ -134,5 +185,9 @@ class StoreRepository(
         private const val FIELD_RATING = "rating"
         private const val FIELD_REVIEW_COUNT = "reviewCount"
         private const val FIELD_CREATED_AT = "createdAt"
+        private const val FIELD_EMAIL = "email"
+        private const val FIELD_PHONE = "phone"
+        private const val FIELD_TAX_NUMBER = "taxNumber"
+        private const val FIELD_BUSINESS_ADDRESS = "businessAddress"
     }
 }

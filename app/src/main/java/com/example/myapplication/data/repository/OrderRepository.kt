@@ -285,13 +285,15 @@ class OrderRepository(
             val ownerId = s.getString(FIELD_OWNER_ID).orEmpty()
             if (ownerId.isNotBlank()) ownerIds.add(ownerId)
         }
-        notificationRepository.sendToUsers(
-            userIds = ownerIds.distinct(),
-            type = NotificationTypes.NEW_ORDER_FOR_STORE,
-            title = "New order received",
-            body = "A customer placed an order that includes your store items.",
-            orderId = orderId,
-        )
+            notificationRepository.sendToUsers(
+                userIds = ownerIds.distinct(),
+                type = NotificationTypes.NEW_ORDER_FOR_STORE,
+                title = "New order received",
+                body = "A customer placed an order that includes your store items.",
+                orderId = orderId,
+                // Note: Each owner might have a different storeId in this order.
+                // We'll leave storeId null here so they land on the general dashboard/orders list.
+            )
 
         orderId
     }
@@ -383,8 +385,10 @@ class OrderRepository(
         )
     }
 
-    private fun isOrderCompletedForReview(status: String): Boolean =
-        status == OrderStatus.COMPLETED || status == "delivered"
+    private fun isOrderCompletedForReview(status: String): Boolean {
+        val norm = normalizeOrderStatus(status)
+        return norm == OrderStatus.COMPLETED || norm == "delivered"
+    }
 
     /**
      * Store panel: `suborders` collection group query with `storeId` equality.
@@ -411,6 +415,18 @@ class OrderRepository(
             .get()
             .await()
             .documents
+
+    /** Find a suborder document by its ID across all orders. */
+    suspend fun fetchSuborderById(suborderId: String): DocumentSnapshot? {
+        if (suborderId.isBlank()) return null
+        return db.collectionGroup(SUBCOLLECTION_SUBORDERS)
+            .whereEqualTo(FIELD_SUBORDER_ID, suborderId)
+            .limit(1)
+            .get()
+            .await()
+            .documents
+            .firstOrNull()
+    }
 
     /**
      * Suborders for [storeId] with `createdAt` at or after [sinceMillis].
@@ -571,17 +587,22 @@ class OrderRepository(
             val current = subSnap.getString(FIELD_STATUS).orEmpty()
             val allowed = allowedNextSuborderStatuses(current).map { normalizeOrderStatus(it) }.toSet()
             if (targetNorm !in allowed) error("Invalid status change")
-            val now = FieldValue.serverTimestamp()
-            tx.update(subRef, mapOf(FIELD_STATUS to newStatus, FIELD_UPDATED_AT to now))
+            // Firestore: all tx.get reads must complete before any tx.update/write.
+            val otherSubSnaps = allIds
+                .filter { it != suborderFirestoreId }
+                .associateWith { sid ->
+                    tx.get(orderRef.collection(SUBCOLLECTION_SUBORDERS).document(sid))
+                }
             val statuses = allIds.map { sid ->
                 if (sid == suborderFirestoreId) {
                     newStatus
                 } else {
-                    val s = tx.get(orderRef.collection(SUBCOLLECTION_SUBORDERS).document(sid))
-                    s.getString(FIELD_STATUS).orEmpty()
+                    otherSubSnaps.getValue(sid).getString(FIELD_STATUS).orEmpty()
                 }
             }
             val parentStatus = aggregateParentOrderStatus(statuses)
+            val now = FieldValue.serverTimestamp()
+            tx.update(subRef, mapOf(FIELD_STATUS to newStatus, FIELD_UPDATED_AT to now))
             tx.update(orderRef, mapOf(FIELD_STATUS to parentStatus, FIELD_UPDATED_AT to now))
             null
         }.await()
@@ -592,6 +613,7 @@ class OrderRepository(
                 title = "Order status updated",
                 body = "Your order has a new status: ${orderStatusLabelEnglish(newStatus)}.",
                 orderId = orderId,
+                storeId = storeId
             )
         }
     }

@@ -29,16 +29,15 @@ object CardPanUtils {
 
     fun inferBrand(digits: String): String {
         val d = digits.filter { it.isDigit() }
-        if (d.isEmpty()) return "Card"
-        return when (d[0]) {
-            '4' -> "Visa"
-            '5', '2' -> "Mastercard"
-            '3' -> when {
-                d.startsWith("34") || d.startsWith("37") -> "Amex"
-                else -> "Diners"
-            }
-            '6' -> "Discover"
-            else -> "Card"
+        if (d.isEmpty()) return ""
+        return when {
+            d.startsWith("4") -> "Visa"
+            d.startsWith("5") || (d.length >= 2 && d.substring(0, 2).toIntOrNull() in 22..27) -> "Mastercard"
+            d.startsWith("34") || d.startsWith("37") -> "Amex"
+            d.startsWith("30") || d.startsWith("36") || d.startsWith("38") -> "Diners"
+            d.startsWith("6") -> "Discover"
+            d.startsWith("35") -> "JCB"
+            else -> ""
         }
     }
 

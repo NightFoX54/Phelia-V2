@@ -84,6 +84,36 @@ class StoreOwnerProfileViewModel(
         }
     }
 
+    fun submitUpdateStore(
+        name: String,
+        description: String,
+        logoUrl: String,
+        email: String,
+        phone: String,
+        taxNumber: String,
+        businessAddress: String,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
+        val uid = auth.currentUser?.uid
+        if (uid.isNullOrBlank()) {
+            onResult(Result.failure(IllegalStateException("Not signed in")))
+            return
+        }
+        viewModelScope.launch {
+            val r = repository.submitStoreUpdateRequest(
+                ownerId = uid,
+                name = name,
+                description = description,
+                logoUrl = logoUrl,
+                email = email,
+                phone = phone,
+                taxNumber = taxNumber,
+                businessAddress = businessAddress
+            )
+            onResult(r)
+        }
+    }
+
     fun saveStore(
         name: String,
         description: String,

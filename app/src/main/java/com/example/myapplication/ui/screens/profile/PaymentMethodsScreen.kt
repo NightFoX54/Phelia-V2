@@ -296,7 +296,14 @@ private fun PaymentFormDialog(
                 }
                 OutlinedTextField(
                     value = cardDisplay,
-                    onValueChange = { cardDigits = CardPanUtils.digitsOnly(it) },
+                    onValueChange = { 
+                        val digits = CardPanUtils.digitsOnly(it)
+                        cardDigits = digits
+                        val inferred = CardPanUtils.inferBrand(digits)
+                        if (inferred.isNotBlank()) {
+                            brand = inferred
+                        }
+                    },
                     label = { Text("Card number") },
                     placeholder = { Text("1234 5678 9012 3456") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -342,8 +349,10 @@ private fun PaymentFormDialog(
                 OutlinedTextField(
                     value = brand,
                     onValueChange = { brand = it },
-                    label = { Text("Brand (optional, auto from number)") },
+                    label = { Text("Brand") },
+                    placeholder = { Text("Visa, Mastercard, etc.") },
                     modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isDefault, onCheckedChange = { isDefault = it })

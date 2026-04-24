@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,9 +50,15 @@ import com.example.myapplication.viewmodel.FavoritesViewModel
 
 @Composable
 fun HomeScreen(
+    userName: String,
+    unreadNotificationsCount: Int,
+    unreadMessagesCount: Int,
     onOpenNotifications: () -> Unit,
+    onOpenMessages: () -> Unit,
     onOpenCart: () -> Unit,
     onOpenProducts: () -> Unit,
+    /** Opens catalog filtered to products that have a discount. */
+    onOpenSaleProducts: () -> Unit,
     onOpenProduct: (String) -> Unit,
     onOpenStore: (String) -> Unit,
     favoritesViewModel: FavoritesViewModel,
@@ -57,6 +67,9 @@ fun HomeScreen(
 ) {
     val uiState by catalogViewModel.uiState.collectAsState()
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
+    val onSaleProducts = uiState.allProducts.filter { it.discountPercent > 0 }
+    val hasSpecialOffers = onSaleProducts.isNotEmpty()
+    val maxSalePercent = onSaleProducts.maxOfOrNull { it.discountPercent } ?: 0
 
     LazyColumn(
         modifier = modifier
@@ -78,22 +91,60 @@ fun HomeScreen(
                                 color = Color(0xFF6B7280),
                             )
                             Text(
-                                text = "John Doe",
+                                text = userName.ifBlank { "Guest" },
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
-                        IconButton(
-                            onClick = onOpenNotifications,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(Color(0xFFF3F4F6)),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = Color(0xFF374151),
-                            )
+                            IconButton(
+                                onClick = onOpenMessages,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color(0xFFF3F4F6)),
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (unreadMessagesCount > 0) {
+                                            Badge(containerColor = Color.Red, contentColor = Color.White) {
+                                                Text(unreadMessagesCount.toString())
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Chat,
+                                        contentDescription = "Messages",
+                                        tint = Color(0xFF374151),
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = onOpenNotifications,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color(0xFFF3F4F6)),
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (unreadNotificationsCount > 0) {
+                                            Badge(containerColor = Color.Red, contentColor = Color.White) {
+                                                Text(unreadNotificationsCount.toString())
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color(0xFF374151),
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -118,42 +169,44 @@ fun HomeScreen(
             }
         }
 
-        item {
-            // Featured banner
-            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
-                val gradient = Brush.linearGradient(
-                    colors = listOf(Color(0xFF4338CA), Color(0xFF7C3AED)),
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(gradient)
-                        .padding(18.dp),
-                ) {
-                    Text("Special Offer", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        "Up to 50% OFF",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+        if (hasSpecialOffers) {
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    val gradient = Brush.linearGradient(
+                        colors = listOf(Color(0xFF4338CA), Color(0xFF7C3AED)),
                     )
-                    Text(
-                        "On selected items this week",
-                        color = Color.White.copy(alpha = 0.9f),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onOpenProducts,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color(0xFF4338CA),
-                        ),
-                        shape = RoundedCornerShape(999.dp),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(gradient)
+                            .padding(18.dp),
                     ) {
-                        Text("Shop Now", fontWeight = FontWeight.SemiBold)
+                        Text("Special Offer", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "Up to $maxSalePercent% OFF",
+                            color = Color.White,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val count = onSaleProducts.size
+                        Text(
+                            if (count == 1) "1 product on sale right now" else "$count products on sale right now",
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onOpenSaleProducts,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF4338CA),
+                            ),
+                            shape = RoundedCornerShape(999.dp),
+                        ) {
+                            Text("Shop Now", fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }

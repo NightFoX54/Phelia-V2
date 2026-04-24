@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.AppRegistration
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -54,6 +55,7 @@ import java.util.Locale
 fun AdminDashboardScreen(
     onManageUsers: () -> Unit,
     onManageStores: () -> Unit,
+    onStoreUpdateRequests: () -> Unit = {},
     onInactiveProducts: () -> Unit = {},
     onStoreApplications: () -> Unit = {},
     onCatalogMeta: () -> Unit = {},
@@ -293,6 +295,17 @@ fun AdminDashboardScreen(
                     Spacer(modifier = Modifier.size(8.dp))
                     Text("Manage Stores", fontWeight = FontWeight.SemiBold)
                 }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onStoreUpdateRequests,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Icon(Icons.Default.Assignment, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Store update requests", fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Button(

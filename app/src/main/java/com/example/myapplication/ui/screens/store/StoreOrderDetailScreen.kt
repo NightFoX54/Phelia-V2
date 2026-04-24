@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.myapplication.data.model.OrderStatus
 import com.example.myapplication.data.model.StoreOrderDetailBundle
 import com.example.myapplication.data.model.StoreOrderItemLine
 import com.example.myapplication.data.model.orderStatusLabelEnglish
@@ -56,6 +58,7 @@ fun StoreOrderDetailScreen(
     viewModel: StoreOrderDetailViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onMessageBuyer: (storeId: String, suborderId: String) -> Unit = { _, _ -> },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val updating by viewModel.updating.collectAsState()
@@ -67,17 +70,23 @@ fun StoreOrderDetailScreen(
         viewModel.clearMessage()
     }
 
+    val headerColor = if (uiState is StoreOrderDetailUiState.Ready) {
+        statusMainColor((uiState as StoreOrderDetailUiState.Ready).bundle.ourSuborder.status)
+    } else {
+        Color.White
+    }
+
     Column(
         modifier = modifier.background(Color(0xFFF9FAFB)),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = headerColor, shadowElevation = if (headerColor == Color.White) 1.dp else 0.dp) {
             AppTopBar(
                 title = when (val s = uiState) {
                     is StoreOrderDetailUiState.Ready -> "Order #${s.bundle.order.orderId.takeLast(8).uppercase(Locale.US)}"
                     else -> "Order"
                 },
                 onBack = onBack,
-                containerColor = Color.White,
+                containerColor = headerColor,
             )
         }
 
@@ -108,6 +117,7 @@ fun StoreOrderDetailScreen(
                     allowedNext = state.allowedNextStatuses,
                     updating = updating,
                     onStatusSelected = { viewModel.updateSuborderStatus(it) },
+                    onMessageBuyer = onMessageBuyer,
                 )
             }
         }
@@ -120,6 +130,7 @@ private fun StoreOrderDetailBody(
     allowedNext: List<String>,
     updating: Boolean,
     onStatusSelected: (String) -> Unit,
+    onMessageBuyer: (storeId: String, suborderId: String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var pendingStatusChange by remember { mutableStateOf<String?>(null) }
@@ -167,6 +178,16 @@ private fun StoreOrderDetailBody(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(orderStatusLabelEnglish(pkg.status), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    
+                    TextButton(
+                        onClick = { onMessageBuyer(pkg.storeId, pkg.suborderId) },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Mail, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Contact Customer")
+                    }
+
                     if (allowedNext.isNotEmpty()) {
                         Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                             TextButton(onClick = { menuOpen = true }, enabled = !updating) {
@@ -329,4 +350,15 @@ private fun SummaryRowStore(label: String, value: Double, bold: Boolean = false)
         Text(label, modifier = Modifier.weight(1f), fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text("$" + String.format(Locale.US, "%.2f", value), fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     }
+}
+
+private fun statusMainColor(status: String): Color = when (status) {
+    OrderStatus.COMPLETED, "delivered" -> Color(0xFF10B981) // Green
+    OrderStatus.SHIPPED -> Color(0xFF3B82F6) // Blue
+    OrderStatus.CANCELLED -> Color(0xFFEF4444) // Red
+    OrderStatus.PREPARING, "processing" -> Color(0xFFF59E0B) // Orange
+    OrderStatus.ORDER_CONFIRMED, "confirmed" -> Color(0xFF6366F1) // Indigo
+    OrderStatus.ORDER_RECEIVED, "pending" -> Color(0xFF6B7280) // Gray
+    OrderStatus.IN_PROGRESS -> Color(0xFF0D9488) // Teal
+    else -> Color(0xFF6B7280)
 }

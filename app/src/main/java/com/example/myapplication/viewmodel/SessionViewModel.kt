@@ -155,8 +155,15 @@ class SessionViewModel(
         storeName: String,
         storeDescription: String,
         localLogoUri: Uri?,
+        applicantPhone: String = "",
+        taxNumber: String = "",
+        businessAddress: String = "",
         onResult: (Result<Unit>) -> Unit,
     ) {
+        if (taxNumber.isBlank()) {
+            onResult(Result.failure(IllegalArgumentException("Tax number is required")))
+            return
+        }
         viewModelScope.launch {
             val appRepo = StoreApplicationRepository()
             
@@ -181,9 +188,12 @@ class SessionViewModel(
                             applicantUserId = uid,
                             applicantName = name.trim(),
                             applicantEmail = email.trim(),
+                            applicantPhone = applicantPhone.trim(),
                             storeName = storeName,
                             storeDescription = storeDescription,
                             storeLogoUrl = logoUrl,
+                            taxNumber = taxNumber.trim(),
+                            businessAddress = businessAddress.trim(),
                         ).getOrThrow()
                     }.fold(
                         onSuccess = {
@@ -203,6 +213,8 @@ class SessionViewModel(
 
     fun signOut() {
         authRepository.signOut()
+        _user.value = null
+        _sessionState.value = SessionState.SignedOut
     }
 
     fun clearAuthNotice() {
@@ -213,5 +225,12 @@ class SessionViewModel(
         val u = _user.value ?: return
         _user.value = u.copy(role = role)
         _sessionState.value = SessionState.SignedIn(_user.value!!)
+    }
+
+    fun updateProfileInfo(name: String, email: String) {
+        val u = _user.value ?: return
+        val newUser = u.copy(name = name, email = email)
+        _user.value = newUser
+        _sessionState.value = SessionState.SignedIn(newUser)
     }
 }

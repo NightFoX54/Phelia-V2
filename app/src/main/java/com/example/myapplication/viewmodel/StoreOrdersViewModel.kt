@@ -1,8 +1,11 @@
 package com.example.myapplication.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.model.ChatThread
 import com.example.myapplication.data.model.StoreSuborderListRow
+import com.example.myapplication.data.repository.MessagingRepository
 import com.example.myapplication.data.repository.OrderRepository
 import com.example.myapplication.data.repository.StoreRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -12,22 +15,28 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class StoreOrdersViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val orderRepository: OrderRepository = OrderRepository(),
     private val storeRepository: StoreRepository = StoreRepository(),
+    private val messagingRepository: MessagingRepository = MessagingRepository(),
 ) : ViewModel() {
 
     private val _rows = MutableStateFlow<List<StoreSuborderListRow>>(emptyList())
     val rows: StateFlow<List<StoreSuborderListRow>> = _rows.asStateFlow()
+
+    private val _chats = MutableStateFlow<List<ChatThread>>(emptyList())
+    val chats: StateFlow<List<ChatThread>> = _chats.asStateFlow()
 
     private val _loadState = MutableStateFlow<StoreOrdersLoadState>(StoreOrdersLoadState.Idle)
     val loadState: StateFlow<StoreOrdersLoadState> = _loadState.asStateFlow()
 
     private var subListener: ListenerRegistration? = null
     private var enrichJob: Job? = null
+    private var chatJob: Job? = null
     private var activeStoreId: String? = null
 
     private val authListener = FirebaseAuth.AuthStateListener { user ->
@@ -35,8 +44,11 @@ class StoreOrdersViewModel(
         subListener = null
         enrichJob?.cancel()
         enrichJob = null
+        chatJob?.cancel()
+        chatJob = null
         activeStoreId = null
         _rows.value = emptyList()
+        _chats.value = emptyList()
         if (user == null) {
             _loadState.value = StoreOrdersLoadState.Idle
             return@AuthStateListener
@@ -84,6 +96,15 @@ class StoreOrdersViewModel(
                 }
             }
         }
+
+        chatJob?.cancel()
+        chatJob = viewModelScope.launch {
+            messagingRepository.listenToStoreChats(storeId)
+                .catch { e -> Log.e("StoreOrdersVM", "Error collecting store chats", e) }
+                .collect {
+                    _chats.value = it
+                }
+        }
     }
 
     /**
@@ -104,9 +125,12 @@ class StoreOrdersViewModel(
         }
     }
 
+    fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
+
     override fun onCleared() {
         auth.removeAuthStateListener(authListener)
         enrichJob?.cancel()
+        chatJob?.cancel()
         subListener?.remove()
         super.onCleared()
     }

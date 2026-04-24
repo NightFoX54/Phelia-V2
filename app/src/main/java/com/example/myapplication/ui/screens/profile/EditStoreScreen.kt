@@ -58,6 +58,10 @@ fun EditStoreScreen(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var logoUrl by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var taxNumber by remember { mutableStateOf("") }
+    var businessAddress by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var uploadLogoBusy by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
@@ -79,11 +83,15 @@ fun EditStoreScreen(
         }
     }
 
-    LaunchedEffect(store?.storeId, store?.name, store?.description, store?.logo) {
+    LaunchedEffect(store?.storeId, store?.name, store?.description, store?.logo, store?.email, store?.phone, store?.taxNumber, store?.businessAddress) {
         store?.let {
             name = it.name
             description = it.description
             logoUrl = it.logo
+            email = it.email
+            phone = it.phone
+            taxNumber = it.taxNumber
+            businessAddress = it.businessAddress
         }
     }
 
@@ -121,6 +129,42 @@ fun EditStoreScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !saving && !uploadLogoBusy,
                     minLines = 4,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Contact Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saving && !uploadLogoBusy,
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Contact Phone") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saving && !uploadLogoBusy,
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = taxNumber,
+                    onValueChange = { taxNumber = it },
+                    label = { Text("Tax Number") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saving && !uploadLogoBusy,
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = businessAddress,
+                    onValueChange = { businessAddress = it },
+                    label = { Text("Business Address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !saving && !uploadLogoBusy,
+                    minLines = 2,
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("Store logo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -194,16 +238,30 @@ fun EditStoreScreen(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    "Note: Submitting these changes will send them to an administrator for approval. Your store details will update once approved.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
                 Button(
                     onClick = {
                         saving = true
                         errorText = null
                         success = false
-                        viewModel.saveStore(name, description, logoUrl) { result ->
+                        viewModel.submitUpdateStore(
+                            name = name,
+                            description = description,
+                            logoUrl = logoUrl,
+                            email = email,
+                            phone = phone,
+                            taxNumber = taxNumber,
+                            businessAddress = businessAddress
+                        ) { result ->
                             saving = false
                             result.fold(
                                 onSuccess = { success = true },
-                                onFailure = { e -> errorText = e.message ?: "Could not save" },
+                                onFailure = { e -> errorText = e.message ?: "Could not submit update" },
                             )
                         }
                     },
@@ -217,7 +275,7 @@ fun EditStoreScreen(
                             color = Color.White,
                         )
                     } else {
-                        Text("Save changes")
+                        Text("Submit for Approval")
                     }
                 }
             }
