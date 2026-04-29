@@ -17,14 +17,14 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.myapplication.ui.components.AppTopBar
@@ -158,61 +160,81 @@ fun ProductListingScreen(
         }
 
         if (showFilters) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(0.dp),
-                modifier = Modifier.fillMaxWidth(),
+            Dialog(
+                onDismissRequest = { setShowFilters(false) },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
             ) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("Filters", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        if (activeFiltersCount > 0) {
-                            Text(
-                                text = "Clear All",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        catalogViewModel.setActiveCategory("All")
-                                        setSelectedPriceRange(0)
-                                        setSelectedSort("featured")
-                                        onSaleOnly = false
-                                    }
-                                    .padding(8.dp),
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFFF9FAFB),
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Surface(color = Color.White, shadowElevation = 1.dp) {
+                            AppTopBar(
+                                title = "Filters",
+                                onBack = { setShowFilters(false) },
+                                containerColor = Color.White,
                             )
                         }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Text("Filter options", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                if (activeFiltersCount > 0) {
+                                    Text(
+                                        text = "Clear All",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                catalogViewModel.setActiveCategory("All")
+                                                setSelectedPriceRange(0)
+                                                setSelectedSort("featured")
+                                                onSaleOnly = false
+                                            }
+                                            .padding(8.dp),
+                                    )
+                                }
+                            }
+
+                            Text("Category", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+                            FlowChips(
+                                items = categories,
+                                selected = activeCategoryName,
+                                onSelect = { catalogViewModel.setActiveCategory(it) },
+                            )
+
+                            Text("Price Range", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            FlowChips(
+                                items = priceRanges.map { it.first },
+                                selectedIndex = selectedPriceRange,
+                                onSelectIndex = setSelectedPriceRange,
+                            )
+
+                            Text("On sale", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            FlowChips(
+                                items = listOf("All products", "On sale only"),
+                                selected = if (onSaleOnly) "On sale only" else "All products",
+                                onSelect = { label -> onSaleOnly = (label == "On sale only") },
+                            )
+
+                            Text("Sort By", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            FlowChips(
+                                items = sortOptions.map { it.first },
+                                selected = sortOptions.firstOrNull { it.second == selectedSort }?.first ?: "Featured",
+                                onSelect = { label ->
+                                    setSelectedSort(sortOptions.first { it.first == label }.second)
+                                },
+                            )
+                            Spacer(modifier = Modifier.padding(bottom = 20.dp))
+                        }
                     }
-
-                    Text("Category", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
-                    FlowChips(
-                        items = categories,
-                        selected = activeCategoryName,
-                        onSelect = { catalogViewModel.setActiveCategory(it) },
-                    )
-
-                    Text("Price Range", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
-                    FlowChips(
-                        items = priceRanges.map { it.first },
-                        selectedIndex = selectedPriceRange,
-                        onSelectIndex = setSelectedPriceRange,
-                    )
-
-                    Text("On sale", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
-                    FlowChips(
-                        items = listOf("All products", "On sale only"),
-                        selected = if (onSaleOnly) "On sale only" else "All products",
-                        onSelect = { label -> onSaleOnly = (label == "On sale only") },
-                    )
-
-                    Text("Sort By", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
-                    FlowChips(
-                        items = sortOptions.map { it.first },
-                        selected = sortOptions.firstOrNull { it.second == selectedSort }?.first ?: "Featured",
-                        onSelect = { label ->
-                            setSelectedSort(sortOptions.first { it.first == label }.second)
-                        },
-                    )
                 }
             }
         }
