@@ -21,6 +21,7 @@ data class CatalogUiState(
     val categories: List<Category> = emptyList(),
     val allStores: List<com.example.myapplication.data.model.Store> = emptyList(),
     val filteredStores: List<com.example.myapplication.data.model.Store> = emptyList(),
+    val selectedHomeCategories: Set<String> = emptySet(),
 )
 
 class CatalogViewModel(
@@ -81,6 +82,21 @@ class CatalogViewModel(
         applyFilters()
     }
 
+    fun toggleHomeCategory(name: String) {
+        if (name.isBlank()) return
+        _uiState.update { state ->
+            val next = state.selectedHomeCategories.toMutableSet()
+            if (!next.add(name)) next.remove(name)
+            state.copy(selectedHomeCategories = next)
+        }
+        applyFilters()
+    }
+
+    fun clearHomeCategories() {
+        _uiState.update { it.copy(selectedHomeCategories = emptySet()) }
+        applyFilters()
+    }
+
     private fun applyFilters() {
         _uiState.update { state ->
             val query = state.searchQuery.trim()
@@ -96,11 +112,14 @@ class CatalogViewModel(
             }
 
             // 2. Filter Products
-            val activeCategory = state.categories.find { it.isActive }?.name ?: "All"
-            var filteredProds = if (activeCategory == "All") {
+            val selectedHomeCategories = state.selectedHomeCategories
+            var filteredProds = if (selectedHomeCategories.isEmpty()) {
                 state.allProducts
             } else {
-                state.allProducts.filter { it.category == activeCategory }
+                state.allProducts.filter { prod ->
+                    val cat = prod.category.orEmpty()
+                    cat.isNotBlank() && selectedHomeCategories.contains(cat)
+                }
             }
 
             if (keywords.isNotEmpty()) {

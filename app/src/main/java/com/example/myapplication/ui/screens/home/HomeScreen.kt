@@ -17,21 +17,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.myapplication.ui.components.CategoryChipsRow
 import com.example.myapplication.ui.components.ProductCard
 import com.example.myapplication.ui.components.SearchField
 import com.example.myapplication.viewmodel.CatalogViewModel
@@ -70,6 +76,12 @@ fun HomeScreen(
     val onSaleProducts = uiState.allProducts.filter { it.discountPercent > 0 }
     val hasSpecialOffers = onSaleProducts.isNotEmpty()
     val maxSalePercent = onSaleProducts.maxOfOrNull { it.discountPercent } ?: 0
+    var showFilterDialog by remember { mutableStateOf(false) }
+    val allCategoryNames = uiState.categories
+        .map { it.name }
+        .filter { it != "All" }
+        .sortedBy { it.lowercase() }
+    val selectedCount = uiState.selectedHomeCategories.size
 
     LazyColumn(
         modifier = modifier
@@ -161,11 +173,31 @@ fun HomeScreen(
         item {
             // Categories
             Surface(color = Color.White) {
-                CategoryChipsRow(
-                    categories = uiState.categories,
-                    onSelect = { catalogViewModel.setActiveCategory(it) },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = if (selectedCount == 0) "All categories" else "$selectedCount categories selected",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF374151),
+                    )
+                    Button(
+                        onClick = { showFilterDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text("Filter Categories")
+                    }
+                }
             }
         }
 
@@ -337,6 +369,34 @@ fun HomeScreen(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+
+    if (showFilterDialog) {
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Filter Categories") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    allCategoryNames.forEach { categoryName ->
+                        FilterChip(
+                            selected = uiState.selectedHomeCategories.contains(categoryName),
+                            onClick = { catalogViewModel.toggleHomeCategory(categoryName) },
+                            label = { Text(categoryName) },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterDialog = false }) {
+                    Text("Done")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { catalogViewModel.clearHomeCategories() }) {
+                    Text("Clear")
+                }
+            },
+        )
     }
 }
 

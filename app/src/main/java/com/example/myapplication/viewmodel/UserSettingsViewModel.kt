@@ -6,11 +6,13 @@ import com.example.myapplication.data.model.User
 import com.example.myapplication.data.repository.UserNotificationItem
 import com.example.myapplication.data.repository.UserSettings
 import com.example.myapplication.data.repository.UserSettingsRepository
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class UserSettingsViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -166,5 +168,57 @@ class UserSettingsViewModel(
 
     fun clearMessage() {
         _message.value = null
+    }
+
+    fun sendPasswordResetEmail() {
+        val currentUser = auth.currentUser
+        val email = currentUser?.email.orEmpty()
+        if (email.isBlank()) {
+            _message.value = "No account email found for password reset."
+            return
+        }
+        viewModelScope.launch {
+            _loading.value = true
+            runCatching {
+                auth.sendPasswordResetEmail(email).await()
+            }.fold(
+                onSuccess = {
+                    _message.value = "Password reset email sent to $email."
+                },
+                onFailure = {
+                    _message.value = it.message ?: "Could not send password reset email."
+                },
+            )
+            _loading.value = false
+        }
+    }
+
+    fun changePassword(currentPassword: String, newPassword: String) {
+        val currentUser = auth.currentUser
+        val email = currentUser?.email.orEmpty()
+        if (currentUser == null || email.isBlank()) {
+            _message.value = "No signed-in email account found."
+            return
+        }
+        if (newPassword.length < 6) {
+            _message.value = "New password must be at least 6 characters."
+            return
+        }
+        viewModelScope.launch {
+            _loading.value = true
+            runCatching {
+                val credential = EmailAuthProvider.getCredential(email, currentPassword)
+                currentUser.reauthenticate(credential).await()
+                currentUser.updatePassword(newPassword).await()
+            }.fold(
+                onSuccess = {
+                    _message.value = "Password updated successfully."
+                },
+                onFailure = {
+                    _message.value = it.message ?: "Could not change password."
+                },
+            )
+            _loading.value = false
+        }
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -84,6 +86,7 @@ fun ProfileSubPagesScreen(
     var phone by remember { mutableStateOf("+90 5XX XXX XX XX") }
     var bio by remember { mutableStateOf("Tech enthusiast and deal hunter.") }
     var emailError by remember { mutableStateOf<String?>(null) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(userProfile) {
         userProfile?.let {
@@ -177,7 +180,16 @@ fun ProfileSubPagesScreen(
                             }
                         }
                     }
-                    SecurityCard()
+                    SecurityCard(
+                        isLoading = loading,
+                        statusMessage = message,
+                        onChangePassword = { showChangePasswordDialog = true },
+                        onEnable2fa = {
+                            // Keep behavior explicit until 2FA backend is available.
+                            settingsVm.updateSettings(userSettings.copy(biometricLogin = true))
+                            settingsVm.saveSettings()
+                        },
+                    )
                 }
                 "Notifications" -> {
                     if (loading) {
@@ -347,6 +359,17 @@ fun ProfileSubPagesScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+
+    if (showChangePasswordDialog) {
+        ChangePasswordDialog(
+            isLoading = loading,
+            onDismiss = { showChangePasswordDialog = false },
+            onSubmit = { current, next ->
+                settingsVm.changePassword(currentPassword = current, newPassword = next)
+                showChangePasswordDialog = false
+            },
+        )
+    }
 }
 
 private fun formatNotificationDate(ms: Long): String {
@@ -368,11 +391,17 @@ private fun BadgeLike(text: String) {
 }
 
 @Composable
-private fun ChipButton(text: String, warning: Boolean = false) {
+private fun ChipButton(
+    text: String,
+    warning: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+) {
     Surface(
-        onClick = {},
+        onClick = onClick,
         shape = RoundedCornerShape(999.dp),
         color = if (warning) Color(0xFFFEF2F2) else Color(0xFFF3F4F6),
+        modifier = modifier,
     ) {
         Text(
             text = text,
@@ -403,21 +432,142 @@ private fun SettingRow(label: String, value: String, warning: Boolean = false) {
 }
 
 @Composable
-private fun SecurityCard() {
+private fun SecurityCard(
+    isLoading: Boolean,
+    statusMessage: String?,
+    onChangePassword: () -> Unit,
+    onEnable2fa: () -> Unit,
+) {
     Card(
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.padding(horizontal = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Security", fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFFE0E7FF), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFF4338CA),
+                    )
+                }
+                Text("Security", fontWeight = FontWeight.Bold, color = Color(0xFF312E81))
+            }
             Text("Last password update: 30 days ago", color = Color(0xFF6B7280))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChipButton("Change Password")
-                ChipButton("Enable 2FA")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ChipButton(
+                    text = if (isLoading) "Sending..." else "Change Password",
+                    modifier = Modifier.weight(1f),
+                    onClick = onChangePassword,
+                )
+                ChipButton(
+                    text = "Enable 2FA",
+                    modifier = Modifier.weight(1f),
+                    onClick = onEnable2fa,
+                )
+            }
+            if (!statusMessage.isNullOrBlank()) {
+                Text(
+                    text = statusMessage,
+                    color = if (statusMessage.contains("could not", ignoreCase = true) ||
+                        statusMessage.contains("no account", ignoreCase = true)
+                    ) Color(0xFFDC2626) else Color(0xFF16A34A),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
+}
+
+@Composable
+private fun ChangePasswordDialog(
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (currentPassword: String, newPassword: String) -> Unit,
+) {
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change Password") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = {
+                        currentPassword = it
+                        errorText = null
+                    },
+                    label = { Text("Current Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = {
+                        newPassword = it
+                        errorText = null
+                    },
+                    label = { Text("New Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = {
+                        confirmPassword = it
+                        errorText = null
+                    },
+                    label = { Text("Confirm New Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!errorText.isNullOrBlank()) {
+                    Text(
+                        text = errorText.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !isLoading,
+                onClick = {
+                    when {
+                        currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() ->
+                            errorText = "Please fill all password fields."
+                        newPassword.length < 6 ->
+                            errorText = "New password must be at least 6 characters."
+                        newPassword != confirmPassword ->
+                            errorText = "New password and confirmation do not match."
+                        else -> onSubmit(currentPassword, newPassword)
+                    }
+                },
+            ) {
+                Text(if (isLoading) "Saving..." else "Save")
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !isLoading, onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable
