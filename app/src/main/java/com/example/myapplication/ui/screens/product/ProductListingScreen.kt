@@ -239,7 +239,7 @@ fun ProductListingScreen(
 
         Text(
             text = "${filtered.size} " + if (filtered.size == 1) "product found" else "products found",
-            color = Color(0xFF6B7280),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
         )
@@ -290,7 +290,7 @@ fun ProductListingScreen(
                                         Icon(
                                             imageVector = Icons.Default.Storefront,
                                             contentDescription = null,
-                                            tint = Color(0xFF4338CA)
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }

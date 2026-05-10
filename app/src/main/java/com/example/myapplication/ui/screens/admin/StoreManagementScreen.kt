@@ -67,7 +67,7 @@ fun StoreManagementScreen(
         Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(bottom = 12.dp)) {
                 AppTopBar(title = "Store Management", onBack = onBack)
-                Text("${filteredStores.size} stores", color = Color(0xFF6B7280), modifier = Modifier.padding(horizontal = 20.dp))
+                Text("${filteredStores.size} stores", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
                     value = searchQuery,
@@ -97,7 +97,7 @@ fun StoreManagementScreen(
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text(msg, color = Color(0xFFDC2626))
+                            Text(msg, color = MaterialTheme.colorScheme.error)
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = { viewModel.refresh() }) {
                                 Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
@@ -120,8 +120,8 @@ fun StoreManagementScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(store.name, fontWeight = FontWeight.Bold)
                                 }
-                                Text(store.ownerName, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
-                                Text(store.ownerEmail, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text(store.ownerName, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                Text(store.ownerEmail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Icon(Icons.Default.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
@@ -130,17 +130,21 @@ fun StoreManagementScreen(
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            StatTile("Products", store.totalProducts.toString(), Color(0xFFEFF6FF), Color(0xFF2563EB), Modifier.weight(1f))
-                            StatTile("Orders", store.totalOrders.toString(), Color(0xFFF0FDF4), Color(0xFF16A34A), Modifier.weight(1f))
-                            StatTile("Sales", formatCompactCurrency(store.totalSales), Color(0xFFF5F3FF), Color(0xFF6D28D9), Modifier.weight(1f))
+                            val scheme = MaterialTheme.colorScheme
+                            StatTile("Products", store.totalProducts.toString(), scheme.primaryContainer, scheme.onPrimaryContainer, Modifier.weight(1f))
+                            StatTile("Orders", store.totalOrders.toString(), scheme.secondaryContainer, scheme.onSecondaryContainer, Modifier.weight(1f))
+                            StatTile("Sales", formatCompactCurrency(store.totalSales), scheme.tertiaryContainer, scheme.onTertiaryContainer, Modifier.weight(1f))
                         }
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text("Joined ${store.joinDate}", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+                        Text("Joined ${store.joinDate}", color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.bodySmall)
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(
                                 onClick = { onOpenStore(store.storeId) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF), contentColor = Color(0xFF4338CA)),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
                                 modifier = Modifier.weight(1f),
                             ) {
                                 Icon(Icons.Default.Visibility, null, modifier = Modifier.size(16.dp))
@@ -152,7 +156,7 @@ fun StoreManagementScreen(
                 }
             }
             if (filteredStores.isEmpty()) {
-                item { Text("No stores found", color = Color(0xFF6B7280), modifier = Modifier.padding(20.dp)) }
+                item { Text("No stores found", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp)) }
             }
         }
     }

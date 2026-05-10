@@ -196,14 +196,14 @@ fun MessagingScreen(
                                                 .clickable {
                                                     clipboard.setText(AnnotatedString(copyPayload))
                                                 },
-                                            tint = Color(0xFF6B7280),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         "Suborder · ${suborderId.takeLast(8).uppercase(Locale.US)}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.Gray,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -214,7 +214,7 @@ fun MessagingScreen(
                                 Text(
                                     "No messages yet—send one below to start the conversation.",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFF6B7280),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(bottom = 8.dp),
                                 )
                             }
@@ -227,7 +227,7 @@ fun MessagingScreen(
                                 horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
                             ) {
                                 Surface(
-                                    color = if (isMe) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB),
+                                    color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                     shape = RoundedCornerShape(
                                         topStart = 16.dp,
                                         topEnd = 16.dp,
@@ -238,7 +238,7 @@ fun MessagingScreen(
                                     Text(
                                         text = msg.text,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        color = if (isMe) Color.White else Color.Black,
+                                        color = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }

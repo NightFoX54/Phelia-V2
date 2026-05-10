@@ -260,35 +260,6 @@ fun StoreDashboardScreen(
                 }
             }
 
-            if (loadSt is StoreProductsLoadState.Ready) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        StoreDashboardSectionNavChip(
-                            label = "Overview",
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            scope.launch { listState.scrollToItem(0) }
-                        }
-                        StoreDashboardSectionNavChip(
-                            label = "Products",
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToStoreProducts,
-                        )
-                        StoreDashboardSectionNavChip(
-                            label = "Orders",
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToStoreOrders,
-                        )
-                    }
-                }
-            }
-
             item {
                 SalesThisWeekSection(
                     state = weeklySales,
@@ -303,8 +274,8 @@ fun StoreDashboardScreen(
                 Surface(
                     onClick = onNavigateToStoreProducts,
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFFEEF2FF),
-                    border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
@@ -313,8 +284,17 @@ fun StoreDashboardScreen(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Products", fontWeight = FontWeight.Bold, color = Color(0xFF3730A3), modifier = Modifier.weight(1f))
-                        Text("${rows.size} items →", color = Color(0xFF4338CA), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Products",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            "${rows.size} items →",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -360,7 +340,7 @@ fun StoreDashboardScreen(
                                 text = statusText,
                                 style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Center,
-                                color = Color(0xFF4B5563)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             
                             if (loadSt.applicationStatus == StoreApplication.STATUS_UPDATE_REQUESTED || 
@@ -380,7 +360,7 @@ fun StoreDashboardScreen(
                         Text(
                             loadSt.message,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            color = Color(0xFFDC2626),
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
@@ -390,7 +370,7 @@ fun StoreDashboardScreen(
                             Text(
                                 "No products yet. Tap Add to create one.",
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                                color = Color(0xFF6B7280),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     } else {
@@ -412,8 +392,8 @@ fun StoreDashboardScreen(
         if (showScrollToTop) {
             FloatingActionButton(
                 onClick = { scope.launch { listState.scrollToItem(0) } },
-                containerColor = Color(0xFF64748B),
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 156.dp),
             ) {
                 Icon(Icons.Default.ExpandLess, contentDescription = "Scroll to top")
@@ -463,7 +443,7 @@ private fun DashboardProductCard(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF))
+                        Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.outline)
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -475,7 +455,7 @@ private fun DashboardProductCard(
                     if (!product.isActive) {
                         Text(
                             "INACTIVE",
-                            color = Color(0xFFDC2626),
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                         )
@@ -488,9 +468,28 @@ private fun DashboardProductCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MiniStat("${product.reviewCount}", "Reviews", Color(0xFFEFF6FF), Color(0xFF2563EB), Modifier.weight(1f))
-                        MiniStat("${product.totalStock}", "Stock", Color(0xFFFFF7ED), Color(0xFFEA580C), Modifier.weight(1f))
-                        MiniStat("${product.variantCount}", "SKU", Color(0xFFF0FDF4), Color(0xFF16A34A), Modifier.weight(1f))
+                        val scheme = MaterialTheme.colorScheme
+                        MiniStat(
+                            "${product.reviewCount}",
+                            "Reviews",
+                            scheme.primaryContainer,
+                            scheme.onPrimaryContainer,
+                            Modifier.weight(1f),
+                        )
+                        MiniStat(
+                            "${product.totalStock}",
+                            "Stock",
+                            scheme.secondaryContainer,
+                            scheme.onSecondaryContainer,
+                            Modifier.weight(1f),
+                        )
+                        MiniStat(
+                            "${product.variantCount}",
+                            "SKU",
+                            scheme.tertiaryContainer,
+                            scheme.onTertiaryContainer,
+                            Modifier.weight(1f),
+                        )
                     }
                 }
             }
@@ -499,7 +498,10 @@ private fun DashboardProductCard(
                 Button(
                     onClick = { onEditProduct(product.productId) },
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF), contentColor = Color(0xFF4338CA)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Default.Edit, null)
@@ -509,7 +511,10 @@ private fun DashboardProductCard(
                 Button(
                     onClick = onRequestDelete,
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF2F2), contentColor = Color(0xFFDC2626)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Default.Delete, null)
@@ -517,42 +522,6 @@ private fun DashboardProductCard(
                     Text("Delete")
                 }
             }
-        }
-    }
-}
-
-/** Full-width segmented shortcuts (equal columns) aligned with 20.dp page gutters. */
-@Composable
-private fun StoreDashboardSectionNavChip(
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier
-            .heightIn(min = 46.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 1.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                label,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
@@ -624,18 +593,18 @@ private fun SalesThisWeekSection(
                         "Sales Summary",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF111827),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         "Revenue from your store packages",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Box {
                     Surface(
                         onClick = { expanded = true },
-                        color = Color(0xFFF3F4F6),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Row(
@@ -647,7 +616,7 @@ private fun SalesThisWeekSection(
                                 text = rangeOptions.find { it.first == currentRange }?.second ?: "Last 7 Days",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF374151),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -655,7 +624,7 @@ private fun SalesThisWeekSection(
                                 imageVector = Icons.Default.ArrowDropDown,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = Color(0xFF6B7280)
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -682,18 +651,18 @@ private fun SalesThisWeekSection(
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color(0xFFE5E7EB),
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading sales…", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9CA3AF))
+                    Text("Loading sales…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 }
                 is StoreWeeklySalesLoadState.Error -> {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(state.message, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall)
+                    Text(state.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Text(
                         "If this is the first time, create the Firestore composite index for collection group \"suborders\" (storeId + createdAt).",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                     TextButton(onClick = onRetry, modifier = Modifier.padding(top = 4.dp)) { Text("Retry") }
@@ -708,13 +677,14 @@ private fun SalesThisWeekSection(
 
 @Composable
 private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
-    val accent = MaterialTheme.colorScheme.primary
-    val accentSoft = Color(0xFFEEF2FF)
+    val scheme = MaterialTheme.colorScheme
+    val accent = scheme.primary
+    val accentSoft = scheme.primaryContainer
     Spacer(modifier = Modifier.height(14.dp))
     Text(
         summary.rangeLabel,
         style = MaterialTheme.typography.labelMedium,
-        color = Color(0xFF6B7280),
+        color = scheme.onSurfaceVariant,
     )
     val days = summary.days
     val nonZeroDays = days.filter { it.revenue > 0.0 }
@@ -736,36 +706,36 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
             modifier = Modifier.weight(1f),
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Total revenue", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4338CA))
+                Text("Total revenue", style = MaterialTheme.typography.labelSmall, color = scheme.onPrimaryContainer)
                 Text(
                     "$" + String.format(Locale.US, "%.2f", summary.weekTotalRevenue),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E1B4B),
+                    color = scheme.onPrimaryContainer,
                 )
                 Text(
                     "Avg/day $" + String.format(Locale.US, "%.2f", avgPerDay),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF4338CA),
+                    color = scheme.onPrimaryContainer.copy(alpha = 0.9f),
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = Color(0xFFF0FDF4),
+            color = scheme.secondaryContainer,
             modifier = Modifier.weight(1f),
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Packages", style = MaterialTheme.typography.labelSmall, color = Color(0xFF15803D))
+                Text("Packages", style = MaterialTheme.typography.labelSmall, color = scheme.onSecondaryContainer)
                 Text(
                     summary.weekSuborderCount.toString(),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF14532D),
+                    color = scheme.onSecondaryContainer,
                 )
                 val arrow = if (trendUp) "▲" else "▼"
-                val trendColor = if (trendUp) Color(0xFF16A34A) else Color(0xFFDC2626)
+                val trendColor = if (trendUp) scheme.tertiary else scheme.error
                 Text(
                     "$arrow Trend",
                     style = MaterialTheme.typography.bodySmall,
@@ -821,7 +791,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                 Text(
                     day.label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -830,7 +800,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                     "$" + String.format(Locale.US, "%.0f", day.revenue),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF374151),
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     modifier = Modifier.padding(top = 4.dp),
@@ -839,12 +809,12 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
         }
     }
     Spacer(modifier = Modifier.height(16.dp))
-    HorizontalDivider(color = Color(0xFFF3F4F6))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Spacer(modifier = Modifier.height(10.dp))
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF3F4F6),
-        border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
@@ -853,35 +823,35 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                 modifier = Modifier.weight(0.22f),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF374151),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 "Revenue",
                 modifier = Modifier.weight(0.38f),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF374151),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 "Orders",
                 modifier = Modifier.weight(0.2f),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF374151),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
     Spacer(modifier = Modifier.height(6.dp))
     val visibleDays = if (!longBreakdown || breakdownExpanded) summary.days else summary.days.take(7)
     visibleDays.forEachIndexed { index, day ->
-        if (index > 0) HorizontalDivider(color = Color(0xFFF9FAFB), thickness = 1.dp)
+        if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), thickness = 1.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(day.label, modifier = Modifier.weight(0.22f), style = MaterialTheme.typography.bodySmall, color = Color(0xFF374151))
+            Text(day.label, modifier = Modifier.weight(0.22f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 "$" + String.format(Locale.US, "%.2f", day.revenue),
                 modifier = Modifier.weight(0.38f),
@@ -892,7 +862,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                 day.suborderCount.toString(),
                 modifier = Modifier.weight(0.2f),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

@@ -38,7 +38,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -89,7 +88,7 @@ fun PaymentMethodsScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No saved payment methods yet.", color = Color(0xFF6B7280))
+                    Text("No saved payment methods yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -172,7 +171,7 @@ fun PaymentMethodsScreen(
                             }
                         }
                     },
-                ) { Text("Remove", color = Color(0xFFDC2626)) }
+                ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
@@ -201,12 +200,12 @@ private fun PaymentCard(
                 Text(method.label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (method.isDefault) {
                     Surface(
-                        color = Color(0xFFEEF2FF),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(
                             "Primary",
-                            color = Color(0xFF4338CA),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -221,11 +220,11 @@ private fun PaymentCard(
             )
             Text(
                 method.holderName,
-                color = Color(0xFF4B5563),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 "Expires %02d/%d".format(method.expiryMonth, method.expiryYear % 100),
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -311,7 +310,7 @@ private fun PaymentFormDialog(
                 Text(
                     "Card number and CVV are not stored on the server; only a masked number and last digits are saved (like production apps with a payment provider).",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 initial?.let { doc ->
                     Text(
@@ -322,7 +321,7 @@ private fun PaymentFormDialog(
                     Text(
                         "Enter a new card number only if you want to replace this card.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 OutlinedTextField(
@@ -348,7 +347,7 @@ private fun PaymentFormDialog(
                         else -> "Brand is detected automatically from the card number."
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedTextField(
                     value = cvv,
@@ -457,14 +456,15 @@ private fun PaymentFormDialog(
 
 @Composable
 private fun ProfileChip(text: String, warning: Boolean = false, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = if (warning) Color(0xFFFEF2F2) else Color(0xFFF3F4F6),
+        color = if (warning) scheme.errorContainer else scheme.surfaceVariant,
     ) {
         Text(
             text = text,
-            color = if (warning) Color(0xFFDC2626) else Color(0xFF374151),
+            color = if (warning) scheme.onErrorContainer else scheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             style = MaterialTheme.typography.bodySmall,
         )

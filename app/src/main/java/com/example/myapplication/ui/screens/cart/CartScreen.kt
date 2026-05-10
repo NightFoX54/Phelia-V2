@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.BorderStroke
@@ -78,7 +79,7 @@ fun CartScreen(
                 AppTopBar(title = "My Cart", onBack = onBack)
                 Text(
                     text = "${lines.size} " + if (lines.size == 1) "item" else "items",
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
@@ -108,7 +109,7 @@ fun CartScreen(
                         }
                     }
                     IconButton(onClick = { cartViewModel.clearStockMessages() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Color(0xFF9A3412))
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -116,7 +117,7 @@ fun CartScreen(
 
         if (cartUi.isEnriching && lines.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Loading…", color = Color(0xFF6B7280))
+                Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else if (lines.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -131,7 +132,11 @@ fun CartScreen(
                         Text("🛒", fontSize = 40.sp)
                     }
                     Text("Your cart is empty", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
-                    Text("Browse the store to add items", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 4.dp))
+                    Text(
+                        "Browse the store to add items",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
         } else {
@@ -164,7 +169,7 @@ fun CartScreen(
                                 Row(verticalAlignment = Alignment.Top) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         item.brandName?.let { b ->
-                                            Text(b, style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
+                                            Text(b, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         Text(
                                             item.productName,
@@ -177,7 +182,11 @@ fun CartScreen(
                                             cartViewModel.remove(item.productId, item.variantId)
                                         },
                                     ) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444))
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
                                     }
                                 }
                                 VariantPills(attributes = item.attributes, modifier = Modifier.padding(bottom = 8.dp))
@@ -192,7 +201,7 @@ fun CartScreen(
                                     Text(
                                         "Save $" + String.format(Locale.US, "%.2f", save) + " ($pct% OFF)",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF065F46),
+                                        color = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 } else {
@@ -222,7 +231,11 @@ fun CartScreen(
                                         },
                                         modifier = Modifier.alpha(if (atMax) 0.4f else 1f),
                                     ) {
-                                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                        )
                                     }
                                 }
                             }
@@ -258,15 +271,29 @@ fun CartScreen(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp,
             ) {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
                     Button(
                         onClick = onCheckout,
                         enabled = lines.isNotEmpty(),
                         shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
-                        Text("Checkout — $" + String.format("%.2f", total), fontWeight = FontWeight.Bold)
+                        Text(
+                            "Checkout — $" + String.format("%.2f", total),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
                     }
                 }
             }

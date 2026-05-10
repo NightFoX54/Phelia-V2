@@ -153,7 +153,7 @@ private fun StoreUpdateRequestItem(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = onReject,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFFDC2626)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp)
                 ) {

@@ -68,7 +68,7 @@ fun UserManagementScreen(
         Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(bottom = 12.dp)) {
                 AppTopBar(title = "User Management", onBack = onBack)
-                Text("${filteredUsers.size} users", color = Color(0xFF6B7280), modifier = Modifier.padding(horizontal = 20.dp))
+                Text("${filteredUsers.size} users", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
                     value = searchQuery,
@@ -127,7 +127,7 @@ fun UserManagementScreen(
                 item {
                     Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text(msg, color = Color(0xFFDC2626))
+                            Text(msg, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { viewModel.refresh() }) { Text("Retry") }
                         }
                     }
@@ -143,8 +143,8 @@ fun UserManagementScreen(
                                 }
                                 Column {
                                     Text(user.name, fontWeight = FontWeight.SemiBold)
-                                    Text(user.email, color = Color(0xFF6B7280), style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
-                                    Text("Joined ${formatJoinedDate(user.createdAtMs)}", color = Color(0xFF9CA3AF), style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                                    Text(user.email, color = MaterialTheme.colorScheme.onSurfaceVariant, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                                    Text("Joined ${formatJoinedDate(user.createdAtMs)}", color = MaterialTheme.colorScheme.outline, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                                     if (user.role == "store_owner" && !user.ownedStoreName.isNullOrBlank()) {
                                         Text(
                                             "Store: ${user.ownedStoreName}",
@@ -168,7 +168,7 @@ fun UserManagementScreen(
                 }
             }
             if (filteredUsers.isEmpty()) {
-                item { Text("No users found", color = Color(0xFF6B7280), modifier = Modifier.padding(20.dp)) }
+                item { Text("No users found", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp)) }
             }
         }
     }

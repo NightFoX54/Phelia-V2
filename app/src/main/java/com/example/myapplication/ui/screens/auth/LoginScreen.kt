@@ -99,7 +99,7 @@ fun LoginScreen(
                             .clip(RoundedCornerShape(18.dp))
                             .background(
                                 Brush.linearGradient(
-                                    listOf(MaterialTheme.colorScheme.primary, Color(0xFF7C3AED)),
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,

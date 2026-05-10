@@ -94,7 +94,7 @@ fun StoreDetailScreen(
         val msg = (uiState as AdminStoreDetailUiState.Error).message
         Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
             Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) { AppTopBar(title = "Store Details", onBack = onBack) }
-            Text(msg, modifier = Modifier.padding(20.dp), color = Color(0xFFDC2626))
+            Text(msg, modifier = Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error)
         }
         return
     }
@@ -106,7 +106,7 @@ fun StoreDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xFF1E293B), Color(0xFF0F172A))))
+                .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.onSurface, Color(0xFF0F172A))))
         ) {
             Column {
                 AppTopBar(
@@ -270,7 +270,7 @@ fun StoreDetailScreen(
                 item {
                     ChartCard("Inventory Distribution", Icons.Default.Inventory, Color(0xFF8B5CF6)) {
                         if (store.categoryLabels.isEmpty() || store.categoryDistribution.isEmpty()) {
-                            Text("Data unavailable", color = Color(0xFF94A3B8), modifier = Modifier.padding(20.dp))
+                            Text("Data unavailable", color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(20.dp))
                         } else {
                             ReadableVerticalBarChart(
                                 values = store.categoryLabels.mapIndexed { idx, label ->
@@ -302,7 +302,7 @@ fun StoreDetailScreen(
                             store.topProducts.forEachIndexed { idx, product ->
                                 ProductListItem(idx + 1, product.first, product.second, product.third)
                                 if (idx < store.topProducts.size - 1) {
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
                                 }
                             }
                         }
@@ -328,7 +328,7 @@ fun StoreDetailScreen(
                             store.recentOrders.forEachIndexed { idx, order ->
                                 OrderListItem(order.first, order.second, order.third)
                                 if (idx < store.recentOrders.size - 1) {
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
                                 }
                             }
                         }
@@ -402,19 +402,19 @@ private fun InfoCard(
                     Text(
                         text = label.uppercase(),
                         style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
                     Text(
                         text = value,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF1E293B),
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
                 if (idx < rows.size - 1) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }
@@ -428,18 +428,18 @@ private fun ProductListItem(rank: Int, name: String, category: String, price: St
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            color = Color(0xFFF1F5F9),
+            color = MaterialTheme.colorScheme.outlineVariant,
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.size(32.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(text = rank.toString(), fontWeight = FontWeight.Bold, color = Color(0xFF475569), style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                Text(text = rank.toString(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(modifier = Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(name, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E293B))
-            Text(category, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+            Text(name, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(category, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(price, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
     }
@@ -452,8 +452,8 @@ private fun OrderListItem(orderId: String, date: String, amount: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(orderId, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E293B))
-            Text(date, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+            Text(orderId, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(date, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(amount, fontWeight = FontWeight.Bold, color = Color(0xFF6366F1))
     }
@@ -493,8 +493,8 @@ private fun StatRow(label: String, value: String) {
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f), color = Color(0xFF475569), fontWeight = FontWeight.Medium)
-        Text(value, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+        Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
     }
 }
 

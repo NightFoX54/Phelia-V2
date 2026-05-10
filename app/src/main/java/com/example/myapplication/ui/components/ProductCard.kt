@@ -105,7 +105,7 @@ fun ProductCard(
                             Icon(
                                 imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                tint = if (isFavorite) Color(0xFFEF4444) else scheme.onSurfaceVariant,
+                                tint = if (isFavorite) scheme.error else scheme.onSurfaceVariant,
                             )
                         }
                     }

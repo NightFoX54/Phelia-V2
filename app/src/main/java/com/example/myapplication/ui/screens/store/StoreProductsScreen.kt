@@ -221,7 +221,7 @@ fun StoreProductsScreen(
                     Text(
                         userMessage!!,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = Color(0xFF2563EB),
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -258,7 +258,7 @@ fun StoreProductsScreen(
                             Text(
                                 statusText,
                                 modifier = Modifier.padding(24.dp),
-                                color = Color(0xFFDC2626),
+                                color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -269,7 +269,7 @@ fun StoreProductsScreen(
                         Text(
                             st.message,
                             modifier = Modifier.padding(24.dp),
-                            color = Color(0xFFDC2626),
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
@@ -281,11 +281,11 @@ fun StoreProductsScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Box(modifier = Modifier.size(80.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(999.dp)), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(36.dp))
+                                    Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(36.dp))
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text("No products yet", style = MaterialTheme.typography.titleMedium)
-                                Text("Add a product or adjust search.", color = Color(0xFF6B7280))
+                                Text("Add a product or adjust search.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     } else {
@@ -306,7 +306,7 @@ fun StoreProductsScreen(
         FloatingActionButton(
             onClick = onAddProduct,
             containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 88.dp),
         ) { Icon(Icons.Default.Add, null) }
     }
@@ -344,7 +344,7 @@ private fun StoreProductListCard(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF))
+                        Icon(Icons.Default.Inventory, null, tint = MaterialTheme.colorScheme.outline)
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -361,7 +361,7 @@ private fun StoreProductListCard(
                                 if (!product.isActive) {
                                     Text(
                                         "INACTIVE",
-                                        color = Color(0xFFDC2626),
+                                        color = MaterialTheme.colorScheme.error,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -376,8 +376,21 @@ private fun StoreProductListCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MiniStat("${product.variantCount}", "Variants", Modifier.weight(1f), Color(0xFFEFF6FF), Color(0xFF2563EB))
-                        MiniStat("${product.totalStock}", "Stock", Modifier.weight(1f), Color(0xFFFFF7ED), Color(0xFFEA580C))
+                        val scheme = MaterialTheme.colorScheme
+                        MiniStat(
+                            "${product.variantCount}",
+                            "Variants",
+                            Modifier.weight(1f),
+                            scheme.primaryContainer,
+                            scheme.onPrimaryContainer,
+                        )
+                        MiniStat(
+                            "${product.totalStock}",
+                            "Stock",
+                            Modifier.weight(1f),
+                            scheme.secondaryContainer,
+                            scheme.onSecondaryContainer,
+                        )
                     }
                 }
             }
@@ -387,7 +400,10 @@ private fun StoreProductListCard(
                     onClick = onEdit,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF), contentColor = Color(0xFF4338CA)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                 ) {
                     Icon(Icons.Default.Edit, null)
                     Spacer(modifier = Modifier.size(6.dp))
@@ -398,7 +414,10 @@ private fun StoreProductListCard(
                         onClick = onRequestDeactivate,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF2F2), contentColor = Color(0xFFDC2626)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
                     ) {
                         Icon(Icons.Default.Delete, null)
                         Spacer(modifier = Modifier.size(6.dp))
@@ -409,7 +428,10 @@ private fun StoreProductListCard(
                         onClick = onActivate,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0FDF4), contentColor = Color(0xFF16A34A)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        ),
                     ) {
                         Text("Activate again")
                     }
@@ -421,8 +443,12 @@ private fun StoreProductListCard(
 
 @Composable
 private fun CategoryBadge(text: String) {
-    Box(modifier = Modifier.background(Color(0xFFEEF2FF), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp)) {
-        Text(text, color = Color(0xFF4338CA), style = MaterialTheme.typography.bodySmall)
+    Box(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(text, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
     }
 }
 

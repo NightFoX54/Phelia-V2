@@ -62,7 +62,7 @@ fun AdminSupportTicketDetailScreen(
                 CircularProgressIndicator(modifier = Modifier.padding(48.dp))
             }
             is AdminSupportTicketDetailUiState.Failed -> {
-                Text(s.message, color = Color(0xFFDC2626), modifier = Modifier.padding(20.dp))
+                Text(s.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(20.dp))
             }
             is AdminSupportTicketDetailUiState.Ready -> {
                 Column(
@@ -107,12 +107,12 @@ private fun TicketCard(name: String, email: String, message: String, rawRef: Str
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Customer", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
             Text(name.ifBlank { "—" }, fontWeight = FontWeight.SemiBold)
-            Text(email, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+            Text(email, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             HorizontalDivider()
-            Text("Reference pasted", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
+            Text("Reference pasted", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             Text(rawRef.ifBlank { "—" }, style = MaterialTheme.typography.bodyMedium)
             HorizontalDivider()
-            Text("Message", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
+            Text("Message", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             Text(message, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -136,7 +136,7 @@ private fun OrderResolutionCard(resolvedOrderId: String, bundle: OrderDetailBund
                 return@Column
             }
             if (bundle == null) {
-                Text("Order id: $resolvedOrderId — failed to load details.", color = Color(0xFFDC2626))
+                Text("Order id: $resolvedOrderId — failed to load details.", color = MaterialTheme.colorScheme.error)
                 return@Column
             }
             val o = bundle.order
@@ -145,7 +145,7 @@ private fun OrderResolutionCard(resolvedOrderId: String, bundle: OrderDetailBund
             Text(
                 "Placed: ${formatDate(o.createdAtMs)}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 "Total: $" + String.format(Locale.US, "%.2f", o.totalPrice),
@@ -153,7 +153,7 @@ private fun OrderResolutionCard(resolvedOrderId: String, bundle: OrderDetailBund
             )
             if (bundle.shippingAddressLines.isNotEmpty()) {
                 HorizontalDivider()
-                Text("Shipping", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
+                Text("Shipping", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                 bundle.shippingAddressLines.forEach { line ->
                     Text(line, style = MaterialTheme.typography.bodySmall)
                 }
@@ -165,7 +165,7 @@ private fun OrderResolutionCard(resolvedOrderId: String, bundle: OrderDetailBund
                     "Package: ${orderStatusLabelEnglish(sub.suborder.status)} · $" +
                         String.format(Locale.US, "%.2f", sub.suborder.totalPrice + sub.suborder.totalTax),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 sub.items.forEach { item ->
                     Row(

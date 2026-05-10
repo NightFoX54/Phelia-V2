@@ -56,7 +56,7 @@ fun AdminSupportTicketsScreen(
                     Text(
                         "No open tickets.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(8.dp),
                     )
                 }
@@ -72,25 +72,25 @@ fun AdminSupportTicketsScreen(
                     ) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(t.customerName.ifBlank { "Customer" }, fontWeight = FontWeight.Bold)
-                            Text(t.customerEmail, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                            Text(t.customerEmail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 t.customerMessage,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            HorizontalDivider(color = Color(0xFFF3F4F6))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             val orderLine = when {
                                 t.resolvedOrderId.isNotBlank() ->
                                     "Order: ${orderPublicLabel(t.resolvedOrderId)} (${t.resolvedOrderId})"
                                 else ->
                                     "Order reference (unmatched): ${t.orderReferenceRaw}"
                             }
-                            Text(orderLine, style = MaterialTheme.typography.labelSmall, color = Color(0xFF4338CA))
+                            Text(orderLine, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             Text(
                                 formatTs(t.createdAt.toDate().time),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF9CA3AF),
+                                color = MaterialTheme.colorScheme.outline,
                             )
                         }
                     }

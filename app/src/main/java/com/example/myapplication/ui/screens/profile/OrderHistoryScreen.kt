@@ -262,7 +262,7 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = Color(0xFF9CA3AF)
+                tint = MaterialTheme.colorScheme.outline
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -275,7 +275,7 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
         Text(
             subtitle,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            color = Color(0xFF6B7280)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -303,10 +303,10 @@ private fun CustomerChatCard(
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(48.dp).background(Color(0xFFEEF2FF), CircleShape),
+                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, null, tint = Color(0xFF4338CA))
+                Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -330,7 +330,7 @@ private fun CustomerChatCard(
                         modifier = Modifier
                             .size(18.dp)
                             .clickable { onCopyOrderRef() },
-                        tint = Color(0xFF6B7280),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
@@ -343,7 +343,7 @@ private fun CustomerChatCard(
             Text(
                 formatChatTime(chat.lastMessageTimestamp),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -373,7 +373,7 @@ private fun OrderHistoryCard(order: OrderDoc, onClick: () -> Unit) {
                     Text(
                         formatOrderDate(order.createdAtMs),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.size(4.dp))
                     Text(
@@ -397,11 +397,11 @@ private fun OrderHistoryCard(order: OrderDoc, onClick: () -> Unit) {
                 }
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                Text("Total", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 Text(
                     "$" + String.format(Locale.US, "%.2f", order.totalPrice),
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -413,12 +413,16 @@ private fun formatOrderDate(ms: Long): String {
     return SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.US).format(Date(ms))
 }
 
-private fun statusBadgeColors(status: String): Pair<Color, Color> = when (status) {
-    "completed", "delivered" -> Color(0xFFDCFCE7) to Color(0xFF166534)
-    "shipped" -> Color(0xFFDBEAFE) to Color(0xFF1D4ED8)
-    "cancelled" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
-    "preparing", "processing" -> Color(0xFFFEF3C7) to Color(0xFFB45309)
-    "order_confirmed", "confirmed" -> Color(0xFFE0E7FF) to Color(0xFF4338CA)
-    "order_received", "pending" -> Color(0xFFF3F4F6) to Color(0xFF374151)
-    else -> Color(0xFFF3F4F6) to Color(0xFF374151)
+@Composable
+private fun statusBadgeColors(status: String): Pair<Color, Color> {
+    val scheme = MaterialTheme.colorScheme
+    return when (status) {
+        "completed", "delivered" -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        "shipped" -> scheme.primaryContainer to scheme.onPrimaryContainer
+        "cancelled" -> scheme.errorContainer to scheme.onErrorContainer
+        "preparing", "processing" -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        "order_confirmed", "confirmed" -> scheme.primaryContainer to scheme.onPrimaryContainer
+        "order_received", "pending" -> scheme.surfaceVariant to scheme.onSurfaceVariant
+        else -> scheme.surfaceVariant to scheme.onSurfaceVariant
+    }
 }

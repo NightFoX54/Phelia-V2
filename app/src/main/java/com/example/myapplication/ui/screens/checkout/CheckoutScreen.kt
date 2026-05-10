@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -129,7 +130,7 @@ fun CheckoutScreen(
                     if (addresses.isEmpty()) {
                         Text(
                             "No shipping address on file. Add one to continue.",
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -155,7 +156,7 @@ fun CheckoutScreen(
                     if (payments.isEmpty()) {
                         Text(
                             "No payment method on file. Add a card to continue.",
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -179,7 +180,7 @@ fun CheckoutScreen(
                         Text("Order Summary", fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
                         if (lines.isEmpty()) {
-                            Text("Your cart is empty.", color = Color(0xFF6B7280))
+                            Text("Your cart is empty.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             lines.forEach { line ->
                                 Row(
@@ -200,13 +201,13 @@ fun CheckoutScreen(
                                             val save = (line.baseUnitPrice - line.unitPrice).coerceAtLeast(0.0)
                                             Text(
                                                 "Discount: $pct% (save $" + String.format(Locale.US, "%.2f", save) + " each)",
-                                                color = Color(0xFF065F46),
+                                                color = MaterialTheme.colorScheme.tertiary,
                                                 style = MaterialTheme.typography.bodySmall,
                                             )
                                         }
                                         Text(
                                             "Qty: ${line.quantity}",
-                                            color = Color(0xFF6B7280),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -218,7 +219,7 @@ fun CheckoutScreen(
                             }
                         }
                         if (cartState.isEnriching && lines.isNotEmpty()) {
-                            Text("Updating cart…", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                            Text("Updating cart…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
@@ -237,7 +238,7 @@ fun CheckoutScreen(
                 Text(
                     text = "By placing your order, you agree to our Terms & Conditions and Privacy Policy",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 10.dp),
                 )
 
@@ -246,11 +247,17 @@ fun CheckoutScreen(
         }
 
         Surface(
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 3.dp,
             shadowElevation = 12.dp,
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ) {
                 SnackbarHost(hostState = snackbarHostState)
                 if (!canPlaceOrder && lines.isNotEmpty() && !placing) {
                     Text(
@@ -260,7 +267,7 @@ fun CheckoutScreen(
                             cartState.isEnriching -> "Please wait…"
                             else -> ""
                         },
-                        color = Color(0xFFDC2626),
+                        color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
@@ -291,19 +298,32 @@ fun CheckoutScreen(
                         selectedPaymentId != null &&
                         !placing,
                     shape = RoundedCornerShape(999.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {
                     if (placing) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text("Confirm Order - $" + String.format("%.2f", total), fontWeight = FontWeight.Bold)
+                        Text(
+                            "Confirm Order - $" + String.format("%.2f", total),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
                         Spacer(modifier = Modifier.size(8.dp))
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
                     }
                 }
             }
@@ -330,17 +350,17 @@ private fun CheckoutAddressRow(address: ShippingAddressDoc, selected: Boolean) {
                     }
                 }
             }
-            Text(address.fullName, style = MaterialTheme.typography.bodySmall, color = Color(0xFF4B5563))
-            Text(address.line1, color = Color(0xFF4B5563), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(address.fullName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(address.line1, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (address.line2.isNotBlank()) {
-                Text(address.line2, color = Color(0xFF4B5563), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(address.line2, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(
                 listOf(address.district, address.city, address.postalCode, address.country).filter { it.isNotBlank() }.joinToString(", "),
-                color = Color(0xFF4B5563),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
-            Text(address.phone, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+            Text(address.phone, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -350,7 +370,7 @@ private fun CheckoutPaymentRow(method: PaymentMethodDoc, selected: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text("💳", modifier = Modifier.padding(end = 10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(method.type.ifBlank { "Card" }, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+            Text(method.type.ifBlank { "Card" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             Text(
                 if (method.maskedPan.isNotBlank()) method.maskedPan
                 else "${method.brand.ifBlank { "Card" }} •••• ${method.last4}",
@@ -358,7 +378,7 @@ private fun CheckoutPaymentRow(method: PaymentMethodDoc, selected: Boolean) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(method.holderName, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+            Text(method.holderName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (selected) {
             Box(
@@ -387,7 +407,7 @@ private fun SectionCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xFFE0E7FF)),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -410,8 +430,11 @@ private fun SelectCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = if (selected) Color(0xFFEEF2FF) else Color.White,
-        border = androidx.compose.foundation.BorderStroke(2.dp, if (selected) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB)),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(
+            2.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
     ) {
         Box(modifier = Modifier.fillMaxWidth().padding(14.dp)) { content() }
     }
@@ -422,8 +445,8 @@ private fun DashedButton(text: String, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD1D5DB)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
@@ -435,7 +458,7 @@ private fun DashedButton(text: String, onClick: () -> Unit) {
 @Composable
 private fun PriceRow(label: String, value: Double) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-        Text(label, color = Color(0xFF4B5563), modifier = Modifier.weight(1f))
-        Text("$" + String.format("%.2f", value), color = Color(0xFF4B5563))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text("$" + String.format("%.2f", value), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

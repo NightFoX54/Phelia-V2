@@ -142,13 +142,13 @@ fun AdminDashboardScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                Text("Loading real data…", color = Color(0xFF6B7280))
+                                Text("Loading real data…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         is AdminDashboardUiState.Error -> {
                             val msg = (dashboardState as AdminDashboardUiState.Error).message
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(msg, color = Color(0xFFDC2626))
+                            Text(msg, color = MaterialTheme.colorScheme.error)
                             TextButton(onClick = { viewModel.refresh() }) { Text("Retry") }
                         }
                         is AdminDashboardUiState.Ready -> {
@@ -156,7 +156,7 @@ fun AdminDashboardScreen(
                                 ReadableLineChart(points = ordersOverTime, lineColor = Color(0xFF7C3AED), height = 260.dp)
                             } else {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("Not enough order data yet.", color = Color(0xFF6B7280))
+                                Text("Not enough order data yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -177,7 +177,7 @@ fun AdminDashboardScreen(
                         Text("Top Products", fontWeight = FontWeight.Bold)
                     }
                     if (topProducts.isEmpty()) {
-                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                        Text("Not enough data yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     topProducts.forEachIndexed { idx, product ->
                         Row(
@@ -187,7 +187,7 @@ fun AdminDashboardScreen(
                             Text("#${idx + 1}", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = 36.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(product.name, fontWeight = FontWeight.SemiBold)
-                                Text("${formatCompactNumber(product.unitsSold)} sales", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text("${formatCompactNumber(product.unitsSold)} sales", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
                             Text(formatCompactCurrency(product.revenue), color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
                         }
@@ -204,12 +204,12 @@ fun AdminDashboardScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.TrendingDown, contentDescription = null, tint = Color(0xFFDC2626))
+                        Icon(Icons.Default.TrendingDown, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("Worst Performing Products", fontWeight = FontWeight.Bold)
                     }
                     if (worstProducts.isEmpty()) {
-                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                        Text("Not enough data yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     worstProducts.forEach { product ->
                         Row(
@@ -218,9 +218,9 @@ fun AdminDashboardScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(product.name, fontWeight = FontWeight.SemiBold)
-                                Text("${formatCompactNumber(product.unitsSold)} sales", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text("${formatCompactNumber(product.unitsSold)} sales", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(formatCompactCurrency(product.revenue), color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+                            Text(formatCompactCurrency(product.revenue), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -239,7 +239,7 @@ fun AdminDashboardScreen(
                         Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary)
                     }
                     if (topStores.isEmpty()) {
-                        Text("Not enough data yet.", color = Color(0xFF6B7280))
+                        Text("Not enough data yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     topStores.forEach { store ->
                         Row(
@@ -248,7 +248,7 @@ fun AdminDashboardScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(store.storeName, fontWeight = FontWeight.SemiBold)
-                                Text("${formatCompactNumber(store.orderCount)} orders", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                                Text("${formatCompactNumber(store.orderCount)} orders", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
                             Text(formatCompactCurrency(store.revenue), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
@@ -364,7 +364,7 @@ private fun AdminDashboardBadgeButton(
         BadgedBox(
             badge = {
                 if (badgeCount > 0) {
-                    Badge(containerColor = Color(0xFFDC2626)) {
+                    Badge(containerColor = MaterialTheme.colorScheme.error) {
                         Text(
                             text = if (badgeCount > 99) "99+" else badgeCount.toString(),
                             color = Color.White,

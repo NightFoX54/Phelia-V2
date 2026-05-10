@@ -39,12 +39,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.model.ShippingAddressDoc
 import com.example.myapplication.data.repository.ShippingAddressInput
 import com.example.myapplication.ui.components.AppTopBar
+import com.example.myapplication.ui.util.ShippingAddressValidation
 import com.example.myapplication.viewmodel.CustomerAccountViewModel
 import kotlinx.coroutines.launch
 
@@ -86,7 +86,7 @@ fun ShippingAddressesScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No saved addresses yet.", color = Color(0xFF6B7280))
+                    Text("No saved addresses yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -169,7 +169,7 @@ fun ShippingAddressesScreen(
                             }
                         }
                     },
-                ) { Text("Delete", color = Color(0xFFDC2626)) }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
@@ -198,12 +198,12 @@ private fun AddressCard(
                 Text(address.label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (address.isDefault) {
                     Surface(
-                        color = Color(0xFFEEF2FF),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(999.dp),
                     ) {
                         Text(
                             "Default",
-                            color = Color(0xFF4338CA),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -213,13 +213,13 @@ private fun AddressCard(
             }
             Text(address.fullName, fontWeight = FontWeight.Medium)
             val line1 = address.line1 + address.line2.takeIf { it.isNotBlank() }?.let { ", $it" }.orEmpty()
-            Text(line1, color = Color(0xFF4B5563))
+            Text(line1, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 listOf(address.district, address.city, address.postalCode).filter { it.isNotBlank() }.joinToString(", "),
-                color = Color(0xFF4B5563),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(address.country, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
-            Text(address.phone, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+            Text(address.country, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(address.phone, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProfileChip("Edit", onClick = onEdit)
                 if (!address.isDefault) ProfileChip("Set default", onClick = onSetDefault)
@@ -231,14 +231,15 @@ private fun AddressCard(
 
 @Composable
 private fun ProfileChip(text: String, warning: Boolean = false, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = if (warning) Color(0xFFFEF2F2) else Color(0xFFF3F4F6),
+        color = if (warning) scheme.errorContainer else scheme.surfaceVariant,
     ) {
         Text(
             text = text,
-            color = if (warning) Color(0xFFDC2626) else Color(0xFF374151),
+            color = if (warning) scheme.onErrorContainer else scheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             style = MaterialTheme.typography.bodySmall,
         )
@@ -294,7 +295,9 @@ private fun AddressFormDialog(
                     label = { Text("Label (e.g. Home) *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("label"),
-                    supportingText = { errors["label"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["label"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = fullName,
@@ -302,7 +305,9 @@ private fun AddressFormDialog(
                     label = { Text("Full name *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("fullName"),
-                    supportingText = { errors["fullName"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["fullName"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = phone,
@@ -310,7 +315,9 @@ private fun AddressFormDialog(
                     label = { Text("Phone *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("phone"),
-                    supportingText = { errors["phone"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["phone"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = line1,
@@ -318,7 +325,9 @@ private fun AddressFormDialog(
                     label = { Text("Address line 1 *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("line1"),
-                    supportingText = { errors["line1"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["line1"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(value = line2, onValueChange = { line2 = it }, label = { Text("Address line 2 (optional)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
@@ -327,7 +336,9 @@ private fun AddressFormDialog(
                     label = { Text("District *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("district"),
-                    supportingText = { errors["district"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["district"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = city,
@@ -335,7 +346,9 @@ private fun AddressFormDialog(
                     label = { Text("City *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("city"),
-                    supportingText = { errors["city"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["city"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = postalCode,
@@ -343,7 +356,9 @@ private fun AddressFormDialog(
                     label = { Text("Postal code *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("postalCode"),
-                    supportingText = { errors["postalCode"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["postalCode"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 OutlinedTextField(
                     value = country,
@@ -351,7 +366,9 @@ private fun AddressFormDialog(
                     label = { Text("Country *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = errors.containsKey("country"),
-                    supportingText = { errors["country"]?.let { Text(it, color = Color(0xFFDC2626)) } },
+                    supportingText = {
+                        errors["country"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isDefault, onCheckedChange = { isDefault = it })
@@ -363,14 +380,14 @@ private fun AddressFormDialog(
             TextButton(
                 onClick = {
                     val newErrors = buildMap {
-                        if (label.isBlank()) put("label", "Label is required (e.g. Home).")
-                        if (fullName.isBlank()) put("fullName", "Full name is required.")
-                        if (phone.isBlank()) put("phone", "Phone is required.")
-                        if (line1.isBlank()) put("line1", "Address line 1 is required.")
-                        if (district.isBlank()) put("district", "District is required.")
-                        if (city.isBlank()) put("city", "City is required.")
-                        if (postalCode.isBlank()) put("postalCode", "Postal code is required.")
-                        if (country.isBlank()) put("country", "Country is required.")
+                        ShippingAddressValidation.validateLabel(label)?.let { put("label", it) }
+                        ShippingAddressValidation.validateFullName(fullName)?.let { put("fullName", it) }
+                        ShippingAddressValidation.validatePhone(phone)?.let { put("phone", it) }
+                        ShippingAddressValidation.validateLine1(line1)?.let { put("line1", it) }
+                        ShippingAddressValidation.validateDistrict(district)?.let { put("district", it) }
+                        ShippingAddressValidation.validateCity(city)?.let { put("city", it) }
+                        ShippingAddressValidation.validatePostalCode(postalCode, country)?.let { put("postalCode", it) }
+                        ShippingAddressValidation.validateCountry(country)?.let { put("country", it) }
                     }
                     errors = newErrors
                     if (newErrors.isNotEmpty()) return@TextButton

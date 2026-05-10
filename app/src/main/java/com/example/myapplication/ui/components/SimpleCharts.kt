@@ -39,9 +39,10 @@ import kotlin.math.roundToInt
 fun SimpleBarChart(
     values: List<Float>,
     modifier: Modifier = Modifier,
-    barColor: Color = Color(0xFF4338CA),
+    barColor: Color = MaterialTheme.colorScheme.primary,
     height: Dp = 200.dp,
 ) {
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
     Box(modifier = modifier.fillMaxWidth().height(height).padding(top = 8.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (values.isEmpty()) return@Canvas
@@ -60,7 +61,7 @@ fun SimpleBarChart(
                 val ratio = i / 3f
                 val y = topPadding + chartHeight * ratio
                 drawLine(
-                    color = Color(0xFFE5E7EB),
+                    color = gridColor,
                     start = Offset(sidePadding, y),
                     end = Offset(size.width - sidePadding, y),
                     strokeWidth = 1.dp.toPx(),
@@ -92,10 +93,13 @@ data class VerticalBarEntry(val label: String, val value: Float)
 fun ReadableLineChart(
     points: List<LineChartEntry>,
     modifier: Modifier = Modifier,
-    lineColor: Color = Color(0xFF7C3AED),
+    lineColor: Color = MaterialTheme.colorScheme.tertiary,
     height: Dp = 240.dp,
 ) {
     if (points.size < 2) return
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val maxValue = points.maxOf { it.value }.coerceAtLeast(1f)
     val minValue = 0f
     val yTicks = 4
@@ -110,7 +114,7 @@ fun ReadableLineChart(
                 horizontalAlignment = Alignment.End,
             ) {
                 yLabels.forEach { label ->
-                    Text(text = label, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+                    Text(text = label, color = labelColor, style = MaterialTheme.typography.bodySmall)
                 }
             }
             Box(modifier = Modifier.weight(1f).fillMaxSize().padding(start = 8.dp, end = 4.dp, bottom = 14.dp)) {
@@ -123,11 +127,11 @@ fun ReadableLineChart(
 
                     repeat(yTicks + 1) { i ->
                         val y = (chartHeight / yTicks) * i
-                        drawLine(Color(0xFFE5E7EB), Offset(0f, y), Offset(chartWidth, y), pathEffect = dash)
+                        drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), pathEffect = dash)
                     }
                     points.indices.forEach { i ->
                         val x = i * stepX
-                        drawLine(Color(0xFFE5E7EB), Offset(x, 0f), Offset(x, chartHeight), pathEffect = dash)
+                        drawLine(gridColor, Offset(x, 0f), Offset(x, chartHeight), pathEffect = dash)
                     }
 
                     fun pointY(v: Float): Float {
@@ -152,7 +156,7 @@ fun ReadableLineChart(
                     points.indices.forEach { i ->
                         val x = i * stepX
                         val y = pointY(points[i].value)
-                        drawCircle(Color.White, radius = 7f, center = Offset(x, y))
+                        drawCircle(surfaceColor, radius = 7f, center = Offset(x, y))
                         drawCircle(lineColor, radius = 5f, center = Offset(x, y))
                     }
                 }
@@ -160,7 +164,7 @@ fun ReadableLineChart(
         }
         Row(modifier = Modifier.fillMaxWidth().padding(start = 44.dp, end = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             points.forEach { entry ->
-                Text(entry.label, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+                Text(entry.label, color = labelColor, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             }
         }
     }
@@ -170,10 +174,12 @@ fun ReadableLineChart(
 fun ReadableHorizontalBarChart(
     values: List<HorizontalBarEntry>,
     modifier: Modifier = Modifier,
-    barColor: Color = Color(0xFF4338CA),
+    barColor: Color = MaterialTheme.colorScheme.primary,
     height: Dp = 260.dp,
 ) {
     if (values.isEmpty()) return
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val valueColor = MaterialTheme.colorScheme.onSurfaceVariant
     val maxValue = values.maxOf { it.value }.coerceAtLeast(1f)
     val roundedMax = ceil(maxValue).coerceAtLeast(1f)
 
@@ -192,7 +198,7 @@ fun ReadableHorizontalBarChart(
                 ) {
                     Text(
                         item.label,
-                        color = Color(0xFF94A3B8),
+                        color = labelColor,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -216,7 +222,7 @@ fun ReadableHorizontalBarChart(
                     }
                     Text(
                         text = if (item.value % 1f == 0f) item.value.toInt().toString() else String.format(Locale.US, "%.1f", item.value),
-                        color = Color(0xFF64748B),
+                        color = valueColor,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.widthIn(min = 24.dp),
                     )
@@ -230,16 +236,17 @@ fun ReadableHorizontalBarChart(
 fun ReadableVerticalBarChart(
     values: List<VerticalBarEntry>,
     modifier: Modifier = Modifier,
-    barColor: Color = Color(0xFF4338CA),
+    barColor: Color = MaterialTheme.colorScheme.primary,
     height: Dp = 230.dp,
 ) {
     if (values.isEmpty()) return
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val justValues = values.map { it.value }
     SimpleBarChart(values = justValues, modifier = modifier, barColor = barColor, height = height - 24.dp)
     Spacer(modifier = Modifier.height(6.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         values.forEach {
-            Text(it.label, color = Color(0xFF94A3B8), style = MaterialTheme.typography.bodySmall)
+            Text(it.label, color = labelColor, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -248,9 +255,11 @@ fun ReadableVerticalBarChart(
 fun SimpleLineChart(
     values: List<Float>,
     modifier: Modifier = Modifier,
-    lineColor: Color = Color(0xFF7C3AED),
+    lineColor: Color = MaterialTheme.colorScheme.tertiary,
     height: Dp = 200.dp,
 ) {
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val surfaceColor = MaterialTheme.colorScheme.surface
     Box(modifier = modifier.fillMaxWidth().height(height).padding(top = 8.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (values.size < 2) return@Canvas
@@ -268,7 +277,7 @@ fun SimpleLineChart(
                 val ratio = i / 3f
                 val y = topPadding + chartHeight * ratio
                 drawLine(
-                    color = Color(0xFFE5E7EB),
+                    color = gridColor,
                     start = Offset(sidePadding, y),
                     end = Offset(size.width - sidePadding, y),
                     strokeWidth = 1.dp.toPx(),
@@ -307,7 +316,7 @@ fun SimpleLineChart(
 
             values.forEachIndexed { i, v ->
                 drawCircle(
-                    color = Color.White,
+                    color = surfaceColor,
                     radius = 4.dp.toPx(),
                     center = Offset(x(i), y(v)),
                 )

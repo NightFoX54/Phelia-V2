@@ -83,13 +83,14 @@ fun ProfileScreen(
     val favoritesCountText = favoriteIds.size.toString()
     val isAdmin = profile.role == UserRole.ADMIN
 
+    val scheme = MaterialTheme.colorScheme
     val (badgeBg, badgeFg, badgeText) = when (profile.role) {
-        UserRole.ADMIN -> Triple(Color(0xFFEDE9FE), Color(0xFF6D28D9), "Admin")
-        UserRole.STORE_OWNER -> Triple(Color(0xFFDBEAFE), Color(0xFF1D4ED8), "Store Owner")
-        UserRole.CUSTOMER -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "Customer")
+        UserRole.ADMIN -> Triple(scheme.primaryContainer, scheme.onPrimaryContainer, "Admin")
+        UserRole.STORE_OWNER -> Triple(scheme.secondaryContainer, scheme.onSecondaryContainer, "Store Owner")
+        UserRole.CUSTOMER -> Triple(scheme.tertiaryContainer, scheme.onTertiaryContainer, "Customer")
     }
 
-    val gradient = Brush.linearGradient(listOf(Color(0xFF4338CA), Color(0xFF7C3AED)))
+    val gradient = Brush.linearGradient(listOf(scheme.primary, scheme.tertiary))
 
     LazyColumn(
         modifier = modifier
@@ -142,8 +143,8 @@ fun ProfileScreen(
                 if (isAdmin) {
                     ProfileQuickCard(
                         icon = Icons.Default.Dashboard,
-                        iconBg = Color(0xFFE0E7FF),
-                        iconTint = MaterialTheme.colorScheme.primary,
+                        iconBg = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                         value = null,
                         label = "Dashboard",
                         onClick = { onNavigate(AppRoutes.ADMIN_DASHBOARD) },
@@ -151,8 +152,8 @@ fun ProfileScreen(
                     )
                     ProfileQuickCard(
                         icon = Icons.Default.People,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
+                        iconBg = MaterialTheme.colorScheme.secondaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         value = null,
                         label = "Users",
                         onClick = { onNavigate(AppRoutes.USER_MANAGEMENT) },
@@ -161,8 +162,8 @@ fun ProfileScreen(
                 } else {
                     ProfileQuickCard(
                         icon = Icons.Default.Inventory,
-                        iconBg = Color(0xFFE0E7FF),
-                        iconTint = MaterialTheme.colorScheme.primary,
+                        iconBg = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                         value = orderCountText,
                         label = "Order History",
                         onClick = { onNavigate(AppRoutes.profileOrders()) },
@@ -170,8 +171,8 @@ fun ProfileScreen(
                     )
                     ProfileQuickCard(
                         icon = Icons.Default.Favorite,
-                        iconBg = Color(0xFFFEE2E2),
-                        iconTint = Color(0xFFEF4444),
+                        iconBg = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.onErrorContainer,
                         value = favoritesCountText,
                         label = "Favorites",
                         onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
@@ -190,18 +191,18 @@ fun ProfileScreen(
                 Column {
                     if (isAdmin) {
                         ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
-                        ProfileMenuRow(icon = Icons.Default.People, label = "Manage Users", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.USER_MANAGEMENT) }
-                        ProfileMenuRow(icon = Icons.Default.Storefront, label = "Manage Stores", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.STORE_MANAGEMENT) }
-                        ProfileMenuRow(icon = Icons.Default.AppRegistration, label = "Store Applications", tint = Color(0xFF0D9488)) { onNavigate(AppRoutes.ADMIN_STORE_APPLICATIONS) }
-                        ProfileMenuRow(icon = Icons.Default.Inventory, label = "Inactive Products", tint = Color(0xFFEA580C)) { onNavigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) }
+                        ProfileMenuRow(icon = Icons.Default.People, label = "Manage Users", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.USER_MANAGEMENT) }
+                        ProfileMenuRow(icon = Icons.Default.Storefront, label = "Manage Stores", tint = MaterialTheme.colorScheme.tertiary) { onNavigate(AppRoutes.STORE_MANAGEMENT) }
+                        ProfileMenuRow(icon = Icons.Default.AppRegistration, label = "Store Applications", tint = MaterialTheme.colorScheme.secondary) { onNavigate(AppRoutes.ADMIN_STORE_APPLICATIONS) }
+                        ProfileMenuRow(icon = Icons.Default.Inventory, label = "Inactive Products", tint = MaterialTheme.colorScheme.error) { onNavigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) }
                     } else {
                         ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
-                        ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = Color(0xFF2563EB)) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
-                        ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = Color(0xFF16A34A)) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
-                        ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = Color(0xFFF59E0B)) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                        ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
+                        ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = MaterialTheme.colorScheme.tertiary) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
+                        ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = MaterialTheme.colorScheme.secondary) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
                     }
-                    ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = Color(0xFF7C3AED)) { onNavigate(AppRoutes.PROFILE_HELP) }
-                    ProfileMenuRow(icon = Icons.Default.Settings, label = "Settings", tint = Color(0xFF4B5563)) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
+                    ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_HELP) }
+                    ProfileMenuRow(icon = Icons.Default.Settings, label = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
                 }
             }
         }
@@ -227,9 +228,9 @@ fun ProfileScreen(
                             .background(MaterialTheme.colorScheme.errorContainer),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFEF4444))
+                        Icon(Icons.Default.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
-                    Text("Logout", fontWeight = FontWeight.SemiBold, color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
+                    Text("Logout", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -237,7 +238,7 @@ fun ProfileScreen(
         item {
             Text(
                 "Version 1.0.0",
-                color = Color(0xFF9CA3AF),
+                color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 6.dp),
@@ -261,7 +262,7 @@ internal fun ProfileQuickCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 6.dp,
         modifier = modifier,
     ) {
@@ -283,7 +284,7 @@ internal fun ProfileQuickCard(
             } else {
                 Spacer(modifier = Modifier.height(6.dp))
             }
-            Text(label, color = Color(0xFF6B7280))
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -311,7 +312,7 @@ internal fun ProfileMenuRow(
                 Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
             }
             Text(label, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF9CA3AF))
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         }
     }
     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.surfaceVariant))

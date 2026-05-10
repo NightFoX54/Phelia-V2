@@ -130,7 +130,7 @@ fun AdminCatalogScreen(
             }
             is AdminCatalogUiState.Error -> {
                 Column(Modifier.padding(20.dp)) {
-                    Text(state.message, color = Color(0xFFDC2626))
+                    Text(state.message, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { viewModel.refresh() }) { Text("Retry") }
                 }
@@ -249,7 +249,7 @@ private fun CategoryList(
         Text(
             "No categories yet. Add one to use in products.",
             modifier = Modifier.padding(horizontal = 20.dp),
-            color = Color(0xFF6B7280),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
@@ -274,13 +274,13 @@ private fun CategoryList(
                         Text(
                             "Tax: ${c.taxRate}% · ID: ${c.categoryId}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (c.variantAttributes.isNotEmpty()) {
                             Text(
                                 "Attributes: ${c.variantAttributes.joinToString(", ")}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -301,7 +301,7 @@ private fun BrandList(
         Text(
             "No brands yet. Add one to use in products.",
             modifier = Modifier.padding(horizontal = 20.dp),
-            color = Color(0xFF6B7280),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
@@ -326,7 +326,7 @@ private fun BrandList(
                         Text(
                             "ID: ${b.brandId}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     TextButton(onClick = { onEdit(b) }) { Text("Edit") }

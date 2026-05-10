@@ -93,7 +93,7 @@ fun HomeScreen(
                             Text(
                                 text = "Welcome back,",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
                                 text = userName.ifBlank { "Guest" },
@@ -123,7 +123,7 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = Icons.Default.Chat,
                                         contentDescription = "Messages",
-                                        tint = Color(0xFF374151),
+                                        tint = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                             }
@@ -146,7 +146,7 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = Icons.Default.Notifications,
                                         contentDescription = "Notifications",
-                                        tint = Color(0xFF374151),
+                                        tint = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                             }
@@ -195,7 +195,7 @@ fun HomeScreen(
                             onClick = onOpenSaleProducts,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = Color(0xFF4338CA),
+                                contentColor = MaterialTheme.colorScheme.primary,
                             ),
                             shape = RoundedCornerShape(999.dp),
                         ) {
@@ -279,7 +279,7 @@ fun HomeScreen(
                                 if (store.logo.isNotBlank()) {
                                     AsyncImage(model = store.logo, contentDescription = null)
                                 } else {
-                                    Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF4338CA))
+                                    Icon(Icons.Default.Storefront, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                             Column(modifier = Modifier.padding(start = 12.dp)) {

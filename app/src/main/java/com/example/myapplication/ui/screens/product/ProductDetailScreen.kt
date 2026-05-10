@@ -180,7 +180,7 @@ fun ProductDetailScreen(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(state.message, color = Color(0xFFDC2626))
+                    Text(state.message, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = onBack) { Text("Back") }
                 }
@@ -318,7 +318,7 @@ private fun ProductDetailContent(
                                     .background(MaterialTheme.colorScheme.outlineVariant),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("No image", color = Color(0xFF6B7280))
+                                Text("No image", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -328,28 +328,30 @@ private fun ProductDetailContent(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
-                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF374151)) }
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.onSurface)
+                            }
                         }
                         Spacer(modifier = Modifier.weight(1f))
                         if (isStoreManagement && onEditProduct != null) {
-                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
                                 IconButton(onClick = onEditProduct) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit product", tint = Color(0xFF374151))
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit product", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             Spacer(modifier = Modifier.size(10.dp))
                         } else {
-                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
-                                IconButton(onClick = {}) { Icon(Icons.Default.Share, null, tint = Color(0xFF374151)) }
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                                IconButton(onClick = {}) { Icon(Icons.Default.Share, null, tint = MaterialTheme.colorScheme.onSurface) }
                             }
                             Spacer(modifier = Modifier.size(10.dp))
-                            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.92f), shadowElevation = 2.dp) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
                                 IconButton(onClick = onFavoriteToggle) {
                                     Icon(
                                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                        tint = if (isFavorite) Color(0xFFEF4444) else Color(0xFF374151),
+                                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                             }
@@ -367,7 +369,10 @@ private fun ProductDetailContent(
                                         .height(8.dp)
                                         .size(if (selected) 22.dp else 8.dp, 8.dp)
                                         .clip(CircleShape)
-                                        .background(if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.6f)),
+                                        .background(
+                                            if (selected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                                        ),
                                 )
                             }
                         }
@@ -378,7 +383,7 @@ private fun ProductDetailContent(
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                     product.brand["name"]?.takeIf { it.isNotBlank() }?.let { b ->
-                        Text(b, style = MaterialTheme.typography.labelMedium, color = Color(0xFF6B7280))
+                        Text(b, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(
                         product.name,
@@ -406,17 +411,17 @@ private fun ProductDetailContent(
                                 Text(
                                     text = "$" + String.format("%.2f", v.price),
                                     style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.LineThrough),
-                                    color = Color(0xFF6B7280),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Surface(
-                                    color = Color(0xFFECFDF5),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
                                     shape = RoundedCornerShape(999.dp),
                                 ) {
                                     Text(
                                         text = "Save $" + String.format(java.util.Locale.US, "%.2f", save) + " ($pct% OFF)",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF065F46),
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     )
                                 }
@@ -438,14 +443,14 @@ private fun ProductDetailContent(
                         )
                         Text(
                             " ($summaryReviewCount reviews)",
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     resolvedVariant?.let { v ->
                         Text(
                             text = if (v.stock > 0) "In stock: ${v.stock}" else "Out of stock",
-                            color = if (v.stock > 0) Color(0xFF16A34A) else Color(0xFFDC2626),
+                            color = if (v.stock > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(top = 4.dp),
                         )
@@ -476,8 +481,8 @@ private fun ProductDetailContent(
                                                     2.dp,
                                                     when {
                                                         selected -> MaterialTheme.colorScheme.primary
-                                                        !available -> Color(0xFFE5E7EB).copy(alpha = 0.5f)
-                                                        else -> Color(0xFFE5E7EB)
+                                                        !available -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                                                        else -> MaterialTheme.colorScheme.outlineVariant
                                                     },
                                                     CircleShape,
                                                 )
@@ -555,7 +560,7 @@ private fun ProductDetailContent(
                     Text("Description", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
                     Text(
                         text = product.description.ifBlank { "No description provided." },
-                        color = Color(0xFF4B5563),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     if (isStoreManagement) {
@@ -568,7 +573,7 @@ private fun ProductDetailContent(
                         Text(
                             "Product analytics (all time)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
                         if (ownerStatsLoading) {
@@ -585,6 +590,7 @@ private fun ProductDetailContent(
                             }
                         } else {
                             ownerStats?.let { s ->
+                                val scheme = MaterialTheme.colorScheme
                                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -594,16 +600,16 @@ private fun ProductDetailContent(
                                             icon = Icons.Default.Visibility,
                                             label = "Views",
                                             value = formatStatCount(s.views),
-                                            tint = Color(0xFF2563EB),
-                                            bg = Color(0xFFEFF6FF),
+                                            tint = scheme.onPrimaryContainer,
+                                            bg = scheme.primaryContainer,
                                             modifier = Modifier.weight(1f),
                                         )
                                         OwnerStatTile(
                                             icon = Icons.Default.ShoppingCart,
                                             label = "Add to cart",
                                             value = formatStatCount(s.addedToCart),
-                                            tint = Color(0xFFCA8A04),
-                                            bg = Color(0xFFFFFBEB),
+                                            tint = scheme.onSecondaryContainer,
+                                            bg = scheme.secondaryContainer,
                                             modifier = Modifier.weight(1f),
                                         )
                                     }
@@ -615,16 +621,16 @@ private fun ProductDetailContent(
                                             icon = Icons.Default.Favorite,
                                             label = "In favorites",
                                             value = formatStatCount(s.addedToFavorite),
-                                            tint = Color(0xFFDB2777),
-                                            bg = Color(0xFFFDF2F8),
+                                            tint = scheme.onTertiaryContainer,
+                                            bg = scheme.tertiaryContainer,
                                             modifier = Modifier.weight(1f),
                                         )
                                         OwnerStatTile(
                                             icon = Icons.Default.Inventory,
                                             label = "Units sold",
                                             value = formatStatCount(s.purchased),
-                                            tint = Color(0xFF16A34A),
-                                            bg = Color(0xFFF0FDF4),
+                                            tint = scheme.onSurfaceVariant,
+                                            bg = scheme.surfaceVariant,
                                             modifier = Modifier.weight(1f),
                                         )
                                     }
@@ -790,7 +796,7 @@ private fun CustomerPinnedProductStrip(
 
         val scheme = MaterialTheme.colorScheme
         val stockColor = when {
-            stockLine.startsWith("In stock") -> Color(0xFF34D399)
+            stockLine.startsWith("In stock") -> scheme.tertiary
             stockLine == "Out of stock" -> scheme.error
             else -> scheme.onSurfaceVariant
         }
@@ -915,7 +921,7 @@ private fun OwnerStatTile(
                 Text(
                     label,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                 )
             }
@@ -954,10 +960,10 @@ private fun ProductStorePreviewRow(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFEEF2FF)),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF4338CA))
+                    Icon(Icons.Default.Storefront, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Column(modifier = Modifier.padding(horizontal = 12.dp).weight(1f)) {
@@ -976,12 +982,12 @@ private fun ProductStorePreviewRow(
                     )
                     Text(
                         " (${store.reviewCount} reviews)",
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-            Text("›", color = Color(0xFF9CA3AF), fontSize = 22.sp)
+            Text("›", color = MaterialTheme.colorScheme.outline, fontSize = 22.sp)
         }
     }
 }
@@ -1000,17 +1006,17 @@ private fun SpecsCard(product: Product) {
         product.category["name"]?.takeIf { it.isNotBlank() }?.let { add("Category" to it) }
     }
     if (specs.isEmpty()) {
-        Text("No additional details.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        Text("No additional details.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     } else {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 specs.forEach { (k, v) ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text(k, color = Color(0xFF6B7280), modifier = Modifier.weight(1f))
+                        Text(k, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Text(v, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
@@ -1043,7 +1049,7 @@ private fun ProductQuestionsSection(
     )
     if (customerQuestionEnabled) {
         if (!signedIn) {
-            Text("Sign in to ask a question.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+            Text("Sign in to ask a question.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
             OutlinedTextField(
                 value = questionDraft,
@@ -1063,14 +1069,14 @@ private fun ProductQuestionsSection(
             )
         }
     } else if (isStoreManagement) {
-        Text("Reply to shoppers below.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        Text("Reply to shoppers below.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
     errorText?.takeIf { it.isNotBlank() }?.let {
-        Text(it, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
     }
-    Text("Questions", color = Color(0xFF6B7280), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+    Text("Questions", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
     if (questions.isEmpty()) {
-        Text("No questions yet.", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+        Text("No questions yet.", color = MaterialTheme.colorScheme.outline, style = MaterialTheme.typography.bodySmall)
     } else {
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1084,7 +1090,7 @@ private fun ProductQuestionsSection(
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(
                         if (highlighted) 2.dp else 1.dp,
-                        if (highlighted) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB),
+                        if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1092,9 +1098,14 @@ private fun ProductQuestionsSection(
                         Text("Q: ${q.question}", fontWeight = FontWeight.SemiBold)
                         val ans = q.answer
                         if (!ans.isNullOrBlank()) {
-                            Text("A: $ans", color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+                            Text("A: $ans", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                         } else {
-                            Text("Awaiting store reply", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            Text(
+                                "Awaiting store reply",
+                                color = MaterialTheme.colorScheme.outline,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                         }
                         if (isStoreManagement && ans.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -1204,7 +1215,7 @@ private fun ProductReviewsSection(
         Text("Respond to buyer reviews below.", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
     errorText?.takeIf { it.isNotBlank() }?.let {
-        Text(it, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
     }
     Column(
         modifier = Modifier

@@ -82,10 +82,11 @@ fun OrderDetailScreen(
     var reviewTarget by remember { mutableStateOf<ReviewTarget?>(null) }
     var reviewSubmitting by remember { mutableStateOf(false) }
 
+    val scheme = MaterialTheme.colorScheme
     val headerColor = if (state is OrderDetailUiState.Ready) {
         statusMainColor((state as OrderDetailUiState.Ready).data.order.status)
     } else {
-        Color.White
+        scheme.surface
     }
 
     Column(
@@ -93,7 +94,7 @@ fun OrderDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = headerColor, shadowElevation = if (headerColor == Color.White) 1.dp else 0.dp) {
+        Surface(color = headerColor, shadowElevation = if (state !is OrderDetailUiState.Ready) 1.dp else 0.dp) {
             AppTopBar(
                 title = "Order details",
                 onBack = onBack,
@@ -117,7 +118,7 @@ fun OrderDetailScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(s.message, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodyMedium)
+                    Text(s.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { viewModel.retry() }) {
                         Text("Retry")
@@ -199,7 +200,7 @@ private fun OrderDetailContent(
                             Text(
                                 formatOrderDetailDate(order.createdAtMs),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -249,7 +250,7 @@ private fun OrderDetailContent(
                     Text(
                         "Payment ref: ${order.paymentMethodId.takeLast(8)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -262,10 +263,10 @@ private fun OrderDetailContent(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Shipping address", fontWeight = FontWeight.Bold)
                     if (data.shippingAddressLines.isEmpty()) {
-                        Text("—", color = Color(0xFF6B7280))
+                        Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         data.shippingAddressLines.forEach { line ->
-                            Text(line, color = Color(0xFF374151), style = MaterialTheme.typography.bodyMedium)
+                            Text(line, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -309,7 +310,7 @@ private fun SuborderSection(
                     Text(
                         "Store ID: ${so.storeId}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -341,14 +342,14 @@ private fun SuborderSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("Merchandise", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                Text("Merchandise", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("$" + String.format(Locale.US, "%.2f", so.totalPrice))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("Tax", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                Text("Tax", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("$" + String.format(Locale.US, "%.2f", so.totalTax))
             }
             Row(
@@ -394,14 +395,14 @@ private fun OrderItemRow(
                 Text(
                     item.variant.entries.joinToString(" · ") { "${it.key}: ${it.value}" },
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     "${String.format(Locale.US, "%.2f", item.unitPrice)} × ${item.quantity}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF4B5563),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     "$" + String.format(Locale.US, "%.2f", lineMerch),
@@ -411,19 +412,19 @@ private fun OrderItemRow(
             Text(
                 "Tax: $" + String.format(Locale.US, "%.2f", item.tax),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item.review?.let { r ->
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Your review", style = MaterialTheme.typography.labelMedium, color = Color(0xFF6B7280))
+            Text("Your review", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val n = r.rating.roundToInt().coerceIn(0, 5)
             Text(
                 "★".repeat(n) + "☆".repeat(5 - n),
                 color = Color(0xFFF59E0B),
                 fontSize = 14.sp,
             )
-            Text(r.comment, style = MaterialTheme.typography.bodySmall, color = Color(0xFF374151))
+            Text(r.comment, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
         }
         if (canWriteReview) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -509,8 +510,8 @@ private fun orderAllowsProductReview(orderStatus: String): Boolean =
 @Composable
 private fun PriceLine(label: String, value: Double) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
-        Text("$" + String.format(Locale.US, "%.2f", value), color = Color(0xFF374151))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text("$" + String.format(Locale.US, "%.2f", value), color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -519,14 +520,18 @@ private fun formatOrderDetailDate(ms: Long): String {
     return SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.US).format(Date(ms))
 }
 
-private fun statusBadgeColors(status: String): Pair<Color, Color> = when (status) {
-    "completed", "delivered" -> Color(0xFFDCFCE7) to Color(0xFF166534)
-    "shipped" -> Color(0xFFDBEAFE) to Color(0xFF1D4ED8)
-    "cancelled" -> Color(0xFFFEE2E2) to Color(0xFFB91C1C)
-    "preparing", "processing" -> Color(0xFFFEF3C7) to Color(0xFFB45309)
-    "order_confirmed", "confirmed" -> Color(0xFFE0E7FF) to Color(0xFF4338CA)
-    "order_received", "pending" -> Color(0xFFF3F4F6) to Color(0xFF374151)
-    else -> Color(0xFFF3F4F6) to Color(0xFF374151)
+@Composable
+private fun statusBadgeColors(status: String): Pair<Color, Color> {
+    val scheme = MaterialTheme.colorScheme
+    return when (status) {
+        "completed", "delivered" -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        "shipped" -> scheme.primaryContainer to scheme.onPrimaryContainer
+        "cancelled" -> scheme.errorContainer to scheme.onErrorContainer
+        "preparing", "processing" -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        "order_confirmed", "confirmed" -> scheme.primaryContainer to scheme.onPrimaryContainer
+        "order_received", "pending" -> scheme.surfaceVariant to scheme.onSurfaceVariant
+        else -> scheme.surfaceVariant to scheme.onSurfaceVariant
+    }
 }
 
 private fun statusMainColor(status: String): Color = when (status) {
@@ -535,7 +540,7 @@ private fun statusMainColor(status: String): Color = when (status) {
     OrderStatus.CANCELLED -> Color(0xFFEF4444) // Red
     OrderStatus.PREPARING, "processing" -> Color(0xFFF59E0B) // Orange
     OrderStatus.ORDER_CONFIRMED, "confirmed" -> Color(0xFF6366F1) // Indigo
-    OrderStatus.ORDER_RECEIVED, "pending" -> Color(0xFF6B7280) // Gray
+    OrderStatus.ORDER_RECEIVED, "pending" -> Color(0xFF6B7280) // Gray — header tint
     OrderStatus.IN_PROGRESS -> Color(0xFF0D9488) // Teal
     else -> Color(0xFF6B7280)
 }

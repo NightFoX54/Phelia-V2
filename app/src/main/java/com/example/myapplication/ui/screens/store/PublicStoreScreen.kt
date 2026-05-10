@@ -85,7 +85,7 @@ fun PublicStoreScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(uiState.error ?: "", color = Color(0xFFDC2626))
+                    Text(uiState.error ?: "", color = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = onBack) { Text("Back") }
                 }
@@ -158,13 +158,13 @@ private fun StoreProfileHeader(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFEEF2FF)),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.Storefront,
                             contentDescription = null,
-                            tint = Color(0xFF4338CA),
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }

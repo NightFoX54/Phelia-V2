@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import android.app.Application
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -118,11 +117,11 @@ fun HelpSupportScreen(
                 filteredFaq.forEach { (title, body) ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                         Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                        Text(body, style = MaterialTheme.typography.bodySmall, color = Color(0xFF4B5563))
+                        Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (filteredFaq.isEmpty()) {
-                    Text("No matching topics.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+                    Text("No matching topics.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -137,12 +136,12 @@ fun HelpSupportScreen(
                 Text(
                     "Create a ticket so our team can see your order and message. Paste your order ID or ORD-… label from My Orders.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     "Signed in as ${customerName.ifBlank { "—" }} (${customerEmail.ifBlank { "—" }})",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF9CA3AF),
+                    color = MaterialTheme.colorScheme.outline,
                 )
                 OutlinedTextField(
                     value = orderRef,
@@ -169,7 +168,7 @@ fun HelpSupportScreen(
                 )
                 val err = (submitState as? HelpSupportViewModel.SubmitUi.Error)?.message
                 if (err != null) {
-                    Text(err, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall)
+                    Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 Button(
                     onClick = { viewModel.submitTicket(orderRef, message) },
@@ -181,7 +180,7 @@ fun HelpSupportScreen(
                         CircularProgressIndicator(
                             modifier = Modifier.padding(4.dp),
                             strokeWidth = 2.dp,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     } else {
                         Text("Submit ticket")
@@ -197,8 +196,12 @@ fun HelpSupportScreen(
         ) {
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Other ways to reach us", fontWeight = FontWeight.SemiBold)
-                Text("support@phelia.app", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4B5563))
-                Text("We reply to tickets and email during business hours.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9CA3AF))
+                Text("support@phelia.app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "We reply to tickets and email during business hours.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

@@ -95,7 +95,7 @@ fun AdminInactiveProductsScreen(
             listError != null -> {
                 Text(
                     listError!!,
-                    color = Color(0xFFDC2626),
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(20.dp),
                 )
             }
@@ -103,7 +103,7 @@ fun AdminInactiveProductsScreen(
                 Text(
                     "No inactive products.",
                     modifier = Modifier.padding(20.dp),
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             else -> {
@@ -127,7 +127,7 @@ fun AdminInactiveProductsScreen(
                                     Text(
                                         "Store: ${row.storeId}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF6B7280),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 val busy = busyProductId == row.productId

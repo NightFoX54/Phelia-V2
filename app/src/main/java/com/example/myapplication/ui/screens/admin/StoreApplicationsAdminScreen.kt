@@ -84,7 +84,7 @@ fun StoreApplicationsAdminScreen(
         listError?.let { err ->
             Text(
                 err,
-                color = Color(0xFFDC2626),
+                color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
@@ -92,7 +92,7 @@ fun StoreApplicationsAdminScreen(
         actionError?.let { err ->
             Text(
                 err,
-                color = Color(0xFFDC2626),
+                color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
@@ -106,7 +106,7 @@ fun StoreApplicationsAdminScreen(
                 item {
                     Text(
                         "No pending applications.",
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 24.dp),
                     )
                 }
@@ -162,7 +162,7 @@ fun StoreApplicationsAdminScreen(
                     Text(
                         "Applicant: ${app.applicantEmail}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -216,7 +216,7 @@ fun StoreApplicationsAdminScreen(
                     Text(
                         "Ask ${app.applicantName} to update their information. They will receive a notification.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -296,9 +296,9 @@ private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Icon(icon, null, modifier = Modifier.size(18.dp), tint = Color(0xFF6B7280))
+        Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -344,7 +344,7 @@ private fun StoreApplicationCard(
                     Text(
                         application.applicantName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         application.applicantEmail,
@@ -444,6 +444,6 @@ private fun BoxGrayPlaceholder(modifier: Modifier = Modifier) {
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Text("No logo", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
+        Text("No logo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
     }
 }

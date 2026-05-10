@@ -104,13 +104,19 @@ fun OrderSuccessScreen(
         ) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    InfoRow(icon = Icons.Default.LocalShipping, title = "Estimated Delivery", value = estimatedDelivery, iconBg = Color(0xFFDCFCE7), iconTint = Color(0xFF16A34A))
+                    InfoRow(
+                        icon = Icons.Default.LocalShipping,
+                        title = "Estimated Delivery",
+                        value = estimatedDelivery,
+                        iconBg = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
                     InfoRow(
                         icon = Icons.Default.LocationOn,
                         title = "Order reference",
                         value = orderNumber,
-                        iconBg = Color(0xFFDBEAFE),
-                        iconTint = Color(0xFF2563EB),
+                        iconBg = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
@@ -165,10 +171,13 @@ fun OrderSuccessScreen(
             Button(
                 onClick = onContinueShopping,
                 shape = RoundedCornerShape(999.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
-                Text("Continue Shopping", fontWeight = FontWeight.Bold)
+                Text("Continue Shopping", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -194,7 +203,7 @@ private fun InfoRow(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold)
-            Text(value, color = Color(0xFF4B5563))
+            Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

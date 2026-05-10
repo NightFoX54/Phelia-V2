@@ -95,8 +95,8 @@ fun StoreOwnerProfileScreen(
                 if (store != null) {
                     ProfileQuickCard(
                         icon = Icons.Default.Dashboard,
-                        iconBg = Color(0xFFE0E7FF),
-                        iconTint = MaterialTheme.colorScheme.primary,
+                        iconBg = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                         value = null,
                         label = "Dashboard",
                         onClick = { onNavigate(AppRoutes.STORE_DASHBOARD) },
@@ -104,8 +104,8 @@ fun StoreOwnerProfileScreen(
                     )
                     ProfileQuickCard(
                         icon = Icons.Default.Inventory,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
+                        iconBg = MaterialTheme.colorScheme.secondaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         value = null,
                         label = "Products",
                         onClick = { onNavigate(AppRoutes.STORE_PRODUCTS) },
@@ -114,8 +114,8 @@ fun StoreOwnerProfileScreen(
                 } else {
                     ProfileQuickCard(
                         icon = Icons.Default.ShoppingBag,
-                        iconBg = Color(0xFFF3E8FF),
-                        iconTint = Color(0xFF9333EA),
+                        iconBg = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                         value = orderCountText,
                         label = "My Orders",
                         onClick = { onNavigate(AppRoutes.profileOrders()) },
@@ -123,8 +123,8 @@ fun StoreOwnerProfileScreen(
                     )
                     ProfileQuickCard(
                         icon = Icons.Default.Favorite,
-                        iconBg = Color(0xFFFEE2E2),
-                        iconTint = Color(0xFFEF4444),
+                        iconBg = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.onErrorContainer,
                         value = favoritesCountText,
                         label = "Favorites",
                         onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
@@ -143,8 +143,8 @@ fun StoreOwnerProfileScreen(
                 ) {
                     ProfileQuickCard(
                         icon = Icons.Default.ShoppingBag,
-                        iconBg = Color(0xFFF3E8FF),
-                        iconTint = Color(0xFF9333EA),
+                        iconBg = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                         value = orderCountText,
                         label = "My Orders",
                         onClick = { onNavigate(AppRoutes.profileOrders()) },
@@ -152,8 +152,8 @@ fun StoreOwnerProfileScreen(
                     )
                     ProfileQuickCard(
                         icon = Icons.Default.Favorite,
-                        iconBg = Color(0xFFFEE2E2),
-                        iconTint = Color(0xFFEF4444),
+                        iconBg = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.onErrorContainer,
                         value = favoritesCountText,
                         label = "Favorites",
                         onClick = { onNavigate(AppRoutes.PROFILE_FAVORITES) },
@@ -186,7 +186,7 @@ fun StoreOwnerProfileScreen(
                         ProfileMenuRow(
                             icon = Icons.Default.Storefront,
                             label = "Store orders & chats",
-                            tint = Color(0xFF2563EB),
+                            tint = MaterialTheme.colorScheme.primary,
                         ) { onNavigate(AppRoutes.storeOrders()) }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -203,32 +203,32 @@ fun StoreOwnerProfileScreen(
                     ProfileMenuRow(
                         icon = Icons.Default.Person,
                         label = "Edit personal profile",
-                        tint = Color(0xFF10B981),
+                        tint = MaterialTheme.colorScheme.tertiary,
                     ) { onNavigate(AppRoutes.PROFILE_EDIT) }
                     ProfileMenuRow(
                         icon = Icons.Default.ShoppingBag,
                         label = "My orders & chats",
-                        tint = Color(0xFF8B5CF6),
+                        tint = MaterialTheme.colorScheme.secondary,
                     ) { onNavigate(AppRoutes.profileOrders()) }
                     ProfileMenuRow(
                         icon = Icons.Default.Favorite,
                         label = "My favorites",
-                        tint = Color(0xFFEF4444),
+                        tint = MaterialTheme.colorScheme.error,
                     ) { onNavigate(AppRoutes.PROFILE_FAVORITES) }
                     ProfileMenuRow(
                         icon = Icons.Default.LocationOn,
                         label = "My addresses",
-                        tint = Color(0xFF6366F1),
+                        tint = MaterialTheme.colorScheme.primary,
                     ) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
                     ProfileMenuRow(
                         icon = Icons.Default.CreditCard,
                         label = "Payment methods",
-                        tint = Color(0xFFF59E0B),
+                        tint = MaterialTheme.colorScheme.tertiary,
                     ) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
                     ProfileMenuRow(
                         icon = Icons.Default.Notifications,
                         label = "Notifications",
-                        tint = Color(0xFFEC4899),
+                        tint = MaterialTheme.colorScheme.secondary,
                     ) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -237,12 +237,12 @@ fun StoreOwnerProfileScreen(
                     ProfileMenuRow(
                         icon = Icons.Default.Help,
                         label = "Help & Support",
-                        tint = Color(0xFF7C3AED),
+                        tint = MaterialTheme.colorScheme.primary,
                     ) { onNavigate(AppRoutes.PROFILE_HELP) }
                     ProfileMenuRow(
                         icon = Icons.Default.Settings,
                         label = "Settings",
-                        tint = Color(0xFF4B5563),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     ) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
                 }
             }
@@ -269,9 +269,9 @@ fun StoreOwnerProfileScreen(
                             .background(MaterialTheme.colorScheme.errorContainer),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFEF4444))
+                        Icon(Icons.Default.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
-                    Text("Logout", fontWeight = FontWeight.SemiBold, color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
+                    Text("Logout", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -279,7 +279,7 @@ fun StoreOwnerProfileScreen(
         item {
             Text(
                 "Version 1.0.0",
-                color = Color(0xFF9CA3AF),
+                color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 6.dp),
@@ -295,7 +295,8 @@ private fun StoreOwnerHeader(
     store: Store?,
     loadError: String?,
 ) {
-    val gradient = Brush.linearGradient(listOf(Color(0xFF1E3A8A), Color(0xFF4338CA)))
+    val scheme = MaterialTheme.colorScheme
+    val gradient = Brush.linearGradient(listOf(scheme.primary.copy(alpha = 0.92f), scheme.primary))
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -317,7 +318,7 @@ private fun StoreOwnerHeader(
                 }
             }
             store == null -> {
-                Text(loadError.orEmpty(), color = Color(0xFFFECACA), style = MaterialTheme.typography.bodyMedium)
+                Text(loadError.orEmpty(), color = Color.White.copy(alpha = 0.92f), style = MaterialTheme.typography.bodyMedium)
             }
             else -> {
                 Row(
@@ -383,7 +384,7 @@ private fun StoreOwnerHeader(
                                     append(" reviews)")
                                 }
                             },
-                            color = Color(0xFFFDE68A),
+                            color = Color.White.copy(alpha = 0.88f),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = 4.dp),
