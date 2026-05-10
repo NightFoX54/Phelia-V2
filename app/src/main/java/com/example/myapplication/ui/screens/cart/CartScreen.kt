@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -70,11 +71,11 @@ fun CartScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                AppTopBar(title = "My Cart", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "My Cart", onBack = onBack)
                 Text(
                     text = "${lines.size} " + if (lines.size == 1) "item" else "items",
                     color = Color(0xFF6B7280),
@@ -86,7 +87,7 @@ fun CartScreen(
 
         if (stockMessages.isNotEmpty()) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .padding(horizontal = 20.dp, vertical = 10.dp)
@@ -101,7 +102,7 @@ fun CartScreen(
                             Text(
                                 text = msg,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF9A3412),
+                                color = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.padding(vertical = 4.dp),
                             )
                         }
@@ -124,7 +125,7 @@ fun CartScreen(
                         modifier = Modifier
                             .size(96.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFFE5E7EB)),
+                            .background(MaterialTheme.colorScheme.outlineVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text("🛒", fontSize = 40.sp)
@@ -143,7 +144,7 @@ fun CartScreen(
                 lines.forEach { item ->
                     val atMax = item.quantity >= item.maxStock
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(18.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         modifier = Modifier
@@ -157,7 +158,7 @@ fun CartScreen(
                                 modifier = Modifier
                                     .size(84.dp)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFFF3F4F6)),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.Top) {
@@ -165,7 +166,11 @@ fun CartScreen(
                                         item.brandName?.let { b ->
                                             Text(b, style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
                                         }
-                                        Text(item.productName, fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            item.productName,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
                                     }
                                     IconButton(
                                         onClick = {
@@ -205,7 +210,7 @@ fun CartScreen(
                                     QtyButton(onClick = {
                                         cartViewModel.changeQuantity(item.productId, item.variantId, -1)
                                     }) {
-                                        Icon(imageVector = Icons.Default.Remove, contentDescription = null, tint = Color(0xFF374151))
+                                        Icon(imageVector = Icons.Default.Remove, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                     Text(item.quantity.toString(), fontWeight = FontWeight.SemiBold)
                                     QtyButton(
@@ -226,7 +231,7 @@ fun CartScreen(
                 }
 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -237,7 +242,7 @@ fun CartScreen(
                         SummaryRow("Tax", tax)
                         SummaryRow("Shipping", shipping)
                         Spacer(modifier = Modifier.height(12.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -250,7 +255,8 @@ fun CartScreen(
 
             Surface(
                 shadowElevation = 10.dp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
             ) {
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
                     Button(
@@ -292,10 +298,10 @@ private fun VariantPill(text: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFF3F4F6))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
-        Text(text, style = MaterialTheme.typography.bodySmall, color = Color(0xFF4B5563))
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -308,8 +314,11 @@ private fun QtyButton(
 ) {
     Surface(
         onClick = onClick,
-        color = if (primary) MaterialTheme.colorScheme.primary else Color(0xFFF3F4F6),
+        color = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(999.dp),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = if (primary) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.size(34.dp),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
@@ -319,7 +328,7 @@ private fun QtyButton(
 @Composable
 private fun SummaryRow(label: String, value: Double) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(label, color = Color(0xFF4B5563), modifier = Modifier.weight(1f))
-        Text("$" + String.format("%.2f", value), color = Color(0xFF4B5563))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text("$" + String.format("%.2f", value), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

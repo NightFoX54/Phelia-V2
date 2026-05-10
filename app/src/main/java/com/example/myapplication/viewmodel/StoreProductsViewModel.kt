@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.StoreOwnerProductRow
 import com.example.myapplication.data.model.StoreWeeklySalesSummary
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
+import com.example.myapplication.data.repository.CartRepository
 import com.example.myapplication.data.repository.OrderRepository
 import com.example.myapplication.data.repository.ProductRepository
 import com.example.myapplication.data.repository.StoreRepository
@@ -24,6 +25,7 @@ class StoreProductsViewModel(
     private val storeRepository: StoreRepository = StoreRepository(),
     private val productRepository: ProductRepository = ProductRepository(),
     private val orderRepository: OrderRepository = OrderRepository(),
+    private val cartRepository: CartRepository = CartRepository(),
     private val storeApplicationRepository: StoreApplicationRepository = StoreApplicationRepository(),
 ) : ViewModel() {
 
@@ -137,6 +139,37 @@ class StoreProductsViewModel(
                 onSuccess = { _userMessage.value = "Product removed from sale (not deleted)." },
                 onFailure = { _userMessage.value = it.message ?: "Action failed" },
             )
+        }
+    }
+
+    /**
+     * Deletes the product when it is not in any active customer order or cart.
+     * Otherwise hides it from the storefront ([deactivateProductForCurrentOwner]) and explains why.
+     */
+    fun deleteProduct(productId: String) {
+        if (productId.isBlank()) return
+        val sid = activeStoreId ?: return
+        viewModelScope.launch {
+            val inPipeline = orderRepository.storeHasActivePipelineOrderContainingProduct(sid, productId)
+            val inCart = cartRepository.anyCartContainsProduct(productId)
+            if (inPipeline || inCart) {
+                productRepository.deactivateProductForCurrentOwner(productId).fold(
+                    onSuccess = {
+                        _userMessage.value = when {
+                            inPipeline ->
+                                "This product is in an active customer order. It’s hidden from your storefront until the order is delivered; then you can delete it."
+                            else ->
+                                "This product is still in customer carts. It’s hidden from your storefront for now."
+                        }
+                    },
+                    onFailure = { _userMessage.value = it.message ?: "Could not update product." },
+                )
+            } else {
+                productRepository.permanentlyDeleteProductForCurrentOwner(productId).fold(
+                    onSuccess = { _userMessage.value = "Product deleted." },
+                    onFailure = { _userMessage.value = it.message ?: "Could not delete product." },
+                )
+            }
         }
     }
 

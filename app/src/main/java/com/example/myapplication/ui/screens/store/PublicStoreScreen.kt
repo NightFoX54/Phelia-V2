@@ -62,13 +62,12 @@ fun PublicStoreScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             AppTopBar(
                 title = uiState.store?.name?.takeIf { it.isNotBlank() } ?: "Store",
                 onBack = onBack,
-                containerColor = Color.White,
             )
         }
 
@@ -139,7 +138,7 @@ private fun StoreProfileHeader(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -152,7 +151,7 @@ private fun StoreProfileHeader(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
                 } else {
                     Box(
@@ -176,6 +175,7 @@ private fun StoreProfileHeader(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("★★★★★", color = Color(0xFFF59E0B), style = MaterialTheme.typography.bodySmall)
@@ -183,10 +183,11 @@ private fun StoreProfileHeader(
                             "  " + String.format("%.1f", store.rating),
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             " (${store.reviewCount} reviews)",
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -197,7 +198,7 @@ private fun StoreProfileHeader(
                 Text(
                     store.description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4B5563),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -205,7 +206,7 @@ private fun StoreProfileHeader(
                 "Products from this seller",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF374151),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

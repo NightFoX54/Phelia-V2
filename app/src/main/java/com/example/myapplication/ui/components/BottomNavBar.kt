@@ -10,12 +10,12 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,17 +28,21 @@ data class BottomNavItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
 )
 
+private fun routeMatchesTab(currentRoute: String?, tabRoute: String): Boolean {
+    if (currentRoute == null) return false
+    return when (tabRoute) {
+        AppRoutes.STORE_ORDERS -> currentRoute.startsWith("store-orders")
+        AppRoutes.PRODUCTS -> currentRoute.startsWith("products")
+        else -> currentRoute == tabRoute
+    }
+}
+
 @Composable
 fun BottomNavBar(
     navController: NavController,
     role: UserRole,
 ) {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    val rootRouteForRole = when (role) {
-        UserRole.CUSTOMER -> AppRoutes.HOME
-        UserRole.STORE_OWNER -> AppRoutes.STORE_DASHBOARD
-        UserRole.ADMIN -> AppRoutes.ADMIN_DASHBOARD
-    }
 
     val items = when (role) {
         UserRole.CUSTOMER -> listOf(
@@ -50,7 +54,7 @@ fun BottomNavBar(
             BottomNavItem(AppRoutes.HOME, "Shop", Icons.Default.Home),
             BottomNavItem(AppRoutes.STORE_DASHBOARD, "Dashboard", Icons.Default.Dashboard),
             BottomNavItem(AppRoutes.STORE_ORDERS, "Orders", Icons.Default.ShoppingCart),
-            BottomNavItem(AppRoutes.PROFILE, "Me", Icons.Default.AccountCircle),
+            BottomNavItem(AppRoutes.PROFILE, "Profile", Icons.Default.AccountCircle),
         )
         UserRole.ADMIN -> listOf(
             BottomNavItem(AppRoutes.ADMIN_DASHBOARD, "Dashboard", Icons.Default.InsertChart),
@@ -60,30 +64,43 @@ fun BottomNavBar(
         )
     }
 
-    NavigationBar(containerColor = Color.White) {
+    val scheme = MaterialTheme.colorScheme
+    NavigationBar(containerColor = scheme.surface) {
         items.forEach { item ->
-            val selected = currentRoute == item.route
+            val selected = routeMatchesTab(currentRoute, item.route)
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    if (currentRoute == item.route) {
-                        // If already on this route, pop back to its start to "refresh" or just stay
-                    } else {
-                        navController.navigate(item.route) {
-                            popUpTo(rootRouteForRole) {
-                                saveState = true
+                    if (routeMatchesTab(currentRoute, item.route)) return@NavigationBarItem
+                    if (item.route == AppRoutes.PROFILE) {
+                        val popped = navController.popBackStack(AppRoutes.PROFILE, inclusive = false, saveState = false)
+                        if (!popped) {
+                            navController.navigate(AppRoutes.PROFILE) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
+                        return@NavigationBarItem
+                    }
+                    navController.navigate(item.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 },
                 icon = { androidx.compose.material3.Icon(item.icon, contentDescription = null) },
                 label = { Text(item.label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    indicatorColor = Color.Transparent,
+                    selectedIconColor = scheme.primary,
+                    selectedTextColor = scheme.primary,
+                    indicatorColor = scheme.primary.copy(alpha = 0.14f),
+                    unselectedIconColor = scheme.onSurfaceVariant,
+                    unselectedTextColor = scheme.onSurfaceVariant,
                 ),
             )
         }

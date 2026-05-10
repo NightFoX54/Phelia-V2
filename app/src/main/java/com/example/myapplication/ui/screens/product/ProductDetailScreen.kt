@@ -1,8 +1,12 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.example.myapplication.ui.screens.product
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -93,6 +98,7 @@ import com.example.myapplication.viewmodel.CartViewModel
 import com.example.myapplication.viewmodel.FavoritesViewModel
 import com.example.myapplication.viewmodel.ProductEngagementViewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /** Height of the hero image pager (used for collapse progress). */
 private val ProductDetailHeroImageHeight = 380.dp
@@ -102,6 +108,7 @@ private val PinnedProductStripHeight = 56.dp
 @Composable
 fun ProductDetailScreen(
     productId: String,
+    highlightQuestionId: String = "",
     audience: ProductDetailAudience = ProductDetailAudience.Customer,
     cartViewModel: CartViewModel,
     favoritesViewModel: FavoritesViewModel,
@@ -158,7 +165,7 @@ fun ProductDetailScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         when (val state = loadState) {
             DetailLoadState.Loading -> {
@@ -183,6 +190,7 @@ fun ProductDetailScreen(
                     bundle = state.bundle,
                     audience = audience,
                     ownerStoreId = ownerStoreId,
+                    highlightQuestionId = highlightQuestionId,
                     onOpenStore = onOpenStore,
                     selectedAttributes = selectedAttributes,
                     onSelectAttribute = { key, value ->
@@ -222,6 +230,7 @@ private fun ProductDetailContent(
     bundle: ProductDetailBundle,
     audience: ProductDetailAudience,
     ownerStoreId: String,
+    highlightQuestionId: String,
     onOpenStore: (String) -> Unit,
     selectedAttributes: Map<String, String>,
     onSelectAttribute: (String, String) -> Unit,
@@ -254,6 +263,12 @@ private fun ProductDetailContent(
     }
     val summaryReviewCount = if (reviews.isNotEmpty()) reviews.size else product.reviewCount
     val questions by engagementViewModel.questions.collectAsState()
+    val questionsBringIntoView = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlightQuestionId, questions) {
+        if (highlightQuestionId.isBlank()) return@LaunchedEffect
+        delay(450)
+        questionsBringIntoView.bringIntoView()
+    }
     val eligibleReview by engagementViewModel.eligibleReviewSlot.collectAsState()
     val engagementBusy by engagementViewModel.busy.collectAsState()
     val engagementError by engagementViewModel.lastError.collectAsState()
@@ -278,10 +293,10 @@ private fun ProductDetailContent(
     val density = LocalDensity.current
     val heroHeightPx = remember(density) { with(density) { ProductDetailHeroImageHeight.roundToPx() } }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         LazyColumn(state = listState) {
             item {
-                Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFF3F4F6))) {
+                Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant)) {
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxWidth(),
@@ -300,7 +315,7 @@ private fun ProductDetailContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(ProductDetailHeroImageHeight)
-                                    .background(Color(0xFFE5E7EB)),
+                                    .background(MaterialTheme.colorScheme.outlineVariant),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text("No image", color = Color(0xFF6B7280))
@@ -369,7 +384,7 @@ private fun ProductDetailContent(
                         product.name,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF111827),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     val price = resolvedVariant?.finalPrice() ?: variants.minOfOrNull { it.finalPrice() } ?: 0.0
                     Text(
@@ -419,7 +434,7 @@ private fun ProductDetailContent(
                         Text(
                             "  " + String.format("%.1f", summaryRating),
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF111827),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             " ($summaryReviewCount reviews)",
@@ -486,8 +501,8 @@ private fun ProductDetailContent(
                                                     modifier = Modifier
                                                         .size(14.dp)
                                                         .clip(CircleShape)
-                                                        .background(Color.White)
-                                                        .border(2.dp, Color(0xFF111827), CircleShape),
+                                                        .background(MaterialTheme.colorScheme.surface)
+                                                        .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
                                                 )
                                             }
                                         }
@@ -630,6 +645,8 @@ private fun ProductDetailContent(
 
                     DividerLike()
                     ProductQuestionsSection(
+                        modifier = Modifier.bringIntoViewRequester(questionsBringIntoView),
+                        highlightQuestionId = highlightQuestionId,
                         questions = questions,
                         questionDraft = newQuestion,
                         onQuestionChange = { newQuestion = it },
@@ -699,10 +716,16 @@ private fun ProductDetailContent(
         if (!isStoreManagement) {
             Surface(
                 shadowElevation = 8.dp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
                     Button(
                         onClick = {
                             val v = resolvedVariant ?: return@Button
@@ -718,14 +741,18 @@ private fun ProductDetailContent(
                         shape = RoundedCornerShape(999.dp),
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
-                        Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null)
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
                         Spacer(modifier = Modifier.size(10.dp))
                         val label = when {
                             resolvedVariant == null -> "Select options"
                             resolvedVariant.stock <= 0 -> "Out of stock"
                             else -> "Add to cart — $" + String.format("%.2f", resolvedVariant.finalPrice())
                         }
-                        Text(label, fontWeight = FontWeight.Bold)
+                        Text(label, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -761,10 +788,11 @@ private fun CustomerPinnedProductStrip(
         val enter = ((scrollProgress - 0.04f) / 0.96f).coerceIn(0f, 1f)
         val smooth = enter * enter * (3f - 2f * enter)
 
+        val scheme = MaterialTheme.colorScheme
         val stockColor = when {
-            stockLine.startsWith("In stock") -> Color(0xFF16A34A)
-            stockLine == "Out of stock" -> Color(0xFFDC2626)
-            else -> Color(0xFF6B7280)
+            stockLine.startsWith("In stock") -> Color(0xFF34D399)
+            stockLine == "Out of stock" -> scheme.error
+            else -> scheme.onSurfaceVariant
         }
 
         Surface(
@@ -775,8 +803,9 @@ private fun CustomerPinnedProductStrip(
                     alpha = smooth
                     translationY = -8f * (1f - smooth)
                 },
-            color = Color.White,
-            shadowElevation = 6.dp * smooth,
+            color = scheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = (6.dp * smooth),
         ) {
             Column(Modifier.statusBarsPadding()) {
                 Row(
@@ -790,13 +819,13 @@ private fun CustomerPinnedProductStrip(
                         onClick = onBack,
                         modifier = Modifier.size(44.dp),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF111827))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     Box(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (imageUrl != null) {
@@ -817,7 +846,7 @@ private fun CustomerPinnedProductStrip(
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = Color(0xFF111827),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -880,7 +909,7 @@ private fun OwnerStatTile(
                     value,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF111827),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
                 Text(
@@ -901,7 +930,7 @@ private fun ProductStorePreviewRow(
 ) {
     Text("Sold by", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -918,7 +947,7 @@ private fun ProductStorePreviewRow(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFE5E7EB)),
+                        .background(MaterialTheme.colorScheme.outlineVariant),
                 )
             } else {
                 Box(
@@ -960,7 +989,7 @@ private fun ProductStorePreviewRow(
 @Composable
 private fun DividerLike() {
     Spacer(modifier = Modifier.height(14.dp))
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
     Spacer(modifier = Modifier.height(14.dp))
 }
 
@@ -974,7 +1003,7 @@ private fun SpecsCard(product: Product) {
         Text("No additional details.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
     } else {
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(14.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
         ) {
@@ -982,7 +1011,7 @@ private fun SpecsCard(product: Product) {
                 specs.forEach { (k, v) ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(k, color = Color(0xFF6B7280), modifier = Modifier.weight(1f))
-                        Text(v, fontWeight = FontWeight.SemiBold, color = Color(0xFF111827))
+                        Text(v, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -993,6 +1022,8 @@ private fun SpecsCard(product: Product) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProductQuestionsSection(
+    modifier: Modifier = Modifier,
+    highlightQuestionId: String,
     questions: List<ProductQuestionDoc>,
     questionDraft: String,
     onQuestionChange: (String) -> Unit,
@@ -1004,6 +1035,7 @@ private fun ProductQuestionsSection(
     onSubmitQuestion: (String) -> Unit,
     onAnswerQuestion: (String, String) -> Unit,
 ) {
+    Column(modifier = modifier) {
     Text(
         if (isStoreManagement) "Customer questions" else "Product questions",
         fontWeight = FontWeight.Bold,
@@ -1046,10 +1078,14 @@ private fun ProductQuestionsSection(
         ) {
             questions.forEach { q ->
                 var answerDraft by remember(q.questionId) { mutableStateOf("") }
+                val highlighted = highlightQuestionId.isNotBlank() && q.questionId == highlightQuestionId
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                    border = androidx.compose.foundation.BorderStroke(
+                        if (highlighted) 2.dp else 1.dp,
+                        if (highlighted) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB),
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -1087,6 +1123,7 @@ private fun ProductQuestionsSection(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -1105,11 +1142,19 @@ private fun ProductReviewsSection(
     onSubmitReview: (Double, String) -> Unit,
     onStoreReplyReview: (String, String) -> Unit,
 ) {
-    Text("Reviews", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Reviews",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
     if (customerReviewEnabled && eligibleReview != null && signedIn) {
         Text(
             "You can review this product from a completed order.",
-            color = Color(0xFF6B7280),
+            color = scheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 8.dp),
         )
@@ -1127,11 +1172,17 @@ private fun ProductReviewsSection(
         OutlinedTextField(
             value = reviewComment,
             onValueChange = onReviewCommentChange,
-            placeholder = { Text("Write your review...") },
+            placeholder = { Text("Write your review...", color = scheme.onSurfaceVariant.copy(alpha = 0.7f)) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             minLines = 2,
             enabled = !busy,
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = scheme.surfaceVariant,
+                unfocusedContainerColor = scheme.surfaceVariant,
+                unfocusedBorderColor = scheme.outlineVariant,
+                focusedBorderColor = scheme.primary,
+            ),
         )
         Button(
             onClick = { onSubmitReview(reviewRating.toDouble(), reviewComment) },
@@ -1143,50 +1194,107 @@ private fun ProductReviewsSection(
     } else if (customerReviewEnabled && signedIn && eligibleReview == null) {
         Text(
             "Reviews can only be submitted for products you bought in a completed order (once per purchase).",
-            color = Color(0xFF6B7280),
-            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 4.dp),
         )
     } else if (customerReviewEnabled && !signedIn) {
-        Text("Sign in to leave a review.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        Text("Sign in to leave a review.", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     } else if (isStoreManagement) {
-        Text("Respond to buyer reviews below.", color = Color(0xFF6B7280), style = MaterialTheme.typography.bodySmall)
+        Text("Respond to buyer reviews below.", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
     errorText?.takeIf { it.isNotBlank() }?.let {
         Text(it, color = Color(0xFFDC2626), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
     }
-    Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         if (reviews.isEmpty()) {
-            Text("No reviews yet.", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
+            Text(
+                "No reviews yet.",
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         } else {
             reviews.forEach { rev ->
                 var replyDraft by remember(rev.reviewId) { mutableStateOf("") }
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = scheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(16.dp),
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         val label = "Buyer ···${rev.userId.takeLast(4)}"
-                        Text(label, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            label,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = scheme.onSurface,
+                        )
                         val n = rev.rating.roundToInt().coerceIn(0, 5)
-                        Text("★".repeat(n) + "☆".repeat(5 - n), color = Color(0xFFF59E0B))
-                        Text(rev.comment, color = Color(0xFF4B5563), modifier = Modifier.padding(top = 4.dp))
+                        Text(
+                            "★".repeat(n) + "☆".repeat(5 - n),
+                            color = Color(0xFFF59E0B),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            rev.comment,
+                            color = scheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 22.sp,
+                        )
                         val sr = rev.storeResponse
                         if (!sr.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text("Store", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
-                            Text(sr, color = Color(0xFF374151), style = MaterialTheme.typography.bodySmall)
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = scheme.surface,
+                                tonalElevation = 1.dp,
+                                shadowElevation = 0.dp,
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        "Store reply",
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = scheme.primary,
+                                    )
+                                    Text(
+                                        sr,
+                                        color = scheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        lineHeight = 20.sp,
+                                    )
+                                }
+                            }
                         }
                         if (isStoreManagement && sr.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
                             OutlinedTextField(
                                 value = replyDraft,
                                 onValueChange = { replyDraft = it },
-                                placeholder = { Text("Public reply…") },
+                                placeholder = { Text("Public reply…", color = scheme.onSurfaceVariant.copy(alpha = 0.7f)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
                                 minLines = 2,
                                 shape = RoundedCornerShape(12.dp),
+                                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = scheme.surface,
+                                    unfocusedContainerColor = scheme.surface,
+                                    unfocusedBorderColor = scheme.outlineVariant,
+                                    focusedBorderColor = scheme.primary,
+                                ),
                             )
                             Button(
                                 onClick = {
@@ -1194,7 +1302,7 @@ private fun ProductReviewsSection(
                                     replyDraft = ""
                                 },
                                 enabled = !busy && replyDraft.isNotBlank(),
-                                modifier = Modifier.padding(top = 6.dp),
+                                modifier = Modifier.padding(top = 4.dp),
                             ) {
                                 Text("Post reply")
                             }
@@ -1203,5 +1311,6 @@ private fun ProductReviewsSection(
                 }
             }
         }
+    }
     }
 }

@@ -526,6 +526,33 @@ class ProductRepository(
         batch.commit().await()
     }
 
+    /** Removes Firestore document and variants/reviews subdocuments for this store’s product. */
+    suspend fun permanentlyDeleteProductForCurrentOwner(productId: String): Result<Unit> = runCatching {
+        val ownerId = auth.currentUser?.uid ?: error("No store owner session.")
+        val store = getStoreByOwner(ownerId)
+        val productRef = db.collection(COLLECTION_PRODUCTS).document(productId)
+        val snap = productRef.get().await()
+        if (!snap.exists()) error("Product not found.")
+        val existing = snap.toProduct()
+        if (existing.storeId != store.storeId) error("This product is not in your store.")
+        val reviews = productRef.collection(SUBCOLLECTION_REVIEWS).get().await().documents
+        val variants = productRef.collection(SUBCOLLECTION_VARIANTS).get().await().documents
+        val refsToDelete = reviews.map { it.reference } + variants.map { it.reference }
+        var batch = db.batch()
+        var ops = 0
+        for (ref in refsToDelete) {
+            batch.delete(ref)
+            ops++
+            if (ops >= 450) {
+                batch.commit().await()
+                batch = db.batch()
+                ops = 0
+            }
+        }
+        batch.delete(productRef)
+        batch.commit().await()
+    }
+
     /** Admin: products removed from sale (Firestore rules should enforce admin). */
     suspend fun fetchInactiveProductsForAdmin(): Result<List<InactiveProductAdminItem>> = runCatching {
         db.collection(COLLECTION_PRODUCTS)

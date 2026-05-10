@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.compose.material3.MaterialTheme
 
 class StoreApplicationRetryViewModel(
     private val repository: StoreApplicationRepository = StoreApplicationRepository(),
@@ -115,7 +116,7 @@ fun StoreApplicationRetryScreen(
 
     Scaffold(
         topBar = { AppTopBar(title = "Retry Application", onBack = onBack) },
-        containerColor = Color(0xFFF9FAFB)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (val state = uiState) {
@@ -154,24 +155,24 @@ private fun RetryForm(
     ) {
         if (app.rejectionReason.isNotBlank()) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECACA))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFB91C1C), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Rejection Reason", fontWeight = FontWeight.Bold, color = Color(0xFF991B1B))
+                        Text("Rejection Reason", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text(app.rejectionReason, color = Color(0xFFB91C1C))
+                    Text(app.rejectionReason, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
         }
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -229,7 +230,7 @@ private fun RetryForm(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -241,7 +242,7 @@ private fun RetryForm(
                     modifier = Modifier
                         .size(120.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFF3F4F6))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
                         .clickable(enabled = !busy) {
                             pickLogo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))

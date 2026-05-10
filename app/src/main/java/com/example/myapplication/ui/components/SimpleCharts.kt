@@ -203,7 +203,7 @@ fun ReadableHorizontalBarChart(
                             .width(200.dp)
                             .height(14.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFFE5E7EB)),
+                            .background(MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         val fill = (item.value / roundedMax).coerceIn(0f, 1f)
                         Box(

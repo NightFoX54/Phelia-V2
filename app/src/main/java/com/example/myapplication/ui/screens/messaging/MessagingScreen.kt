@@ -1,27 +1,38 @@
 package com.example.myapplication.ui.screens.messaging
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,13 +41,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.ui.clipboardLabelForChat
 import com.example.myapplication.ui.components.AppTopBar
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.collectAsState
@@ -44,12 +57,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.MessagingUiState
 import com.example.myapplication.viewmodel.MessagingViewModel
 import com.example.myapplication.viewmodel.MessagingViewModelFactory
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagingScreen(
     storeId: String,
     suborderId: String,
     onBack: () -> Unit,
+    onOpenParentOrder: (String) -> Unit,
     viewModel: MessagingViewModel = viewModel(
         key = "chat_$suborderId",
         factory = MessagingViewModelFactory(storeId, suborderId)
@@ -57,13 +73,16 @@ fun MessagingScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var messageText by remember { mutableStateOf("") }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             val title = when (val s = state) {
                 is MessagingUiState.Ready -> s.otherParticipantName
                 else -> "Chat"
@@ -71,7 +90,46 @@ fun MessagingScreen(
             AppTopBar(
                 title = title,
                 onBack = onBack,
-                containerColor = Color.White,
+                actions = {
+                    val ready = state as? MessagingUiState.Ready
+                    if (ready?.threadExists == true) {
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(
+                                Icons.Default.DeleteOutline,
+                                contentDescription = "Remove chat from inbox",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                },
+            )
+        }
+
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Remove this chat?") },
+                text = {
+                    Text(
+                        "It will disappear from your inbox only. The other person still has the conversation. " +
+                            "You can message again from the order page.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirm = false
+                            viewModel.hideChatForCurrentUser(onBack)
+                        },
+                    ) {
+                        Text("Remove", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text("Cancel")
+                    }
+                },
             )
         }
 
@@ -88,6 +146,18 @@ fun MessagingScreen(
                     }
                 }
                 is MessagingUiState.Ready -> {
+                    val parentOrderId = s.parentOrderId
+                    val orderLabel = remember(parentOrderId, suborderId) {
+                        if (parentOrderId.isNotBlank()) {
+                            val tail = parentOrderId.takeLast(8).uppercase(Locale.US)
+                            "ORD-$tail"
+                        } else {
+                            "Order #${suborderId.takeLast(6).uppercase(Locale.US)}"
+                        }
+                    }
+                    val copyPayload = remember(parentOrderId, suborderId) {
+                        clipboardLabelForChat(parentOrderId, suborderId)
+                    }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                         reverseLayout = false,
@@ -97,18 +167,60 @@ fun MessagingScreen(
                         item {
                             Card(
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Contact Store", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                    Text("Contact", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            orderLabel,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .clickable(enabled = parentOrderId.isNotBlank()) {
+                                                    onOpenParentOrder(parentOrderId)
+                                                },
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Copy order reference",
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .clickable {
+                                                    clipboard.setText(AnnotatedString(copyPayload))
+                                                },
+                                            tint = Color(0xFF6B7280),
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Inquiring about Suborder: #$suborderId", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(
+                                        "Suborder · ${suborderId.takeLast(8).uppercase(Locale.US)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray,
+                                    )
                                 }
                             }
                         }
-                        
-                        items(s.messages) { msg ->
+
+                        if (!s.threadExists && s.messages.isEmpty()) {
+                            item {
+                                Text(
+                                    "No messages yet—send one below to start the conversation.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF6B7280),
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                            }
+                        }
+
+                        items(s.messages, key = { it.id }) { msg ->
                             val isMe = msg.senderId == s.currentUserId
                             Column(
                                 modifier = Modifier.fillMaxWidth(),

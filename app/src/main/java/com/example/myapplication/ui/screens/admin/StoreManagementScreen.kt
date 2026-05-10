@@ -62,11 +62,11 @@ fun StoreManagementScreen(
 
     Column(
         modifier = modifier
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                AppTopBar(title = "Store Management", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "Store Management", onBack = onBack)
                 Text("${filteredStores.size} stores", color = Color(0xFF6B7280), modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
@@ -95,7 +95,7 @@ fun StoreManagementScreen(
             if (uiState is AdminStoreListUiState.Error) {
                 val msg = (uiState as AdminStoreListUiState.Error).message
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text(msg, color = Color(0xFFDC2626))
                             Spacer(modifier = Modifier.height(8.dp))
@@ -110,7 +110,7 @@ fun StoreManagementScreen(
             }
             items(filteredStores, key = { it.storeId }) { store ->
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {

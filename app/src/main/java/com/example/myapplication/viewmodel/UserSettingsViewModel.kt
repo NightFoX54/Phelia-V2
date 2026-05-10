@@ -1,11 +1,14 @@
 package com.example.myapplication.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.User
 import com.example.myapplication.data.repository.UserNotificationItem
 import com.example.myapplication.data.repository.UserSettings
 import com.example.myapplication.data.repository.UserSettingsRepository
+import com.example.myapplication.ui.theme.ThemeController
+import com.example.myapplication.ui.theme.ThemePreferenceStore
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +17,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Single `(Application)` constructor so [androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory]
+ * can instantiate this class via reflection (used by Profile sub-pages composables).
+ */
 class UserSettingsViewModel(
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val repository: UserSettingsRepository = UserSettingsRepository(),
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val repository: UserSettingsRepository = UserSettingsRepository()
     private val _settings = MutableStateFlow(UserSettings())
     val settings: StateFlow<UserSettings> = _settings.asStateFlow()
 
@@ -41,7 +50,11 @@ class UserSettingsViewModel(
         viewModelScope.launch {
             _loading.value = true
             repository.fetchSettings(uid).fold(
-                onSuccess = { _settings.value = it },
+                onSuccess = {
+                    // Keep the on-device theme (e.g. chosen on the login screen); don't overwrite from Firebase on load.
+                    val localTheme = ThemePreferenceStore(getApplication()).read()
+                    _settings.value = it.copy(themePreference = localTheme)
+                },
                 onFailure = { _message.value = it.message ?: "Could not load settings." },
             )
             _loading.value = false
@@ -107,8 +120,13 @@ class UserSettingsViewModel(
         if (uid.isBlank()) return
         viewModelScope.launch {
             _loading.value = true
-            repository.saveSettings(uid, _settings.value).fold(
-                onSuccess = { _message.value = "Settings saved." },
+            val prefsModel = _settings.value
+            repository.saveSettings(uid, prefsModel).fold(
+                onSuccess = {
+                    ThemePreferenceStore(getApplication()).write(prefsModel.themePreference)
+                    ThemeController.syncFromRemote(prefsModel.themePreference)
+                    _message.value = "Settings saved."
+                },
                 onFailure = { _message.value = it.message ?: "Could not save settings." },
             )
             _loading.value = false
@@ -148,6 +166,37 @@ class UserSettingsViewModel(
         viewModelScope.launch {
             repository.markAllNotificationsAsRead(uid)
             _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+        }
+    }
+
+    suspend fun syncDismissNotificationsMatching(
+        type: String,
+        orderId: String? = null,
+        productId: String? = null,
+        storeApplicationId: String? = null,
+        storeId: String? = null,
+        questionId: String? = null,
+    ) {
+        val uid = auth.currentUser?.uid.orEmpty()
+        if (uid.isBlank()) return
+        repository.markUnreadNotificationsMatching(
+            userId = uid,
+            type = type,
+            orderId = orderId,
+            productId = productId,
+            storeApplicationId = storeApplicationId,
+            storeId = storeId,
+            questionId = questionId,
+        ).onSuccess {
+            _notifications.value = _notifications.value.map { n ->
+                val hit = !n.isRead && n.type == type &&
+                    (orderId == null || n.orderId == orderId) &&
+                    (productId == null || n.productId == productId) &&
+                    (storeApplicationId == null || n.storeApplicationId == storeApplicationId) &&
+                    (storeId == null || n.storeId == storeId) &&
+                    (questionId == null || n.questionId == questionId)
+                if (hit) n.copy(isRead = true) else n
+            }
         }
     }
 

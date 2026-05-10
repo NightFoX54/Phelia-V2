@@ -21,11 +21,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -50,6 +55,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.model.ChatThread
 import com.example.myapplication.data.model.OrderDoc
 import com.example.myapplication.data.model.orderStatusLabelEnglish
+import com.example.myapplication.ui.clipboardLabelForChat
+import com.example.myapplication.ui.orderMatchesSearchQuery
 import com.example.myapplication.viewmodel.OrderHistoryViewModel
 import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
@@ -71,6 +80,7 @@ fun OrderHistoryScreen(
     onBack: () -> Unit,
     onOpenOrderDetail: (orderId: String) -> Unit,
     onOpenChat: (storeId: String, suborderId: String) -> Unit,
+    onOpenParentOrderFromMessages: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialTab: Int = 0,
 ) {
@@ -81,15 +91,17 @@ fun OrderHistoryScreen(
 
     val filteredOrders = remember(orders, searchQuery) {
         if (searchQuery.isBlank()) orders
-        else orders.filter { it.orderId.contains(searchQuery, ignoreCase = true) }
+        else orders.filter { orderMatchesSearchQuery(it.orderId, searchQuery) }
     }
 
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val clipboard = LocalClipboardManager.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6)),
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         // Header Section
         Box(
@@ -129,7 +141,7 @@ fun OrderHistoryScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search by Order ID...", color = Color.LightGray) },
+                    placeholder = { Text("Search order # or ORD-…", color = Color.LightGray) },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.LightGray) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -216,7 +228,14 @@ fun OrderHistoryScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                 ) {
                     items(chats, key = { it.id }) { chat ->
-                        CustomerChatCard(chat = chat, onClick = { onOpenChat(chat.storeId, chat.suborderId) })
+                        CustomerChatCard(
+                            chat = chat,
+                            onClick = { onOpenChat(chat.storeId, chat.suborderId) },
+                            onOpenParentOrder = onOpenParentOrderFromMessages,
+                            onCopyOrderRef = {
+                                clipboard.setText(AnnotatedString(clipboardLabelForChat(chat.parentOrderId, chat.suborderId)))
+                            },
+                        )
                     }
                 }
             }
@@ -236,7 +255,7 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
         Box(
             modifier = Modifier
                 .size(100.dp)
-                .background(Color.White, CircleShape),
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -262,10 +281,23 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String) {
 }
 
 @Composable
-private fun CustomerChatCard(chat: ChatThread, onClick: () -> Unit) {
+private fun CustomerChatCard(
+    chat: ChatThread,
+    onClick: () -> Unit,
+    onOpenParentOrder: (String) -> Unit,
+    onCopyOrderRef: () -> Unit,
+) {
+    val orderLabel = remember(chat.parentOrderId, chat.suborderId) {
+        if (chat.parentOrderId.isNotBlank()) {
+            val tail = chat.parentOrderId.takeLast(8).uppercase(Locale.US)
+            "ORD-$tail"
+        } else {
+            "Order #${chat.suborderId.takeLast(6).uppercase(Locale.US)}"
+        }
+    }
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -279,11 +311,28 @@ private fun CustomerChatCard(chat: ChatThread, onClick: () -> Unit) {
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(chat.storeName, fontWeight = FontWeight.Bold)
-                Text(
-                    "Order #${chat.suborderId.takeLast(6).uppercase()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        orderLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(enabled = chat.parentOrderId.isNotBlank()) {
+                            onOpenParentOrder(chat.parentOrderId)
+                        },
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy order reference",
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onCopyOrderRef() },
+                        tint = Color(0xFF6B7280),
+                    )
+                }
                 Text(
                     chat.lastMessage,
                     maxLines = 1,
@@ -310,7 +359,7 @@ private fun OrderHistoryCard(order: OrderDoc, onClick: () -> Unit) {
     val badgeColors = statusBadgeColors(order.status)
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),

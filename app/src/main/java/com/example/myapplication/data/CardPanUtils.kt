@@ -4,8 +4,11 @@ package com.example.myapplication.data
  * Card number validation and masking. Full PAN must not be stored in production databases.
  */
 object CardPanUtils {
-    const val MIN_PAN_LENGTH = 13
-    const val MAX_PAN_LENGTH = 19
+    /** This app only accepts standard 16-digit card numbers in forms and validation. */
+    const val PAYMENT_FORM_MAX_DIGITS = 16
+
+    const val MIN_PAN_LENGTH = PAYMENT_FORM_MAX_DIGITS
+    const val MAX_PAN_LENGTH = PAYMENT_FORM_MAX_DIGITS
 
     fun digitsOnly(s: String): String = s.filter { it.isDigit() }.take(MAX_PAN_LENGTH)
 

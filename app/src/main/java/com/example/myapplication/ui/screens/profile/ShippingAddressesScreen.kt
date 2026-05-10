@@ -67,15 +67,15 @@ fun ShippingAddressesScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Surface(color = Color.White, shadowElevation = 1.dp) {
-                AppTopBar(title = "Shipping Address", onBack = onBack, containerColor = Color.White)
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+                AppTopBar(title = "Shipping Address", onBack = onBack)
             }
         },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF9FAFB))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(padding),
         ) {
             if (addresses.isEmpty()) {
@@ -187,7 +187,7 @@ private fun AddressCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(

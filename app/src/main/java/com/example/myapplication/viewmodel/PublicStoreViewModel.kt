@@ -74,7 +74,10 @@ class PublicStoreViewModel(
                 )
             }.sortedBy { it.name.lowercase() }
 
-            val distinctCategories = uiProducts.mapNotNull { it.category }.distinct().sorted()
+            val distinctCategories = uiProducts
+                .mapNotNull { it.category?.trim()?.takeIf { n -> n.isNotBlank() } }
+                .distinctBy { it.lowercase() }
+                .sortedBy { it.lowercase() }
             val chips = listOf(Category(name = "All", isActive = true)) +
                     distinctCategories.map { Category(name = it, isActive = false) }
 

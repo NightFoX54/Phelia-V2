@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.screens.store
 
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import com.example.myapplication.navigation.AppRoutes
 import com.example.myapplication.data.model.StoreApplication
@@ -11,25 +12,32 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TrendingUp
@@ -51,12 +59,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +86,8 @@ import com.example.myapplication.viewmodel.StoreProductsViewModel
 import com.example.myapplication.viewmodel.StoreWeeklySalesLoadState
 import com.example.myapplication.viewmodel.UserSettingsViewModel
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun StoreDashboardScreen(
@@ -85,6 +98,8 @@ fun StoreDashboardScreen(
     onEditProduct: (String) -> Unit,
     onNavigateToRetry: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onNavigateToStoreProducts: () -> Unit = {},
+    onNavigateToStoreOrders: () -> Unit = {},
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -97,20 +112,60 @@ fun StoreDashboardScreen(
     val unreadCount = notifications.count { !it.isRead }
     val loadSt = loadState
 
-    LaunchedEffect(Unit) {
-        userSettingsViewModel.loadNotifications()
-    }
-
     val totalStock = rows.sumOf { it.totalStock }
     val totalReviews = rows.sumOf { it.reviewCount }
     val totalVariants = rows.sumOf { it.variantCount }
 
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var confirmDeleteProductId by remember { mutableStateOf<String?>(null) }
+    val userMessage by storeProductsViewModel.userMessage.collectAsState()
+    LaunchedEffect(userMessage) {
+        if (userMessage == null) return@LaunchedEffect
+        delay(5_000)
+        storeProductsViewModel.clearUserMessage()
+    }
+    val showScrollToTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 160
+        }
+    }
+
+    confirmDeleteProductId?.let { pid ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteProductId = null },
+            title = { Text("Delete product?") },
+            text = {
+                Text(
+                    "If this product isn’t in any open orders or shopping carts, it will be removed permanently. " +
+                        "Otherwise it will only be hidden from your storefront until orders finish.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        storeProductsViewModel.deleteProduct(pid)
+                        confirmDeleteProductId = null
+                    },
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteProductId = null }) { Text("Cancel") }
+            },
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+        ) {
             item {
                 Column(
                     modifier = Modifier
@@ -163,7 +218,7 @@ fun StoreDashboardScreen(
                             Button(
                                 onClick = onAddProduct,
                                 shape = RoundedCornerShape(999.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary),
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                                 Spacer(modifier = Modifier.size(6.dp))
@@ -194,6 +249,46 @@ fun StoreDashboardScreen(
                 }
             }
 
+            if (loadSt is StoreProductsLoadState.Ready && userMessage != null) {
+                item {
+                    Text(
+                        userMessage!!,
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
+            if (loadSt is StoreProductsLoadState.Ready) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StoreDashboardSectionNavChip(
+                            label = "Overview",
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            scope.launch { listState.scrollToItem(0) }
+                        }
+                        StoreDashboardSectionNavChip(
+                            label = "Products",
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToStoreProducts,
+                        )
+                        StoreDashboardSectionNavChip(
+                            label = "Orders",
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToStoreOrders,
+                        )
+                    }
+                }
+            }
+
             item {
                 SalesThisWeekSection(
                     state = weeklySales,
@@ -205,9 +300,22 @@ fun StoreDashboardScreen(
             }
 
             item {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Products", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text("${rows.size} items", color = Color(0xFF6B7280))
+                Surface(
+                    onClick = onNavigateToStoreProducts,
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFEEF2FF),
+                    border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Products", fontWeight = FontWeight.Bold, color = Color(0xFF3730A3), modifier = Modifier.weight(1f))
+                        Text("${rows.size} items →", color = Color(0xFF4338CA), fontWeight = FontWeight.SemiBold)
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -291,6 +399,7 @@ fun StoreDashboardScreen(
                                 product = product,
                                 onOpenDetail = { onOpenProductDetail(product.productId) },
                                 onEditProduct = onEditProduct,
+                                onRequestDelete = { confirmDeleteProductId = product.productId },
                             )
                         }
                     }
@@ -300,6 +409,16 @@ fun StoreDashboardScreen(
             item { Spacer(modifier = Modifier.height(88.dp)) }
         }
 
+        if (showScrollToTop) {
+            FloatingActionButton(
+                onClick = { scope.launch { listState.scrollToItem(0) } },
+                containerColor = Color(0xFF64748B),
+                contentColor = Color.White,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 156.dp),
+            ) {
+                Icon(Icons.Default.ExpandLess, contentDescription = "Scroll to top")
+            }
+        }
         if (loadSt is StoreProductsLoadState.Ready) {
             FloatingActionButton(
                 onClick = onAddProduct,
@@ -318,9 +437,10 @@ private fun DashboardProductCard(
     product: StoreOwnerProductRow,
     onOpenDetail: () -> Unit,
     onEditProduct: (String) -> Unit,
+    onRequestDelete: () -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
     ) {
@@ -340,31 +460,31 @@ private fun DashboardProductCard(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF))
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.Top) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(product.name, fontWeight = FontWeight.SemiBold)
-                            if (!product.isActive) {
-                                Text(
-                                    "INACTIVE",
-                                    color = Color(0xFFDC2626),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                        IconButton(onClick = {}) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color(0xFF9CA3AF)) }
+                    Text(
+                        product.name,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (!product.isActive) {
+                        Text(
+                            "INACTIVE",
+                            color = Color(0xFFDC2626),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                     Text(
                         "$" + String.format(Locale.US, "%.2f", product.minPrice),
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -387,7 +507,7 @@ private fun DashboardProductCard(
                     Text("Edit")
                 }
                 Button(
-                    onClick = {},
+                    onClick = onRequestDelete,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF2F2), contentColor = Color(0xFFDC2626)),
                     modifier = Modifier.weight(1f),
@@ -397,6 +517,42 @@ private fun DashboardProductCard(
                     Text("Delete")
                 }
             }
+        }
+    }
+}
+
+/** Full-width segmented shortcuts (equal columns) aligned with 20.dp page gutters. */
+@Composable
+private fun StoreDashboardSectionNavChip(
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .heightIn(min = 46.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -455,7 +611,7 @@ private fun SalesThisWeekSection(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -567,6 +723,8 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
     val firstHalf = days.take(maxOf(1, days.size / 2)).sumOf { it.revenue }
     val secondHalf = days.drop(days.size / 2).sumOf { it.revenue }
     val trendUp = secondHalf >= firstHalf
+    val longBreakdown = summary.days.size > 10
+    var breakdownExpanded by remember(summary.days.size, summary.rangeLabel) { mutableStateOf(false) }
     Spacer(modifier = Modifier.height(10.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -622,14 +780,16 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(132.dp)
-            .then(if (summary.days.size > 7) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
+            .then(if (summary.days.size > 7) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+            .padding(bottom = 10.dp),
         horizontalArrangement = if (summary.days.size > 7) Arrangement.spacedBy(12.dp) else Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
         summary.days.forEach { day ->
             Column(
-                modifier = if (summary.days.size > 7) Modifier.width(42.dp) else Modifier.weight(1f),
+                modifier = Modifier
+                    .then(if (summary.days.size > 7) Modifier.width(46.dp) else Modifier.weight(1f))
+                    .padding(bottom = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val barFrac = (day.revenue / maxRev).toFloat().coerceIn(0f, 1f)
@@ -657,12 +817,12 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                             ),
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     day.label,
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF6B7280),
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                 )
@@ -673,6 +833,7 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                     color = Color(0xFF374151),
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
@@ -680,13 +841,39 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
     Spacer(modifier = Modifier.height(16.dp))
     HorizontalDivider(color = Color(0xFFF3F4F6))
     Spacer(modifier = Modifier.height(10.dp))
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text("Day", modifier = Modifier.weight(0.22f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-        Text("Revenue", modifier = Modifier.weight(0.38f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-        Text("Orders", modifier = Modifier.weight(0.2f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFF3F4F6),
+        border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                "Day",
+                modifier = Modifier.weight(0.22f),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF374151),
+            )
+            Text(
+                "Revenue",
+                modifier = Modifier.weight(0.38f),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF374151),
+            )
+            Text(
+                "Orders",
+                modifier = Modifier.weight(0.2f),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF374151),
+            )
+        }
     }
     Spacer(modifier = Modifier.height(6.dp))
-    summary.days.forEachIndexed { index, day ->
+    val visibleDays = if (!longBreakdown || breakdownExpanded) summary.days else summary.days.take(7)
+    visibleDays.forEachIndexed { index, day ->
         if (index > 0) HorizontalDivider(color = Color(0xFFF9FAFB), thickness = 1.dp)
         Row(
             modifier = Modifier
@@ -706,6 +893,17 @@ private fun SalesThisWeekContent(summary: StoreWeeklySalesSummary) {
                 modifier = Modifier.weight(0.2f),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF6B7280),
+            )
+        }
+    }
+    if (longBreakdown) {
+        TextButton(
+            onClick = { breakdownExpanded = !breakdownExpanded },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                if (breakdownExpanded) "Show less"
+                else "Show all ${summary.days.size} days · revenue breakdown",
             )
         }
     }

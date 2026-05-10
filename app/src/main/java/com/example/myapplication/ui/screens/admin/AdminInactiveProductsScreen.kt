@@ -72,12 +72,11 @@ fun AdminInactiveProductsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         AppTopBar(
             title = "Inactive products",
             onBack = onBack,
-            containerColor = Color.White,
         )
         if (banner != null) {
             Text(
@@ -114,7 +113,7 @@ fun AdminInactiveProductsScreen(
                 ) {
                     items(items, key = { it.productId }) { row ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {

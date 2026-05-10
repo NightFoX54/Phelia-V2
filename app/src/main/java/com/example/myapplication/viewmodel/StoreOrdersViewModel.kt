@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class StoreOrdersViewModel(
@@ -101,8 +102,11 @@ class StoreOrdersViewModel(
         chatJob = viewModelScope.launch {
             messagingRepository.listenToStoreChats(storeId)
                 .catch { e -> Log.e("StoreOrdersVM", "Error collecting store chats", e) }
-                .collect {
-                    _chats.value = it
+                .collectLatest { threads ->
+                    _chats.value = threads.map { t ->
+                        if (t.parentOrderId.isNotBlank()) t
+                        else t.copy(parentOrderId = orderRepository.parentOrderIdForSuborder(t.suborderId).orEmpty())
+                    }
                 }
         }
     }

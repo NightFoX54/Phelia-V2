@@ -98,9 +98,9 @@ fun EditStoreScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        AppTopBar(title = "Edit store", onBack = onBack, containerColor = Color.White)
+        AppTopBar(title = "Edit store", onBack = onBack)
         Column(
             modifier = Modifier
                 .padding(20.dp)
@@ -180,7 +180,7 @@ fun EditStoreScreen(
                         .aspectRatio(1f)
                         .clip(RoundedCornerShape(20.dp))
                         .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(20.dp))
-                        .background(Color(0xFFF3F4F6)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (logoUrl.isNotBlank()) {

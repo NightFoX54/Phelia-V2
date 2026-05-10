@@ -75,7 +75,7 @@ fun StoreOwnerProfileScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -165,7 +165,7 @@ fun StoreOwnerProfileScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -190,7 +190,7 @@ fun StoreOwnerProfileScreen(
                         ) { onNavigate(AppRoutes.storeOrders()) }
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.surfaceVariant))
                     }
                     
                     Text(
@@ -232,7 +232,7 @@ fun StoreOwnerProfileScreen(
                     ) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
                     
                     Spacer(modifier = Modifier.height(8.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.surfaceVariant))
 
                     ProfileMenuRow(
                         icon = Icons.Default.Help,
@@ -251,7 +251,7 @@ fun StoreOwnerProfileScreen(
         item {
             Surface(
                 onClick = { sessionViewModel.signOut() },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .padding(horizontal = 20.dp)
@@ -266,7 +266,7 @@ fun StoreOwnerProfileScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFFFEF2F2)),
+                            .background(MaterialTheme.colorScheme.errorContainer),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFEF4444))
@@ -329,7 +329,7 @@ private fun StoreOwnerHeader(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White),
+                            .background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (logo.isNotEmpty()) {

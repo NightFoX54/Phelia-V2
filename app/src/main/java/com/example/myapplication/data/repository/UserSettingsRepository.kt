@@ -2,19 +2,14 @@ package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.model.User
+import com.example.myapplication.ui.theme.ThemePreference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 data class UserSettings(
-    val darkMode: Boolean = false,
-    val biometricLogin: Boolean = true,
-    val autoPlayProductVideos: Boolean = false,
+    val themePreference: ThemePreference = ThemePreference.SYSTEM,
     val orderUpdates: Boolean = true,
-    val campaignNotifications: Boolean = true,
-    val priceDropAlerts: Boolean = true,
-    val weeklyDigest: Boolean = false,
-    val smsNotifications: Boolean = false,
 )
 
 data class UserNotificationItem(
@@ -26,6 +21,7 @@ data class UserNotificationItem(
     val productId: String,
     val storeApplicationId: String,
     val storeId: String,
+    val questionId: String,
     val createdAtMs: Long,
     val isRead: Boolean,
 )
@@ -68,15 +64,12 @@ class UserSettingsRepository(
             .get()
             .await()
         if (!doc.exists()) return@runCatching UserSettings()
+        val storedTheme = ThemePreference.fromStorage(doc.getString(FIELD_THEME_PREFERENCE))
+        val themePreference =
+            storedTheme ?: ThemePreference.migrateFromLegacyDarkMode(doc.getBoolean(FIELD_DARK_MODE))
         UserSettings(
-            darkMode = doc.getBoolean(FIELD_DARK_MODE) ?: false,
-            biometricLogin = doc.getBoolean(FIELD_BIOMETRIC_LOGIN) ?: true,
-            autoPlayProductVideos = doc.getBoolean(FIELD_AUTOPLAY_VIDEOS) ?: false,
+            themePreference = themePreference,
             orderUpdates = doc.getBoolean(FIELD_ORDER_UPDATES) ?: true,
-            campaignNotifications = doc.getBoolean(FIELD_CAMPAIGN_NOTIFICATIONS) ?: true,
-            priceDropAlerts = doc.getBoolean(FIELD_PRICE_DROP_ALERTS) ?: true,
-            weeklyDigest = doc.getBoolean(FIELD_WEEKLY_DIGEST) ?: false,
-            smsNotifications = doc.getBoolean(FIELD_SMS_NOTIFICATIONS) ?: false,
         )
     }
 
@@ -86,14 +79,8 @@ class UserSettingsRepository(
             .collection(SUBCOLLECTION_SETTINGS).document(DOC_PREFERENCES)
             .set(
                 mapOf(
-                    FIELD_DARK_MODE to settings.darkMode,
-                    FIELD_BIOMETRIC_LOGIN to settings.biometricLogin,
-                    FIELD_AUTOPLAY_VIDEOS to settings.autoPlayProductVideos,
+                    FIELD_THEME_PREFERENCE to settings.themePreference.storageKey,
                     FIELD_ORDER_UPDATES to settings.orderUpdates,
-                    FIELD_CAMPAIGN_NOTIFICATIONS to settings.campaignNotifications,
-                    FIELD_PRICE_DROP_ALERTS to settings.priceDropAlerts,
-                    FIELD_WEEKLY_DIGEST to settings.weeklyDigest,
-                    FIELD_SMS_NOTIFICATIONS to settings.smsNotifications,
                     FIELD_UPDATED_AT to System.currentTimeMillis(),
                 ),
                 SetOptions.merge(),
@@ -122,6 +109,7 @@ class UserSettingsRepository(
                         productId = d.getString(FIELD_PRODUCT_ID).orEmpty(),
                         storeApplicationId = d.getString(FIELD_STORE_APPLICATION_ID).orEmpty(),
                         storeId = d.getString(FIELD_STORE_ID).orEmpty(),
+                        questionId = d.getString(FIELD_QUESTION_ID).orEmpty(),
                         createdAtMs = d.readMillis(FIELD_CREATED_AT),
                         isRead = d.getBoolean(FIELD_IS_READ) == true,
                     )
@@ -145,6 +133,7 @@ class UserSettingsRepository(
                 productId = d.getString(FIELD_PRODUCT_ID).orEmpty(),
                 storeApplicationId = d.getString(FIELD_STORE_APPLICATION_ID).orEmpty(),
                 storeId = d.getString(FIELD_STORE_ID).orEmpty(),
+                questionId = d.getString(FIELD_QUESTION_ID).orEmpty(),
                 createdAtMs = d.readMillis(FIELD_CREATED_AT),
                 isRead = d.getBoolean(FIELD_IS_READ) == true,
             )
@@ -157,6 +146,44 @@ class UserSettingsRepository(
             .collection(SUBCOLLECTION_NOTIFICATIONS).document(notificationId)
             .update(FIELD_IS_READ, true)
             .await()
+    }
+
+    /**
+     * Marks unread notifications matching [type] and optional payload fields (exact match).
+     * Fetches unread notifications of [type] then filters in memory so Firestore composite indexes are not required.
+     */
+    suspend fun markUnreadNotificationsMatching(
+        userId: String,
+        type: String,
+        orderId: String? = null,
+        productId: String? = null,
+        storeApplicationId: String? = null,
+        storeId: String? = null,
+        questionId: String? = null,
+    ): Result<Unit> = runCatching {
+        if (userId.isBlank() || type.isBlank()) error("Invalid request")
+        val snap = db.collection(COLLECTION_USERS).document(userId)
+            .collection(SUBCOLLECTION_NOTIFICATIONS)
+            .whereEqualTo(FIELD_IS_READ, false)
+            .get()
+            .await()
+
+        val docs = snap.documents.filter { d ->
+            if (d.getString(FIELD_TYPE) != type) return@filter false
+            val matchOrder = orderId.isNullOrBlank() || d.getString(FIELD_ORDER_ID) == orderId
+            val matchProduct = productId.isNullOrBlank() || d.getString(FIELD_PRODUCT_ID) == productId
+            val matchApp = storeApplicationId.isNullOrBlank() || d.getString(FIELD_STORE_APPLICATION_ID) == storeApplicationId
+            val matchStore = storeId.isNullOrBlank() || d.getString(FIELD_STORE_ID) == storeId
+            val matchQuestion = questionId.isNullOrBlank() || d.getString(FIELD_QUESTION_ID) == questionId
+            matchOrder && matchProduct && matchApp && matchStore && matchQuestion
+        }
+        if (docs.isEmpty()) return@runCatching
+
+        val batch = db.batch()
+        docs.forEach { doc ->
+            batch.update(doc.reference, FIELD_IS_READ, true)
+        }
+        batch.commit().await()
     }
 
     suspend fun markAllNotificationsAsRead(userId: String): Result<Unit> = runCatching {
@@ -191,13 +218,8 @@ class UserSettingsRepository(
         private const val SUBCOLLECTION_NOTIFICATIONS = "notifications"
 
         private const val FIELD_DARK_MODE = "darkMode"
-        private const val FIELD_BIOMETRIC_LOGIN = "biometricLogin"
-        private const val FIELD_AUTOPLAY_VIDEOS = "autoPlayProductVideos"
+        private const val FIELD_THEME_PREFERENCE = "themePreference"
         private const val FIELD_ORDER_UPDATES = "orderUpdates"
-        private const val FIELD_CAMPAIGN_NOTIFICATIONS = "campaignNotifications"
-        private const val FIELD_PRICE_DROP_ALERTS = "priceDropAlerts"
-        private const val FIELD_WEEKLY_DIGEST = "weeklyDigest"
-        private const val FIELD_SMS_NOTIFICATIONS = "smsNotifications"
         private const val FIELD_UPDATED_AT = "updatedAt"
 
         private const val FIELD_TITLE = "title"
@@ -207,6 +229,7 @@ class UserSettingsRepository(
         private const val FIELD_PRODUCT_ID = "productId"
         private const val FIELD_STORE_APPLICATION_ID = "storeApplicationId"
         private const val FIELD_STORE_ID = "storeId"
+        private const val FIELD_QUESTION_ID = "questionId"
         private const val FIELD_CREATED_AT = "createdAt"
         private const val FIELD_IS_READ = "isRead"
     }

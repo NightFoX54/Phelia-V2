@@ -12,6 +12,7 @@ import kotlinx.coroutines.tasks.await
 
 class ProductEngagementRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
 ) {
 
     fun listenProductReviews(
@@ -163,7 +164,35 @@ class ProductEngagementRepository(
                 FIELD_ANSWERED_AT to null,
             ),
         ).await()
+        notifyStoreOwnerOfNewQuestion(userId, productId, id, q)
         id
+    }
+
+    private suspend fun notifyStoreOwnerOfNewQuestion(
+        askerUserId: String,
+        productId: String,
+        questionDocId: String,
+        questionPreview: String,
+    ) {
+        val productSnap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
+        if (!productSnap.exists()) return
+        val titleProduct = productSnap.getString("name").orEmpty().ifBlank { "A product" }
+        val storeId = productSnap.getString(FIELD_PRODUCT_STORE_ID).orEmpty().trim()
+        if (storeId.isBlank()) return
+        val storeSnap = db.collection(COLLECTION_STORES).document(storeId).get().await()
+        if (!storeSnap.exists()) return
+        val ownerId = storeSnap.getString(FIELD_STORE_OWNER_ID).orEmpty().trim()
+        if (ownerId.isBlank() || ownerId == askerUserId) return
+        val preview = questionPreview.lines().first().trim().take(120)
+        notificationRepository.sendToUser(
+            userId = ownerId,
+            type = NotificationTypes.PRODUCT_QUESTION_ASKED,
+            title = "New question on your product",
+            body = "Someone asked about \"$titleProduct\": $preview",
+            productId = productId,
+            questionId = questionDocId,
+            storeId = storeId,
+        )
     }
 
     suspend fun answerQuestionAsStore(
@@ -177,6 +206,9 @@ class ProductEngagementRepository(
         require(a.isNotEmpty()) { "Answer cannot be empty" }
         require(a.length <= 5000) { "Answer too long" }
         val qRef = db.collection(COLLECTION_PRODUCTS).document(productId).collection(SUB_QUESTIONS).document(questionId)
+        val qBefore = qRef.get().await()
+        if (!qBefore.exists()) error("Question not found")
+        val askerId = qBefore.getString(FIELD_USER_ID).orEmpty().trim()
         val now = FieldValue.serverTimestamp()
         qRef.update(
             mapOf(
@@ -184,6 +216,20 @@ class ProductEngagementRepository(
                 FIELD_ANSWERED_AT to now,
             ),
         ).await()
+        if (askerId.isNotBlank() && askerId != ownerId) {
+            val productSnap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
+            val titleProduct = productSnap.getString("name").orEmpty().ifBlank { "your product" }
+            val storeId = productSnap.getString(FIELD_PRODUCT_STORE_ID).orEmpty()
+            notificationRepository.sendToUser(
+                userId = askerId,
+                type = NotificationTypes.PRODUCT_QUESTION_ANSWERED,
+                title = "Your question was answered",
+                body = "The store replied about \"$titleProduct\".",
+                productId = productId,
+                questionId = questionId,
+                storeId = storeId,
+            )
+        }
     }
 
     suspend fun respondToReviewAsStore(

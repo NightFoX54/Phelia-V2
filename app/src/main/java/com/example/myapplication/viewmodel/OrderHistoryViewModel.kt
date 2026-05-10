@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -47,8 +48,11 @@ class OrderHistoryViewModel(
             chatJob = viewModelScope.launch {
                 messagingRepository.listenToCustomerChats(uid)
                     .catch { e -> Log.e("OrderHistoryVM", "Error collecting customer chats", e) }
-                    .collect {
-                        _chats.value = it
+                    .collectLatest { threads ->
+                        _chats.value = threads.map { t ->
+                            if (t.parentOrderId.isNotBlank()) t
+                            else t.copy(parentOrderId = repository.parentOrderIdForSuborder(t.suborderId).orEmpty())
+                        }
                     }
             }
         }

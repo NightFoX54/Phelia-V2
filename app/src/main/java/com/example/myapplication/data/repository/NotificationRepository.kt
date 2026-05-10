@@ -17,6 +17,9 @@ object NotificationTypes {
     const val STORE_UPDATE_REQUEST_SUBMITTED = "store_update_request_submitted"
     const val STORE_UPDATE_REQUEST_APPROVED = "store_update_request_approved"
     const val STORE_UPDATE_REQUEST_REJECTED = "store_update_request_rejected"
+    const val PRODUCT_QUESTION_ASKED = "product_question_asked"
+    const val PRODUCT_QUESTION_ANSWERED = "product_question_answered"
+    const val SUPPORT_TICKET_SUBMITTED = "support_ticket_submitted"
 }
 
 class NotificationRepository(
@@ -31,6 +34,7 @@ class NotificationRepository(
         productId: String? = null,
         storeApplicationId: String? = null,
         storeId: String? = null,
+        questionId: String? = null,
     ): Result<Unit> = runCatching {
         if (userId.isBlank()) return@runCatching
         val ref = db.collection(COLLECTION_USERS).document(userId)
@@ -45,6 +49,7 @@ class NotificationRepository(
                 FIELD_PRODUCT_ID to productId.orEmpty(),
                 FIELD_STORE_APPLICATION_ID to storeApplicationId.orEmpty(),
                 FIELD_STORE_ID to storeId.orEmpty(),
+                FIELD_QUESTION_ID to questionId.orEmpty(),
                 FIELD_IS_READ to false,
                 FIELD_CREATED_AT to FieldValue.serverTimestamp(),
             ),
@@ -60,6 +65,7 @@ class NotificationRepository(
         productId: String? = null,
         storeApplicationId: String? = null,
         storeId: String? = null,
+        questionId: String? = null,
     ): Result<Unit> = runCatching {
         userIds.filter { it.isNotBlank() }.distinct().forEach { uid ->
             sendToUser(
@@ -71,6 +77,7 @@ class NotificationRepository(
                 productId = productId,
                 storeApplicationId = storeApplicationId,
                 storeId = storeId,
+                questionId = questionId,
             ).getOrThrow()
         }
     }
@@ -94,6 +101,7 @@ class NotificationRepository(
         private const val FIELD_PRODUCT_ID = "productId"
         private const val FIELD_STORE_APPLICATION_ID = "storeApplicationId"
         private const val FIELD_STORE_ID = "storeId"
+        private const val FIELD_QUESTION_ID = "questionId"
         private const val FIELD_IS_READ = "isRead"
         private const val FIELD_CREATED_AT = "createdAt"
     }

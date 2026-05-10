@@ -23,6 +23,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +53,7 @@ import com.example.myapplication.data.model.OrderStatus
 import com.example.myapplication.data.model.SuborderDetailUi
 import com.example.myapplication.data.model.orderStatusLabelEnglish
 import com.example.myapplication.ui.components.AppTopBar
+import com.example.myapplication.ui.orderPublicLabel
 import com.example.myapplication.viewmodel.OrderDetailUiState
 import com.example.myapplication.viewmodel.OrderDetailViewModel
 import java.text.SimpleDateFormat
@@ -84,7 +91,7 @@ fun OrderDetailScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         Surface(color = headerColor, shadowElevation = if (headerColor == Color.White) 1.dp else 0.dp) {
             AppTopBar(
@@ -168,6 +175,8 @@ private fun OrderDetailContent(
     val order = data.order
     val label = orderStatusLabelEnglish(order.status)
     val badgeColors = statusBadgeColors(order.status)
+    val clipboard = LocalClipboardManager.current
+    val orderLabelForDisplayAndCopy = remember(order.orderId) { orderPublicLabel(order.orderId) }
 
     Column(
         modifier = Modifier
@@ -178,7 +187,7 @@ private fun OrderDetailContent(
     ) {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -192,11 +201,28 @@ private fun OrderDetailContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF6B7280),
                             )
-                            Text(
-                                "Order #${order.orderId}",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    orderLabelForDisplayAndCopy,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                IconButton(
+                                    onClick = {
+                                        clipboard.setText(AnnotatedString(orderLabelForDisplayAndCopy))
+                                    },
+                                    modifier = Modifier.size(40.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = "Copy order reference",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
                         }
                         Surface(color = badgeColors.first, shape = RoundedCornerShape(999.dp)) {
                             Text(
@@ -230,7 +256,7 @@ private fun OrderDetailContent(
 
         Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -270,7 +296,7 @@ private fun SuborderSection(
     val badgeColors = statusBadgeColors(so.status)
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -355,7 +381,7 @@ private fun OrderItemRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
             .padding(12.dp),
     ) {
         Column(

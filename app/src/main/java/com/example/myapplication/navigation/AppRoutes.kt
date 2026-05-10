@@ -1,5 +1,6 @@
 package com.example.myapplication.navigation
 
+import android.net.Uri
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 
@@ -7,7 +8,8 @@ object AppRoutes {
     const val HOME = "home"
     /** Customer catalog; navigate with [products]. */
     const val PRODUCTS = "products?saleOnly={saleOnly}"
-    const val PRODUCT_DETAIL = "product/{productId}"
+    /** Use [QUESTION_ID_ROUTE_NONE] in the path when no question highlight is needed (query-style routes crash some Nav versions). */
+    const val PRODUCT_DETAIL = "product/{productId}/{questionId}"
     /** Customer: seller profile + that store's active products (distinct from admin [STORE_DETAIL]). */
     const val PUBLIC_STORE = "public-store/{storeId}"
     const val CART = "cart"
@@ -40,7 +42,7 @@ object AppRoutes {
     const val STORE_PRODUCTS = "store-products"
     const val STORE_ORDERS = "store-orders?tab={tab}"
     /** Store owner: product detail + Q&A / review replies. */
-    const val STORE_PRODUCT_DETAIL = "store-product/{productId}"
+    const val STORE_PRODUCT_DETAIL = "store-product/{productId}/{questionId}"
     const val STORE_ORDER_DETAIL = "store-order/{orderId}"
 
     // Admin
@@ -52,6 +54,8 @@ object AppRoutes {
     const val ADMIN_STORE_APPLICATIONS = "admin/store-applications"
     const val ADMIN_CATALOG = "admin/categories-brands"
     const val ADMIN_STORE_UPDATE_REQUESTS = "admin/store-update-requests"
+    const val ADMIN_SUPPORT_TICKETS = "admin/support-tickets"
+    const val ADMIN_SUPPORT_TICKET_DETAIL = "admin/support-tickets/{ticketId}"
 
     const val STORE_APPLICATION_RETRY = "store-application-retry"
 
@@ -64,12 +68,31 @@ object AppRoutes {
 
     fun products(saleOnly: Boolean = false) = "products?saleOnly=$saleOnly"
 
-    fun productDetail(productId: String) = "product/$productId"
+    const val QUESTION_ID_ROUTE_NONE = "none"
+
+    fun decodeQuestionIdRouteArg(encoded: String?): String {
+        val raw = encoded.orEmpty()
+        if (raw.isBlank() || raw == QUESTION_ID_ROUTE_NONE) return ""
+        return Uri.decode(raw)
+    }
+
+    fun productDetail(productId: String, questionId: String = "") =
+        "product/$productId/" + if (questionId.isBlank()) {
+            QUESTION_ID_ROUTE_NONE
+        } else {
+            Uri.encode(questionId)
+        }
     fun publicStore(storeId: String) = "public-store/$storeId"
     fun productFormEdit(productId: String) = "product-form/$productId"
     fun storeOrderDetail(orderId: String) = "store-order/$orderId"
-    fun storeProductDetail(productId: String) = "store-product/$productId"
+    fun storeProductDetail(productId: String, questionId: String = "") =
+        "store-product/$productId/" + if (questionId.isBlank()) {
+            QUESTION_ID_ROUTE_NONE
+        } else {
+            Uri.encode(questionId)
+        }
     fun storeDetail(storeId: String) = "store/$storeId"
+    fun adminSupportTicketDetail(ticketId: String) = "admin/support-tickets/$ticketId"
     fun orderSuccess(orderId: String) = "order_success/$orderId"
     fun profileOrderDetail(orderId: String) = "profile/orders/$orderId"
     fun messaging(storeId: String, suborderId: String) = "messaging/$storeId/$suborderId"
@@ -85,6 +108,7 @@ object AppRoutes {
     )
     val productDetailArgs = listOf(
         navArgument("productId") { type = NavType.StringType },
+        navArgument("questionId") { type = NavType.StringType },
     )
     val publicStoreArgs = listOf(
         navArgument("storeId") { type = NavType.StringType },
@@ -94,6 +118,7 @@ object AppRoutes {
     )
     val storeProductDetailArgs = listOf(
         navArgument("productId") { type = NavType.StringType },
+        navArgument("questionId") { type = NavType.StringType },
     )
     val storeDetailArgs = listOf(
         navArgument("storeId") { type = NavType.StringType },
@@ -110,6 +135,9 @@ object AppRoutes {
     val messagingArgs = listOf(
         navArgument("storeId") { type = NavType.StringType },
         navArgument("suborderId") { type = NavType.StringType },
+    )
+    val adminSupportTicketDetailArgs = listOf(
+        navArgument("ticketId") { type = NavType.StringType },
     )
 }
 

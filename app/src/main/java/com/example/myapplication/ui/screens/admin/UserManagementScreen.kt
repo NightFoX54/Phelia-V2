@@ -42,6 +42,7 @@ import com.example.myapplication.viewmodel.AdminUserManagementViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun UserManagementScreen(
@@ -63,10 +64,10 @@ fun UserManagementScreen(
                 )
     }
 
-    Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                AppTopBar(title = "User Management", onBack = onBack, containerColor = Color.White)
+                AppTopBar(title = "User Management", onBack = onBack)
                 Text("${filteredUsers.size} users", color = Color(0xFF6B7280), modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
@@ -124,7 +125,7 @@ fun UserManagementScreen(
             if (uiState is AdminUserManagementUiState.Error) {
                 val msg = (uiState as AdminUserManagementUiState.Error).message
                 item {
-                    Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text(msg, color = Color(0xFFDC2626))
                             TextButton(onClick = { viewModel.refresh() }) { Text("Retry") }
@@ -133,7 +134,7 @@ fun UserManagementScreen(
                 }
             }
             items(filteredUsers, key = { it.uid }) { user ->
-                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

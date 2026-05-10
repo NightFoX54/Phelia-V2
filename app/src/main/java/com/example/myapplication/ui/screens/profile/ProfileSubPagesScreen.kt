@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.screens.profile
 
+import android.app.Application
 import com.example.myapplication.data.model.ui.UserRole
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,13 +46,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.navigation.AppRoutes
+import com.example.myapplication.ui.theme.ThemeController
+import com.example.myapplication.ui.theme.ThemePreference
 import com.example.myapplication.viewmodel.UserSettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -66,7 +72,12 @@ fun ProfileSubPagesScreen(
     onNavigateToRoute: (String) -> Unit = {},
     sessionViewModel: SessionViewModel? = null,
 ) {
-    val settingsVm: UserSettingsViewModel = viewModel()
+    val context = LocalContext.current
+    val settingsVm: UserSettingsViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+            context.applicationContext as Application,
+        ),
+    )
     val userSettings by settingsVm.settings.collectAsState()
     val userProfile by settingsVm.userProfile.collectAsState()
     val notifications by settingsVm.notifications.collectAsState()
@@ -102,10 +113,10 @@ fun ProfileSubPagesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
-            AppTopBar(title = title, onBack = onBack, containerColor = Color.White)
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+            AppTopBar(title = title, onBack = onBack)
         }
         Column(
             modifier = Modifier
@@ -184,11 +195,6 @@ fun ProfileSubPagesScreen(
                         isLoading = loading,
                         statusMessage = message,
                         onChangePassword = { showChangePasswordDialog = true },
-                        onEnable2fa = {
-                            // Keep behavior explicit until 2FA backend is available.
-                            settingsVm.updateSettings(userSettings.copy(biometricLogin = true))
-                            settingsVm.saveSettings()
-                        },
                     )
                 }
                 "Notifications" -> {
@@ -218,7 +224,7 @@ fun ProfileSubPagesScreen(
                         }
                     }
                     notifications.forEach { n ->
-                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -230,8 +236,17 @@ fun ProfileSubPagesScreen(
                                                 n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.storeOrderDetail(it) }
                                             NotificationTypes.ORDER_STATUS_UPDATED ->
                                                 n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.profileOrderDetail(it) }
+                                            NotificationTypes.PRODUCT_QUESTION_ASKED ->
+                                                n.productId.takeIf { it.isNotBlank() && userRole == UserRole.STORE_OWNER }
+                                                    ?.let { AppRoutes.storeProductDetail(it, n.questionId) }
+                                            NotificationTypes.PRODUCT_QUESTION_ANSWERED ->
+                                                n.productId.takeIf { it.isNotBlank() }
+                                                    ?.let { AppRoutes.productDetail(it, n.questionId) }
                                             NotificationTypes.PRICE_DROP ->
-                                                n.productId.takeIf { it.isNotBlank() }?.let { AppRoutes.productDetail(it) }
+                                                n.productId.takeIf { it.isNotBlank() }?.let { pid ->
+                                                    if (userRole == UserRole.STORE_OWNER) AppRoutes.storeProductDetail(pid)
+                                                    else AppRoutes.productDetail(pid)
+                                                }
                                             NotificationTypes.STORE_APPLICATION_SUBMITTED ->
                                                 if (userRole == UserRole.ADMIN) AppRoutes.ADMIN_STORE_APPLICATIONS else null
                                             NotificationTypes.STORE_APPLICATION_APPROVED ->
@@ -254,6 +269,10 @@ fun ProfileSubPagesScreen(
                                                     AppRoutes.profileOrders(tab = 1)
                                                 }
                                             }
+                                            NotificationTypes.SUPPORT_TICKET_SUBMITTED ->
+                                                if (userRole == UserRole.ADMIN) {
+                                                    n.orderId.takeIf { it.isNotBlank() }?.let { AppRoutes.adminSupportTicketDetail(it) }
+                                                } else null
                                             else -> null
                                         }
                                         if (route != null) onNavigateToRoute(route)
@@ -279,58 +298,39 @@ fun ProfileSubPagesScreen(
                     }
                 }
                 "Help & Support" -> {
-                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("How can we help?", fontWeight = FontWeight.Bold)
-                            OutlinedTextField(value = "", onValueChange = {}, label = { Text("Search help articles") }, modifier = Modifier.fillMaxWidth())
-                            Text("Popular topics", color = Color(0xFF6B7280))
-                            listOf("Order tracking", "Return & refund", "Payment failed", "Account security").forEach { topic ->
-                                ChipButton(topic)
-                            }
-                        }
-                    }
-                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Contact support", fontWeight = FontWeight.Bold)
-                            Text("Live chat: 09:00 - 23:00", color = Color(0xFF4B5563))
-                            Text("support@myapplication.com", color = Color(0xFF4B5563))
-                            Text("+90 850 000 00 00", color = Color(0xFF4B5563))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = {}, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Start Live Chat") }
-                                Button(onClick = {}, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))) { Text("Create Ticket") }
-                            }
-                        }
-                    }
+                    HelpSupportScreen()
                 }
                 "Settings" -> {
-                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("General settings", fontWeight = FontWeight.Bold)
-                            SettingSwitch("Dark mode", userSettings.darkMode) {
-                                settingsVm.updateSettings(userSettings.copy(darkMode = it))
-                            }
-                            SettingSwitch("Biometric login", userSettings.biometricLogin) {
-                                settingsVm.updateSettings(userSettings.copy(biometricLogin = it))
-                            }
-                            SettingSwitch("Auto-play product videos", userSettings.autoPlayProductVideos) {
-                                settingsVm.updateSettings(userSettings.copy(autoPlayProductVideos = it))
+                            Text("Appearance", fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK).forEach { pref ->
+                                    FilterChip(
+                                        selected = userSettings.themePreference == pref,
+                                        onClick = {
+                                            settingsVm.updateSettings(userSettings.copy(themePreference = pref))
+                                            ThemeController.set(context.applicationContext, pref)
+                                        },
+                                        label = {
+                                            Text(
+                                                when (pref) {
+                                                    ThemePreference.SYSTEM -> "System"
+                                                    ThemePreference.LIGHT -> "Light"
+                                                    ThemePreference.DARK -> "Dark"
+                                                },
+                                            )
+                                        },
+                                    )
+                                }
                             }
                             DividerThin()
-                            Text("Notification preferences", fontWeight = FontWeight.Bold)
+                            Text("Notifications", fontWeight = FontWeight.Bold)
                             SettingSwitch("Order updates", userSettings.orderUpdates) {
                                 settingsVm.updateSettings(userSettings.copy(orderUpdates = it))
-                            }
-                            SettingSwitch("Campaign notifications", userSettings.campaignNotifications) {
-                                settingsVm.updateSettings(userSettings.copy(campaignNotifications = it))
-                            }
-                            SettingSwitch("Price drop alerts", userSettings.priceDropAlerts) {
-                                settingsVm.updateSettings(userSettings.copy(priceDropAlerts = it))
-                            }
-                            SettingSwitch("Weekly digest", userSettings.weeklyDigest) {
-                                settingsVm.updateSettings(userSettings.copy(weeklyDigest = it))
-                            }
-                            SettingSwitch("SMS notifications", userSettings.smsNotifications) {
-                                settingsVm.updateSettings(userSettings.copy(smsNotifications = it))
                             }
                             if (message != null) {
                                 Text(message!!, color = Color(0xFF16A34A), style = MaterialTheme.typography.bodySmall)
@@ -424,24 +424,15 @@ private fun SettingSwitch(label: String, checked: Boolean, onCheckedChange: (Boo
 }
 
 @Composable
-private fun SettingRow(label: String, value: String, warning: Boolean = false) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = if (warning) Color(0xFFDC2626) else Color(0xFF111827))
-        if (value.isNotBlank()) Text(value, color = Color(0xFF6B7280))
-    }
-}
-
-@Composable
 private fun SecurityCard(
     isLoading: Boolean,
     statusMessage: String?,
     onChangePassword: () -> Unit,
-    onEnable2fa: () -> Unit,
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.padding(horizontal = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -470,13 +461,8 @@ private fun SecurityCard(
             ) {
                 ChipButton(
                     text = if (isLoading) "Sending..." else "Change Password",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     onClick = onChangePassword,
-                )
-                ChipButton(
-                    text = "Enable 2FA",
-                    modifier = Modifier.weight(1f),
-                    onClick = onEnable2fa,
                 )
             }
             if (!statusMessage.isNullOrBlank()) {
@@ -572,6 +558,6 @@ private fun ChangePasswordDialog(
 
 @Composable
 private fun DividerThin() {
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
 }
 

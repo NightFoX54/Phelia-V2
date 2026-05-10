@@ -431,12 +431,11 @@ fun ProductFormScreen(
         )
     }
 
-    Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             AppTopBar(
                 title = if (isEdit) "Edit Product" else "Add Product",
                 onBack = onBack,
-                containerColor = Color.White,
             )
         }
 
@@ -589,7 +588,7 @@ fun ProductFormScreen(
                         }
 
                         variants.forEachIndexed { index, variant ->
-                            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)), shape = RoundedCornerShape(12.dp)) {
+                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp)) {
                                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Variant ${index + 1}", modifier = Modifier.weight(1f))
@@ -802,7 +801,7 @@ fun ProductFormScreen(
             item { Spacer(modifier = Modifier.height(88.dp)) }
         }
 
-        Surface(color = Color.White, shadowElevation = 8.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

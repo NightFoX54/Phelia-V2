@@ -40,6 +40,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,15 +52,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.myapplication.data.model.StoreApplication
+import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.viewmodel.StoreApplicationsViewModel
+import com.example.myapplication.viewmodel.UserSettingsViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun StoreApplicationsAdminScreen(
     onBack: () -> Unit,
+    userSettingsViewModel: UserSettingsViewModel,
     modifier: Modifier = Modifier,
     viewModel: StoreApplicationsViewModel = viewModel(),
 ) {
+    val scope = rememberCoroutineScope()
     val applications by viewModel.applications.collectAsState()
     val listError by viewModel.listError.collectAsState()
     var rejectTarget by remember { mutableStateOf<StoreApplication?>(null) }
@@ -72,9 +78,9 @@ fun StoreApplicationsAdminScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        AppTopBar(title = "Store applications", onBack = onBack, containerColor = Color.White)
+        AppTopBar(title = "Store applications", onBack = onBack)
         listError?.let { err ->
             Text(
                 err,
@@ -114,7 +120,17 @@ fun StoreApplicationsAdminScreen(
                             busyId = app.applicationId
                             viewModel.approve(app.applicationId) { r ->
                                 busyId = null
-                                r.onFailure { e -> actionError = e.message ?: "Approve failed" }
+                                r.fold(
+                                    onSuccess = {
+                                        scope.launch {
+                                            userSettingsViewModel.syncDismissNotificationsMatching(
+                                                type = NotificationTypes.STORE_APPLICATION_SUBMITTED,
+                                                storeApplicationId = app.applicationId,
+                                            )
+                                        }
+                                    },
+                                    onFailure = { e -> actionError = e.message ?: "Approve failed" },
+                                )
                             }
                         },
                         onReject = {
@@ -166,7 +182,15 @@ fun StoreApplicationsAdminScreen(
                         viewModel.reject(app.applicationId, actionReason) { r ->
                             busyId = null
                             r.fold(
-                                onSuccess = { rejectTarget = null },
+                                onSuccess = {
+                                    rejectTarget = null
+                                    scope.launch {
+                                        userSettingsViewModel.syncDismissNotificationsMatching(
+                                            type = NotificationTypes.STORE_APPLICATION_SUBMITTED,
+                                            storeApplicationId = app.applicationId,
+                                        )
+                                    }
+                                },
                                 onFailure = { e -> actionError = e.message ?: "Reject failed" },
                             )
                         }
@@ -217,7 +241,15 @@ fun StoreApplicationsAdminScreen(
                         viewModel.requestUpdate(app.applicationId, actionReason) { r ->
                             busyId = null
                             r.fold(
-                                onSuccess = { updateTarget = null },
+                                onSuccess = {
+                                    updateTarget = null
+                                    scope.launch {
+                                        userSettingsViewModel.syncDismissNotificationsMatching(
+                                            type = NotificationTypes.STORE_APPLICATION_SUBMITTED,
+                                            storeApplicationId = app.applicationId,
+                                        )
+                                    }
+                                },
                                 onFailure = { e -> actionError = e.message ?: "Request update failed" },
                             )
                         }
@@ -282,7 +314,7 @@ private fun StoreApplicationCard(
     onViewDetail: () -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth(),
@@ -409,7 +441,7 @@ private fun BoxGrayPlaceholder(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF3F4F6)),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
         Text("No logo", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))

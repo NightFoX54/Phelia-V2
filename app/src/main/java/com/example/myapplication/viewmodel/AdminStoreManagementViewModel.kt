@@ -65,20 +65,26 @@ class AdminStoreUpdateRequestsViewModel(
         }
     }
 
-    fun approveRequest(requestId: String) {
+    fun approveRequest(requestId: String, onFinished: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
             repository.approveUpdateRequest(requestId).fold(
-                onSuccess = { refresh() },
-                onFailure = { /* Handle error */ }
+                onSuccess = {
+                    refresh()
+                    onFinished(Result.success(Unit))
+                },
+                onFailure = { onFinished(Result.failure(it)) },
             )
         }
     }
 
-    fun rejectRequest(requestId: String) {
+    fun rejectRequest(requestId: String, onFinished: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
             repository.rejectUpdateRequest(requestId).fold(
-                onSuccess = { refresh() },
-                onFailure = { /* Handle error */ }
+                onSuccess = {
+                    refresh()
+                    onFinished(Result.success(Unit))
+                },
+                onFailure = { onFinished(Result.failure(it)) },
             )
         }
     }

@@ -5,6 +5,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -24,14 +25,12 @@ fun AppTopBar(
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
-    containerColor: Color = Color.White,
+    containerColor: Color = Color.Unspecified,
     contentColor: Color = Color.Unspecified,
 ) {
-    val actualContentColor = if (contentColor == Color.Unspecified) {
-        if (containerColor == Color.White) Color.Black else Color.White
-    } else {
-        contentColor
-    }
+    val scheme = MaterialTheme.colorScheme
+    val resolvedContainer = if (containerColor == Color.Unspecified) scheme.surface else containerColor
+    val actualContentColor = if (contentColor == Color.Unspecified) scheme.onSurface else contentColor
 
     CenterAlignedTopAppBar(
         title = {
@@ -55,7 +54,7 @@ fun AppTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = containerColor,
+            containerColor = resolvedContainer,
             titleContentColor = actualContentColor,
             navigationIconContentColor = actualContentColor,
             actionIconContentColor = actualContentColor,

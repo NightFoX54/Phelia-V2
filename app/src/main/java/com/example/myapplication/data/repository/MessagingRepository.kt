@@ -6,7 +6,6 @@ import com.example.myapplication.data.model.Message
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -18,46 +17,86 @@ class MessagingRepository(
     private val db: FirebaseFirestore = FirebaseRemoteDataSource.firestore,
     private val notificationRepository: NotificationRepository = NotificationRepository()
 ) {
+
+    private fun sortMessagesChronological(messages: List<Message>): List<Message> =
+        messages.sortedWith(
+            compareBy<Message>(
+                { it.timestamp.seconds },
+                { it.timestamp.nanoseconds },
+                { it.id },
+            ),
+        )
+
+    /** Returns chat thread document id if one exists for this suborder, otherwise null. */
+    suspend fun findChatThreadBySuborder(suborderId: String): String? {
+        if (suborderId.isBlank()) return null
+        val snap = db.collection("chats")
+            .whereEqualTo("suborderId", suborderId)
+            .limit(1)
+            .get()
+            .await()
+        return snap.documents.firstOrNull()?.id
+    }
+
     /**
-     * Get or create a chat thread between a customer and a store for a specific suborder.
+     * Creates a new chat thread and the first message in one batch (no empty “placeholder” thread).
      */
-    suspend fun getOrCreateChatThread(
+    suspend fun createChatThreadWithFirstMessage(
         suborderId: String,
         storeId: String,
         customerId: String,
         storeName: String,
-        customerName: String
+        customerName: String,
+        parentOrderId: String,
+        senderId: String,
+        text: String,
     ): String {
-        val existingThread = db.collection("chats")
-            .whereEqualTo("suborderId", suborderId)
-            .get()
-            .await()
-
-        if (!existingThread.isEmpty) {
-            return existingThread.documents.first().id
-        }
-
-        val newThreadRef = db.collection("chats").document()
-        val newThread = ChatThread(
-            id = newThreadRef.id,
+        val chatRef = db.collection("chats").document()
+        val messageRef = chatRef.collection("messages").document()
+        val now = Timestamp.now()
+        val thread = ChatThread(
+            id = chatRef.id,
             suborderId = suborderId,
+            parentOrderId = parentOrderId,
             storeId = storeId,
             customerId = customerId,
             storeName = storeName,
             customerName = customerName,
-            lastMessage = "Chat started",
-            lastMessageTimestamp = Timestamp.now()
+            lastMessage = text,
+            lastMessageTimestamp = now,
+            lastReadBy = mapOf(senderId to now),
         )
-        newThreadRef.set(newThread).await()
-        return newThreadRef.id
+        val message = Message(
+            id = messageRef.id,
+            chatId = chatRef.id,
+            senderId = senderId,
+            text = text,
+            timestamp = now,
+        )
+        db.runBatch { batch ->
+            batch.set(chatRef, thread)
+            batch.set(messageRef, message)
+        }.await()
+
+        val recipientId = if (senderId == thread.customerId) thread.storeId else thread.customerId
+        val senderName = if (senderId == thread.customerId) thread.customerName else thread.storeName
+        notificationRepository.sendToUser(
+            userId = recipientId,
+            type = NotificationTypes.NEW_MESSAGE,
+            title = "New message from $senderName",
+            body = text,
+            orderId = thread.suborderId,
+            storeId = thread.storeId
+        )
+        return chatRef.id
     }
 
     /**
-     * Stream messages for a specific chat thread.
+     * Stream messages for a specific chat thread (oldest → newest).
      */
     fun listenToMessages(chatId: String): Flow<List<Message>> = callbackFlow {
         var registration: ListenerRegistration? = null
-        
+
         fun start(useOrderBy: Boolean) {
             val query = if (useOrderBy) {
                 db.collection("chats")
@@ -82,10 +121,9 @@ class MessagingRepository(
                     }
                     return@addSnapshotListener
                 }
-                var messages = snapshot?.documents?.mapNotNull { it.toObject(Message::class.java)?.copy(id = it.id) } ?: emptyList()
-                if (!useOrderBy) {
-                    messages = messages.sortedBy { it.timestamp }
-                }
+                val messages = sortMessagesChronological(
+                    snapshot?.documents?.mapNotNull { it.toObject(Message::class.java)?.copy(id = it.id) } ?: emptyList(),
+                )
                 trySend(messages)
             }
         }
@@ -95,7 +133,7 @@ class MessagingRepository(
     }
 
     /**
-     * Send a message in a chat thread.
+     * Send a message in an existing chat thread.
      */
     suspend fun sendMessage(chatId: String, senderId: String, text: String) {
         val chatRef = db.collection("chats").document(chatId)
@@ -103,7 +141,7 @@ class MessagingRepository(
         val thread = chatSnap.toObject(ChatThread::class.java) ?: return
 
         val messageRef = chatRef.collection("messages").document()
-        
+
         val message = Message(
             id = messageRef.id,
             chatId = chatId,
@@ -111,7 +149,7 @@ class MessagingRepository(
             text = text,
             timestamp = Timestamp.now()
         )
-        
+
         db.runBatch { batch ->
             batch.set(messageRef, message)
             batch.update(
@@ -124,7 +162,6 @@ class MessagingRepository(
             )
         }.await()
 
-        // Notify the other participant
         val recipientId = if (senderId == thread.customerId) thread.storeId else thread.customerId
         val senderName = if (senderId == thread.customerId) thread.customerName else thread.storeName
 
@@ -133,9 +170,21 @@ class MessagingRepository(
             type = NotificationTypes.NEW_MESSAGE,
             title = "New message from $senderName",
             body = text,
-            orderId = thread.suborderId, // Using suborderId as context
+            orderId = thread.suborderId,
             storeId = thread.storeId
         )
+    }
+
+    /** Hides the chat only for the customer or only for the store inbox (does not delete the thread). */
+    suspend fun hideChatForParticipant(chatId: String, hideAsCustomer: Boolean) {
+        val field = if (hideAsCustomer) "hiddenFromCustomer" else "hiddenFromStore"
+        db.collection("chats").document(chatId).update(field, true).await()
+    }
+
+    /** Shows the thread again in that participant’s inbox (e.g. when opening chat from the order). */
+    suspend fun revealChatInInbox(chatId: String, revealCustomerInbox: Boolean) {
+        val field = if (revealCustomerInbox) "hiddenFromCustomer" else "hiddenFromStore"
+        db.collection("chats").document(chatId).update(field, false).await()
     }
 
     /**
@@ -143,7 +192,7 @@ class MessagingRepository(
      */
     fun listenToStoreChats(storeId: String): Flow<List<ChatThread>> = callbackFlow {
         var registration: ListenerRegistration? = null
-        
+
         fun start(useOrderBy: Boolean) {
             val query = if (useOrderBy) {
                 db.collection("chats")
@@ -167,6 +216,7 @@ class MessagingRepository(
                     return@addSnapshotListener
                 }
                 var threads = snapshot?.documents?.mapNotNull { it.toObject(ChatThread::class.java)?.copy(id = it.id) } ?: emptyList()
+                threads = threads.filter { !it.hiddenFromStore }
                 if (!useOrderBy) {
                     threads = threads.sortedByDescending { it.lastMessageTimestamp }
                 }
@@ -183,7 +233,7 @@ class MessagingRepository(
      */
     fun listenToCustomerChats(customerId: String): Flow<List<ChatThread>> = callbackFlow {
         var registration: ListenerRegistration? = null
-        
+
         fun start(useOrderBy: Boolean) {
             val query = if (useOrderBy) {
                 db.collection("chats")
@@ -207,6 +257,7 @@ class MessagingRepository(
                     return@addSnapshotListener
                 }
                 var threads = snapshot?.documents?.mapNotNull { it.toObject(ChatThread::class.java)?.copy(id = it.id) } ?: emptyList()
+                threads = threads.filter { !it.hiddenFromCustomer }
                 if (!useOrderBy) {
                     threads = threads.sortedByDescending { it.lastMessageTimestamp }
                 }

@@ -78,14 +78,13 @@ fun AdminCatalogScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column {
                 AppTopBar(
                     title = "Categories & brands",
                     onBack = onBack,
-                    containerColor = Color.White,
                 )
                 if (banner != null) {
                     Text(
@@ -262,7 +261,7 @@ private fun CategoryList(
     ) {
         items(categories, key = { it.categoryId }) { c ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -314,7 +313,7 @@ private fun BrandList(
     ) {
         items(brands, key = { it.brandId }) { b ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {

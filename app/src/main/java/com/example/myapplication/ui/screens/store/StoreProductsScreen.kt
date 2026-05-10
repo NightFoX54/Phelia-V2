@@ -109,15 +109,18 @@ fun StoreProductsScreen(
             onDismissRequest = { confirmDeactivateId = null },
             title = { Text("Remove from sale") },
             text = {
-                Text("The product is not deleted; it is only deactivated. Past orders stay the same; customers will not see it.")
+                Text(
+                    "If this product isn’t in any open orders or carts, it will be deleted. " +
+                        "Otherwise it will only be hidden from your storefront until orders finish.",
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deactivateProduct(pid)
+                        viewModel.deleteProduct(pid)
                         confirmDeactivateId = null
                     },
-                ) { Text("Deactivate") }
+                ) { Text("Continue") }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeactivateId = null }) { Text("Cancel") }
@@ -127,7 +130,7 @@ fun StoreProductsScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         LazyColumn {
             item {
@@ -155,7 +158,7 @@ fun StoreProductsScreen(
                         Button(
                             onClick = onAddProduct,
                             shape = RoundedCornerShape(999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary),
                         ) {
                             Icon(Icons.Default.Add, null)
                             Spacer(modifier = Modifier.size(6.dp))
@@ -277,7 +280,7 @@ fun StoreProductsScreen(
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Box(modifier = Modifier.size(80.dp).background(Color(0xFFF3F4F6), RoundedCornerShape(999.dp)), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.size(80.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(999.dp)), contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(36.dp))
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -318,7 +321,7 @@ private fun StoreProductListCard(
     onActivate: () -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
     ) {
@@ -338,7 +341,7 @@ private fun StoreProductListCard(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF))
@@ -347,7 +350,11 @@ private fun StoreProductListCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.Top) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(product.name, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                product.name,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 CategoryBadge(product.categoryName)

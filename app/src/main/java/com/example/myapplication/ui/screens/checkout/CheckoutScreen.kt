@@ -106,12 +106,12 @@ fun CheckoutScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Surface(color = Color.White, shadowElevation = 1.dp) {
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    AppTopBar(title = "Checkout", onBack = onBack, containerColor = Color.White)
+                    AppTopBar(title = "Checkout", onBack = onBack)
                 }
             }
 
@@ -174,7 +174,7 @@ fun CheckoutScreen(
                     DashedButton("+  Add payment method", onClick = onAddPaymentMethod)
                 }
 
-                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text("Order Summary", fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
@@ -221,7 +221,7 @@ fun CheckoutScreen(
                             Text("Updating cart…", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
                         }
                         Spacer(modifier = Modifier.height(12.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                         Spacer(modifier = Modifier.height(12.dp))
                         PriceRow("Subtotal", subtotal)
                         PriceRow("Shipping", shipping)
@@ -380,7 +380,7 @@ private fun SectionCard(
     title: String,
     content: @Composable () -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

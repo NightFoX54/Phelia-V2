@@ -17,23 +17,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,26 +68,22 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     catalogViewModel: CatalogViewModel = viewModel(),
 ) {
+    LaunchedEffect(Unit) {
+        catalogViewModel.clearHomeCategories()
+    }
     val uiState by catalogViewModel.uiState.collectAsState()
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
     val onSaleProducts = uiState.allProducts.filter { it.discountPercent > 0 }
     val hasSpecialOffers = onSaleProducts.isNotEmpty()
     val maxSalePercent = onSaleProducts.maxOfOrNull { it.discountPercent } ?: 0
-    var showFilterDialog by remember { mutableStateOf(false) }
-    val allCategoryNames = uiState.categories
-        .map { it.name }
-        .filter { it != "All" }
-        .sortedBy { it.lowercase() }
-    val selectedCount = uiState.selectedHomeCategories.size
-
     LazyColumn(
         modifier = modifier
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             // Header
-            Surface(color = Color.White, shadowElevation = 1.dp) {
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -116,7 +109,7 @@ fun HomeScreen(
                                 onClick = onOpenMessages,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(Color(0xFFF3F4F6)),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 BadgedBox(
                                     badge = {
@@ -139,7 +132,7 @@ fun HomeScreen(
                                 onClick = onOpenNotifications,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(Color(0xFFF3F4F6)),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 BadgedBox(
                                     badge = {
@@ -166,37 +159,6 @@ fun HomeScreen(
                         onValueChange = { catalogViewModel.setSearchQuery(it) },
                         placeholder = "Search products...",
                     )
-                }
-            }
-        }
-
-        item {
-            // Categories
-            Surface(color = Color.White) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = if (selectedCount == 0) "All categories" else "$selectedCount categories selected",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF374151),
-                    )
-                    Button(
-                        onClick = { showFilterDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text("Filter Categories")
-                    }
                 }
             }
         }
@@ -232,7 +194,7 @@ fun HomeScreen(
                         Button(
                             onClick = onOpenSaleProducts,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 contentColor = Color(0xFF4338CA),
                             ),
                             shape = RoundedCornerShape(999.dp),
@@ -299,7 +261,7 @@ fun HomeScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 4.dp)
                             .clickable { onOpenStore(store.storeId) }, // Correct navigation to store
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.surface,
                         shape = RoundedCornerShape(12.dp),
                         shadowElevation = 1.dp
                     ) {
@@ -311,7 +273,7 @@ fun HomeScreen(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFF3F4F6)),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (store.logo.isNotBlank()) {
@@ -321,13 +283,17 @@ fun HomeScreen(
                                 }
                             }
                             Column(modifier = Modifier.padding(start = 12.dp)) {
-                                Text(store.name, fontWeight = FontWeight.Bold)
+                                Text(
+                                    store.name,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
                                 Text(
                                     store.description,
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -369,34 +335,6 @@ fun HomeScreen(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-
-    if (showFilterDialog) {
-        AlertDialog(
-            onDismissRequest = { showFilterDialog = false },
-            title = { Text("Filter Categories") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    allCategoryNames.forEach { categoryName ->
-                        FilterChip(
-                            selected = uiState.selectedHomeCategories.contains(categoryName),
-                            onClick = { catalogViewModel.toggleHomeCategory(categoryName) },
-                            label = { Text(categoryName) },
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showFilterDialog = false }) {
-                    Text("Done")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { catalogViewModel.clearHomeCategories() }) {
-                    Text("Clear")
-                }
-            },
-        )
     }
 }
 

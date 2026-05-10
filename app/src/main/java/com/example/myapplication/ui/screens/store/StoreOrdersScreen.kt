@@ -2,13 +2,19 @@ package com.example.myapplication.ui.screens.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +37,7 @@ import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -55,6 +62,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +78,7 @@ import com.example.myapplication.data.model.OrderStatus
 import com.example.myapplication.data.model.StoreSuborderListRow
 import com.example.myapplication.data.model.normalizeOrderStatus
 import com.example.myapplication.data.model.orderStatusLabelEnglish
+import com.example.myapplication.ui.clipboardLabelForChat
 import com.example.myapplication.viewmodel.StoreOrdersLoadState
 import com.example.myapplication.viewmodel.StoreOrdersViewModel
 import java.text.SimpleDateFormat
@@ -90,6 +100,7 @@ fun StoreOrdersScreen(
     onBack: () -> Unit,
     onOpenOrder: (String) -> Unit,
     onOpenChat: (storeId: String, suborderId: String) -> Unit,
+    onOpenParentOrderFromMessages: (String) -> Unit,
     initialTab: Int = 0,
 ) {
     val rows by viewModel.rows.collectAsState()
@@ -134,9 +145,13 @@ fun StoreOrdersScreen(
     }
 
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val clipboard = LocalClipboardManager.current
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF9FAFB))
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
     ) {
         // Header
         Column(
@@ -220,21 +235,12 @@ fun StoreOrdersScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(bottom = 8.dp),
                         ) {
-                            orderFilters.take(3).forEach { (key, label) ->
-                                FilterChipStore(
-                                    label = label,
-                                    selected = selectedFilter == key,
-                                    onClick = { selectedFilter = key },
-                                )
-                            }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            orderFilters.drop(3).forEach { (key, label) ->
+                            orderFilters.forEach { (key, label) ->
                                 FilterChipStore(
                                     label = label,
                                     selected = selectedFilter == key,
@@ -286,7 +292,15 @@ fun StoreOrdersScreen(
                     }
                 } else {
                     items(chats, key = { it.id }) { chat ->
-                        StoreChatCard(chat = chat, currentUserId = currentUserId, onClick = { onOpenChat(chat.storeId, chat.suborderId) })
+                        StoreChatCard(
+                            chat = chat,
+                            currentUserId = currentUserId,
+                            onClick = { onOpenChat(chat.storeId, chat.suborderId) },
+                            onOpenParentOrder = onOpenParentOrderFromMessages,
+                            onCopyOrderRef = {
+                                clipboard.setText(AnnotatedString(clipboardLabelForChat(chat.parentOrderId, chat.suborderId)))
+                            },
+                        )
                     }
                 }
             }
@@ -307,14 +321,28 @@ private fun EmptyState(icon: ImageVector, title: String) {
 }
 
 @Composable
-private fun StoreChatCard(chat: ChatThread, currentUserId: String, onClick: () -> Unit) {
+private fun StoreChatCard(
+    chat: ChatThread,
+    currentUserId: String,
+    onClick: () -> Unit,
+    onOpenParentOrder: (String) -> Unit,
+    onCopyOrderRef: () -> Unit,
+) {
     val isUnread = remember(chat, currentUserId) {
         val lastRead = chat.lastReadBy[currentUserId]
         lastRead == null || lastRead.seconds < chat.lastMessageTimestamp.seconds
     }
+    val orderLabel = remember(chat.parentOrderId, chat.suborderId) {
+        if (chat.parentOrderId.isNotBlank()) {
+            val tail = chat.parentOrderId.takeLast(8).uppercase(Locale.US)
+            "ORD-$tail"
+        } else {
+            "Order #${chat.suborderId.takeLast(6).uppercase(Locale.US)}"
+        }
+    }
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = if (isUnread) Color(0xFFF3F4FF) else Color.White),
+        colors = CardDefaults.cardColors(containerColor = if (isUnread) Color(0xFFF3F4FF) else MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
         border = if (isUnread) BorderStroke(1.dp, Color(0xFF4338CA).copy(alpha = 0.1f)) else null
@@ -335,11 +363,28 @@ private fun StoreChatCard(chat: ChatThread, currentUserId: String, onClick: () -
                         Box(Modifier.size(8.dp).background(Color(0xFF4338CA), CircleShape))
                     }
                 }
-                Text(
-                    "Order #${chat.suborderId.takeLast(6).uppercase()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        orderLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(enabled = chat.parentOrderId.isNotBlank()) {
+                            onOpenParentOrder(chat.parentOrderId)
+                        },
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy order reference",
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { onCopyOrderRef() },
+                        tint = Color(0xFF6B7280),
+                    )
+                }
                 Text(
                     chat.lastMessage,
                     maxLines = 1,
@@ -373,7 +418,7 @@ private fun StoreOrderListCard(
     }
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
     ) {
@@ -388,7 +433,7 @@ private fun StoreOrderListCard(
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .background(Color(0xFFF3F4F6), RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Default.Inventory, null, tint = Color(0xFF9CA3AF))

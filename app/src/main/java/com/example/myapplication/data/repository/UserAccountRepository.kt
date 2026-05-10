@@ -154,7 +154,7 @@ class UserAccountRepository(
                     input.brand.trim().ifBlank { existingSnap.getString("brand").orEmpty() },
                 )
             }
-            else -> throw IllegalArgumentException("Enter the full card number")
+            else -> throw IllegalArgumentException("Enter all 16 digits of your card number")
         }
         val data = mutableMapOf<String, Any>(
             "paymentMethodId" to id,

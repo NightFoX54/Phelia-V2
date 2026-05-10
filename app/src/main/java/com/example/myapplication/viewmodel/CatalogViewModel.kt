@@ -54,7 +54,9 @@ class CatalogViewModel(
             val uiProducts = summaries.map { it.toUiProduct() }.sortedBy { it.name.lowercase() }
             val fireCategories = categoriesResult.getOrNull().orEmpty().sortedBy { it.name.lowercase() }
             val chips = listOf(Category(name = "All", isActive = true)) +
-                fireCategories.map { Category(name = it.name, isActive = false) }
+                fireCategories
+                    .distinctBy { it.name.trim().lowercase() }
+                    .map { Category(name = it.name, isActive = false) }
             _uiState.update {
                 it.copy(
                     isLoading = false,

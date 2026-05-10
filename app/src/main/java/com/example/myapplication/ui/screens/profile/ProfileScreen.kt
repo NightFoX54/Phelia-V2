@@ -93,7 +93,7 @@ fun ProfileScreen(
 
     LazyColumn(
         modifier = modifier
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -110,7 +110,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(Color.White),
+                            .background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
@@ -183,7 +183,7 @@ fun ProfileScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -209,7 +209,7 @@ fun ProfileScreen(
         item {
             Surface(
                 onClick = { sessionViewModel.signOut() },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .padding(horizontal = 20.dp)
@@ -224,7 +224,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFFFEF2F2)),
+                            .background(MaterialTheme.colorScheme.errorContainer),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFEF4444))
@@ -305,7 +305,7 @@ internal fun ProfileMenuRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFFF3F4F6)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
@@ -314,6 +314,6 @@ internal fun ProfileMenuRow(
             Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF9CA3AF))
         }
     }
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.surfaceVariant))
 }
 

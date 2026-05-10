@@ -21,8 +21,11 @@ import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.AppRegistration
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,10 +45,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.myapplication.ui.components.HorizontalBarEntry
 import com.example.myapplication.ui.components.LineChartEntry
-import com.example.myapplication.ui.components.ReadableHorizontalBarChart
 import com.example.myapplication.ui.components.ReadableLineChart
 import com.example.myapplication.viewmodel.AdminDashboardUiState
 import com.example.myapplication.viewmodel.AdminDashboardViewModel
@@ -59,6 +61,10 @@ fun AdminDashboardScreen(
     onInactiveProducts: () -> Unit = {},
     onStoreApplications: () -> Unit = {},
     onCatalogMeta: () -> Unit = {},
+    onSupportTickets: () -> Unit = {},
+    unreadSupportTickets: Int = 0,
+    unreadStoreApplications: Int = 0,
+    unreadStoreUpdateRequests: Int = 0,
     modifier: Modifier = Modifier,
     viewModel: AdminDashboardViewModel = viewModel(),
 ) {
@@ -66,14 +72,13 @@ fun AdminDashboardScreen(
     val dashboardState by viewModel.uiState.collectAsState()
     val overview = (dashboardState as? AdminDashboardUiState.Ready)?.overview
     val ordersOverTime = overview?.ordersOverTime?.map { LineChartEntry(it.first, it.second) } ?: emptyList()
-    val topSellingChart = overview?.topSellingProducts?.map { HorizontalBarEntry(it.first, it.second) } ?: emptyList()
     val topProducts = overview?.topProducts.orEmpty()
     val worstProducts = overview?.worstProducts.orEmpty()
     val topStores = overview?.topStores.orEmpty()
 
     LazyColumn(
         modifier = modifier
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
@@ -126,7 +131,7 @@ fun AdminDashboardScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -161,25 +166,7 @@ fun AdminDashboardScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.padding(horizontal = 20.dp),
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Text("Top Selling Products", fontWeight = FontWeight.Bold)
-                    if (topSellingChart.isNotEmpty()) {
-                        ReadableHorizontalBarChart(values = topSellingChart, barColor = Color(0xFF4338CA), height = 280.dp)
-                    } else {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text("Not enough data yet.", color = Color(0xFF6B7280))
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -194,7 +181,7 @@ fun AdminDashboardScreen(
                     }
                     topProducts.forEachIndexed { idx, product ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("#${idx + 1}", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = 36.dp))
@@ -211,7 +198,7 @@ fun AdminDashboardScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -226,7 +213,7 @@ fun AdminDashboardScreen(
                     }
                     worstProducts.forEach { product ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -242,7 +229,7 @@ fun AdminDashboardScreen(
 
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.padding(horizontal = 20.dp),
             ) {
@@ -256,7 +243,7 @@ fun AdminDashboardScreen(
                     }
                     topStores.forEach { store ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -271,6 +258,15 @@ fun AdminDashboardScreen(
         }
 
         item {
+            AdminDashboardBadgeButton(
+                text = "Customer support tickets",
+                icon = Icons.Default.HelpOutline,
+                containerColor = Color(0xFF4F46E5),
+                badgeCount = unreadSupportTickets,
+                onClick = onSupportTickets,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -297,33 +293,33 @@ fun AdminDashboardScreen(
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
+            AdminDashboardBadgeButton(
+                text = "Store update requests",
+                icon = Icons.Default.Assignment,
+                containerColor = Color(0xFF8B5CF6),
+                badgeCount = unreadStoreUpdateRequests,
                 onClick = onStoreUpdateRequests,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                Icon(Icons.Default.Assignment, contentDescription = null)
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Store update requests", fontWeight = FontWeight.Bold)
-            }
+                modifier = Modifier.padding(horizontal = 20.dp),
+                titleWeight = FontWeight.Bold,
+            )
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
+            AdminDashboardBadgeButton(
+                text = "Store applications",
+                icon = Icons.Default.AppRegistration,
+                containerColor = Color(0xFF0D9488),
+                badgeCount = unreadStoreApplications,
                 onClick = onStoreApplications,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                Icon(Icons.Default.AppRegistration, contentDescription = null)
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Store applications", fontWeight = FontWeight.SemiBold)
-            }
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
             Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = onCatalogMeta,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth()
+                    .height(52.dp),
             ) {
                 Icon(Icons.Default.Category, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
@@ -334,11 +330,59 @@ fun AdminDashboardScreen(
                 onClick = onInactiveProducts,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEA580C)),
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth()
+                    .height(52.dp),
             ) {
                 Icon(Icons.Default.Inventory, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
                 Text("Manage inactive products", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminDashboardBadgeButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color,
+    badgeCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    titleWeight: FontWeight = FontWeight.SemiBold,
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp),
+    ) {
+        BadgedBox(
+            badge = {
+                if (badgeCount > 0) {
+                    Badge(containerColor = Color(0xFFDC2626)) {
+                        Text(
+                            text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            },
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(icon, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(text, fontWeight = titleWeight)
             }
         }
     }

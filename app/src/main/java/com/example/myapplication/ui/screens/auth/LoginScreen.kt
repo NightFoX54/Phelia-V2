@@ -62,19 +62,28 @@ fun LoginScreen(
         }
     }
 
-    val bg = Brush.linearGradient(listOf(Color(0xFFE0E7FF), Color(0xFFF5F3FF), Color(0xFFFCE7F3)))
+    val bg = rememberAuthScreenBackgroundBrush()
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(bg)
             .padding(20.dp),
-        contentAlignment = Alignment.Center,
     ) {
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        AuthCompactThemeToggle(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 4.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             // Brand header
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.55f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)),
                 shape = RoundedCornerShape(26.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -107,11 +116,11 @@ fun LoginScreen(
                             text = "Welcome back",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge,
-                            color = Color(0xFF111827),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             text = "Sign in to shop, track orders, and chat with stores.",
-                            color = Color(0xFF4B5563),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -121,7 +130,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -173,7 +182,7 @@ fun LoginScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("New here?", color = Color(0xFF6B7280))
+                        Text("New here?", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Create an account",
@@ -185,13 +194,13 @@ fun LoginScreen(
 
                     if (error != null) {
                         Surface(
-                            color = Color(0xFFFEF2F2),
+                            color = MaterialTheme.colorScheme.errorContainer,
                             shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECACA)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
                         ) {
                             Text(
                                 text = error!!,
-                                color = Color(0xFFDC2626),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                             )
                         }
@@ -203,7 +212,7 @@ fun LoginScreen(
             Text(
                 "By signing in, you agree to our Terms and Privacy Policy.",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
             )

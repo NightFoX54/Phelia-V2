@@ -54,7 +54,6 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -135,7 +134,7 @@ fun RegisterScreen(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri: Uri? -> pickedLogoUri = uri }
 
-    val bg = Brush.linearGradient(listOf(Color(0xFFE0E7FF), Color(0xFFF5F3FF), Color(0xFFFCE7F3)))
+    val bg = rememberAuthScreenBackgroundBrush()
 
     Box(
         modifier = modifier
@@ -143,6 +142,11 @@ fun RegisterScreen(
             .background(bg)
             .padding(20.dp),
     ) {
+        AuthCompactThemeToggle(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 4.dp),
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -210,7 +214,7 @@ fun RegisterScreen(
             )
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -448,7 +452,7 @@ fun RegisterScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
                             ) {
                                 Column(
@@ -460,15 +464,15 @@ fun RegisterScreen(
                                         "Store Identity",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF374151)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     
                                     Box(
                                         modifier = Modifier
                                             .size(120.dp)
                                             .clip(RoundedCornerShape(24.dp))
-                                            .background(Color.White)
-                                            .border(2.dp, Color(0xFFF3F4F6), RoundedCornerShape(24.dp))
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
                                             .clickable(enabled = !busy) {
                                                 pickLogo.launch(
                                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
@@ -599,13 +603,13 @@ fun RegisterScreen(
 
                     if (error != null) {
                         Surface(
-                            color = Color(0xFFFEF2F2),
+                            color = MaterialTheme.colorScheme.errorContainer,
                             shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECACA)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
                         ) {
                             Text(
                                 text = error!!,
-                                color = Color(0xFFDC2626),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                             )
                         }

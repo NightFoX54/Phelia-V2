@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,24 +39,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.model.StoreUpdateRequest
+import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.ui.components.AppTopBar
 import com.example.myapplication.viewmodel.AdminStoreUpdateRequestsUiState
 import com.example.myapplication.viewmodel.AdminStoreUpdateRequestsViewModel
+import com.example.myapplication.viewmodel.UserSettingsViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun StoreUpdateRequestsScreen(
     onBack: () -> Unit,
+    userSettingsViewModel: UserSettingsViewModel,
     modifier: Modifier = Modifier,
     viewModel: AdminStoreUpdateRequestsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
-            AppTopBar(title = "Store Update Requests", onBack = onBack, containerColor = Color.White)
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+            AppTopBar(title = "Store Update Requests", onBack = onBack)
         }
 
         when (uiState) {
@@ -85,8 +91,30 @@ fun StoreUpdateRequestsScreen(
                         items(requests) { request ->
                             StoreUpdateRequestItem(
                                 request = request,
-                                onApprove = { viewModel.approveRequest(request.requestId) },
-                                onReject = { viewModel.rejectRequest(request.requestId) }
+                                onApprove = {
+                                    viewModel.approveRequest(request.requestId) { r ->
+                                        if (r.isSuccess) {
+                                            scope.launch {
+                                                userSettingsViewModel.syncDismissNotificationsMatching(
+                                                    type = NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED,
+                                                    storeId = request.storeId,
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                onReject = {
+                                    viewModel.rejectRequest(request.requestId) { r ->
+                                        if (r.isSuccess) {
+                                            scope.launch {
+                                                userSettingsViewModel.syncDismissNotificationsMatching(
+                                                    type = NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED,
+                                                    storeId = request.storeId,
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
                             )
                         }
                     }
@@ -104,7 +132,7 @@ private fun StoreUpdateRequestItem(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

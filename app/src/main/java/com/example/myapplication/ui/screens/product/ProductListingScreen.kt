@@ -114,14 +114,13 @@ fun ProductListingScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 AppTopBar(
                     title = if (onSaleOnly) "Special offers" else "Products",
                     onBack = onBack,
-                    containerColor = Color.White,
                 )
 
                 Row(
@@ -166,14 +165,13 @@ fun ProductListingScreen(
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFF9FAFB),
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        Surface(color = Color.White, shadowElevation = 1.dp) {
+                        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
                             AppTopBar(
                                 title = "Filters",
                                 onBack = { setShowFilters(false) },
-                                containerColor = Color.White,
                             )
                         }
 
@@ -203,28 +201,28 @@ fun ProductListingScreen(
                                 }
                             }
 
-                            Text("Category", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+                            Text("Category", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
                             FlowChips(
                                 items = categories,
                                 selected = activeCategoryName,
                                 onSelect = { catalogViewModel.setActiveCategory(it) },
                             )
 
-                            Text("Price Range", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            Text("Price Range", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
                             FlowChips(
                                 items = priceRanges.map { it.first },
                                 selectedIndex = selectedPriceRange,
                                 onSelectIndex = setSelectedPriceRange,
                             )
 
-                            Text("On sale", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            Text("On sale", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
                             FlowChips(
                                 items = listOf("All products", "On sale only"),
                                 selected = if (onSaleOnly) "On sale only" else "All products",
                                 onSelect = { label -> onSaleOnly = (label == "On sale only") },
                             )
 
-                            Text("Sort By", fontWeight = FontWeight.SemiBold, color = Color(0xFF374151), modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                            Text("Sort By", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
                             FlowChips(
                                 items = sortOptions.map { it.first },
                                 selected = sortOptions.firstOrNull { it.second == selectedSort }?.first ?: "Featured",
@@ -271,7 +269,7 @@ fun ProductListingScreen(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .clickable { onOpenStore(store.storeId) },
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.surface,
                             shape = RoundedCornerShape(12.dp),
                             shadowElevation = 1.dp
                         ) {
@@ -283,7 +281,7 @@ fun ProductListingScreen(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFFF3F4F6)),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (store.logo.isNotBlank()) {
@@ -297,13 +295,17 @@ fun ProductListingScreen(
                                     }
                                 }
                                 Column(modifier = Modifier.padding(start = 12.dp)) {
-                                    Text(store.name, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        store.name,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
                                     Text(
                                         store.description,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = Color.Gray
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }

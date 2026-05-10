@@ -48,7 +48,7 @@ fun OrderSuccessScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFB)),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         // Top gradient success header
         val gradient = Brush.verticalGradient(listOf(Color(0xFF4338CA), Color(0xFF4F46E5)))
@@ -63,7 +63,7 @@ fun OrderSuccessScreen(
                 modifier = Modifier
                     .size(96.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
@@ -102,7 +102,7 @@ fun OrderSuccessScreen(
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     InfoRow(icon = Icons.Default.LocalShipping, title = "Estimated Delivery", value = estimatedDelivery, iconBg = Color(0xFFDCFCE7), iconTint = Color(0xFF16A34A))
                     InfoRow(
@@ -115,27 +115,27 @@ fun OrderSuccessScreen(
                 }
             }
 
-            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("What’s next", fontWeight = FontWeight.Bold)
                     Text(
                         "Your order was split by store where needed. Each store can update its part of the order. You’ll see details in order history soon.",
-                        color = Color(0xFF4B5563),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 shape = RoundedCornerShape(18.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E7FF)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(modifier = Modifier.padding(18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(
                         "A confirmation email has been sent with order details and tracking information.",
-                        color = Color(0xFF374151),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -147,7 +147,7 @@ fun OrderSuccessScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

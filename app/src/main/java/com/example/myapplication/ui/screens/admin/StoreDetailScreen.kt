@@ -67,6 +67,7 @@ import com.example.myapplication.viewmodel.AdminStoreDetailUiState
 import com.example.myapplication.viewmodel.AdminStoreDetailViewModel
 import com.example.myapplication.viewmodel.AdminStoreDetailViewModelFactory
 import java.util.Locale
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun StoreDetailScreen(
@@ -78,9 +79,9 @@ fun StoreDetailScreen(
     val uiState by vm.uiState.collectAsState()
     var activeTab by remember { mutableStateOf("overview") }
     if (uiState is AdminStoreDetailUiState.Loading) {
-        Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
-            Surface(color = Color.White, shadowElevation = 1.dp) {
-                AppTopBar(title = "Store Details", onBack = onBack, containerColor = Color.White)
+        Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+                AppTopBar(title = "Store Details", onBack = onBack)
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
@@ -91,8 +92,8 @@ fun StoreDetailScreen(
     }
     if (uiState is AdminStoreDetailUiState.Error) {
         val msg = (uiState as AdminStoreDetailUiState.Error).message
-        Column(modifier = modifier.background(Color(0xFFF9FAFB))) {
-            Surface(color = Color.White, shadowElevation = 1.dp) { AppTopBar(title = "Store Details", onBack = onBack, containerColor = Color.White) }
+        Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) { AppTopBar(title = "Store Details", onBack = onBack) }
             Text(msg, modifier = Modifier.padding(20.dp), color = Color(0xFFDC2626))
         }
         return
@@ -100,7 +101,7 @@ fun StoreDetailScreen(
     val store = (uiState as AdminStoreDetailUiState.Ready).detail
     val tabs = listOf("overview", "products", "orders")
 
-    Column(modifier = modifier.background(Color(0xFFF8FAFC))) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         // Professional Header with Gradient and Logo
         Box(
             modifier = Modifier
@@ -287,7 +288,7 @@ fun StoreDetailScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         modifier = Modifier.padding(horizontal = 20.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
@@ -313,7 +314,7 @@ fun StoreDetailScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         modifier = Modifier.padding(horizontal = 20.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
@@ -385,7 +386,7 @@ private fun InfoCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.padding(horizontal = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -467,7 +468,7 @@ private fun ChartCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.padding(horizontal = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -488,9 +489,9 @@ private fun StatRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, modifier = Modifier.weight(1f), color = Color(0xFF475569), fontWeight = FontWeight.Medium)
         Text(value, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)

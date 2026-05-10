@@ -22,6 +22,7 @@ import com.example.myapplication.data.model.StoreSalesDayBucket
 import com.example.myapplication.data.model.StoreWeeklySalesSummary
 import com.example.myapplication.data.model.ui.CartLineUi
 import com.example.myapplication.data.remote.FirebaseRemoteDataSource
+import com.example.myapplication.data.util.orderReferenceMatchesSearch
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
@@ -73,6 +74,47 @@ class OrderRepository(
         val order = orderSnap.toOrderDoc() ?: error("Invalid order")
         if (order.userId != expectedUserId) error("Not your order")
 
+        val addressLines = orderSnap.shippingAddressLines()
+        val subSnaps = orderRef.collection(SUBCOLLECTION_SUBORDERS).get().await().documents
+        val suborders = coroutineScope {
+            subSnaps.map { doc ->
+                async {
+                    val so = doc.toSuborderDoc() ?: return@async null
+                    val storeName = fetchStoreDisplayName(so.storeId)
+                    val itemDocs = doc.reference.collection(SUBCOLLECTION_ITEMS).get().await().documents
+                        .mapNotNull { it.toOrderItemDoc() }
+                    SuborderDetailUi(so, storeName, itemDocs)
+                }
+            }.awaitAll().filterNotNull()
+        }
+        OrderDetailBundle(
+            order = order,
+            shippingAddressLines = addressLines,
+            suborders = suborders,
+        )
+    }
+
+    /**
+     * Resolve pasted order reference (full id or ORD-…) to a document id for this customer only.
+     */
+    suspend fun resolveCustomerOrderId(customerId: String, pastedReference: String): String? {
+        val q = pastedReference.trim()
+        if (q.isBlank() || customerId.isBlank()) return null
+        val snap = db.collection(COLLECTION_ORDERS)
+            .whereEqualTo(FIELD_USER_ID, customerId)
+            .get()
+            .await()
+        val orders = snap.documents.mapNotNull { it.toOrderDoc() }
+        orders.firstOrNull { it.orderId.equals(q, ignoreCase = true) }?.let { return it.orderId }
+        return orders.firstOrNull { orderReferenceMatchesSearch(it.orderId, q) }?.orderId
+    }
+
+    /** Load full order detail without customer ownership check (admin support tooling). */
+    suspend fun fetchOrderDetailForAdmin(orderId: String): Result<OrderDetailBundle> = runCatching {
+        val orderRef = db.collection(COLLECTION_ORDERS).document(orderId)
+        val orderSnap = orderRef.get().await()
+        if (!orderSnap.exists()) error("Order not found")
+        val order = orderSnap.toOrderDoc() ?: error("Invalid order")
         val addressLines = orderSnap.shippingAddressLines()
         val subSnaps = orderRef.collection(SUBCOLLECTION_SUBORDERS).get().await().documents
         val suborders = coroutineScope {
@@ -428,6 +470,12 @@ class OrderRepository(
             .firstOrNull()
     }
 
+    /** Parent order document id for a suborder (…/orders/{this}/suborders/{suborderId}). */
+    suspend fun parentOrderIdForSuborder(suborderId: String): String? {
+        val snap = fetchSuborderById(suborderId) ?: return null
+        return snap.reference.parent.parent?.id
+    }
+
     /**
      * Suborders for [storeId] with `createdAt` at or after [sinceMillis].
      * Requires a composite index on collection group `suborders`: `storeId` + `createdAt`.
@@ -616,6 +664,29 @@ class OrderRepository(
                 storeId = storeId
             )
         }
+    }
+
+    /**
+     * True when [productId] appears on a suborder for [storeId] whose workflow is not completed/cancelled.
+     */
+    suspend fun storeHasActivePipelineOrderContainingProduct(storeId: String, productId: String): Boolean {
+        if (storeId.isBlank() || productId.isBlank()) return false
+        return runCatching {
+            val snaps = db.collectionGroup(SUBCOLLECTION_ITEMS)
+                .whereEqualTo(FIELD_PRODUCT_ID, productId)
+                .get()
+                .await()
+                .documents
+            for (doc in snaps) {
+                val subRef = doc.reference.parent?.parent ?: continue
+                val subSnap = subRef.get().await()
+                if (!subSnap.exists()) continue
+                if (subSnap.getString(FIELD_STORE_ID).orEmpty() != storeId) continue
+                val st = normalizeOrderStatus(subSnap.getString(FIELD_STATUS).orEmpty())
+                if (st != OrderStatus.COMPLETED && st != OrderStatus.CANCELLED) return true
+            }
+            false
+        }.getOrElse { false }
     }
 
     private suspend fun fetchPrimaryProductImageUrl(productId: String): String? = runCatching {

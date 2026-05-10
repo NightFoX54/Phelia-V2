@@ -177,6 +177,19 @@ class CartRepository(
         StockValidationResult(warnings.distinct())
     }
 
+    /** Any signed-in user's cart line referencing this product (collection group query). */
+    suspend fun anyCartContainsProduct(productId: String): Boolean {
+        if (productId.isBlank()) return false
+        return runCatching {
+            db.collectionGroup(SUBCOLLECTION_CART)
+                .whereEqualTo(FIELD_PRODUCT_ID, productId)
+                .limit(1)
+                .get()
+                .await()
+                .documents.isNotEmpty()
+        }.getOrElse { false }
+    }
+
     private suspend fun fetchProductTitle(productId: String): String {
         val snap = db.collection(COLLECTION_PRODUCTS).document(productId).get().await()
         return snap.getString("name")?.trim()?.takeIf { it.isNotEmpty() } ?: "Product"

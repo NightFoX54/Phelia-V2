@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.example.myapplication.ui.util.CreditCardVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.CardPanUtils
 import com.example.myapplication.data.model.PaymentMethodDoc
@@ -69,15 +70,15 @@ fun PaymentMethodsScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Surface(color = Color.White, shadowElevation = 1.dp) {
-                AppTopBar(title = "Payment Methods", onBack = onBack, containerColor = Color.White)
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+                AppTopBar(title = "Payment Methods", onBack = onBack)
             }
         },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF9FAFB))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(padding),
         ) {
             if (methods.isEmpty()) {
@@ -189,7 +190,7 @@ private fun PaymentCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -243,29 +244,59 @@ private fun PaymentFormDialog(
     onSave: (PaymentMethodInput, String?) -> Unit,
 ) {
     var label by remember { mutableStateOf(initial?.label.orEmpty()) }
-    var brand by remember { mutableStateOf(initial?.brand.orEmpty()) }
     var cardDigits by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
     var holderName by remember { mutableStateOf(initial?.holderName.orEmpty()) }
     var monthStr by remember { mutableStateOf(initial?.expiryMonth?.toString()?.padStart(2, '0') ?: "01") }
     var yearStr by remember { mutableStateOf(initial?.expiryYear?.toString() ?: "2030") }
     var isDefault by remember { mutableStateOf(initial?.isDefault ?: true) }
+    var attemptedSave by remember { mutableStateOf(false) }
 
     LaunchedEffect(initial?.paymentMethodId) {
         label = initial?.label.orEmpty()
-        brand = initial?.brand.orEmpty()
         cardDigits = ""
         cvv = ""
         holderName = initial?.holderName.orEmpty()
         monthStr = initial?.expiryMonth?.toString()?.padStart(2, '0') ?: "01"
         yearStr = initial?.expiryYear?.toString() ?: "2030"
         isDefault = initial?.isDefault ?: true
+        attemptedSave = false
     }
 
     val panDigits = CardPanUtils.digitsOnly(cardDigits)
-    val cardDisplay = CardPanUtils.formatGrouped(panDigits)
     val isNew = initial == null
-    val replacingCard = panDigits.length >= CardPanUtils.MIN_PAN_LENGTH
+    val replacingCard = panDigits.length == CardPanUtils.PAYMENT_FORM_MAX_DIGITS
+    val inferredBrand = CardPanUtils.inferBrand(panDigits)
+    val cardComplete = panDigits.length == CardPanUtils.PAYMENT_FORM_MAX_DIGITS
+
+    val cardSupportingText = when {
+        attemptedSave && isNew && panDigits.isEmpty() ->
+            "Enter your 16-digit card number."
+        attemptedSave && !isNew && panDigits.isNotEmpty() && panDigits.length < CardPanUtils.PAYMENT_FORM_MAX_DIGITS ->
+            "Enter all ${CardPanUtils.PAYMENT_FORM_MAX_DIGITS} digits or clear the field to keep your current card."
+        panDigits.isNotEmpty() && panDigits.length < CardPanUtils.PAYMENT_FORM_MAX_DIGITS ->
+            "${panDigits.length}/${CardPanUtils.PAYMENT_FORM_MAX_DIGITS} digits"
+        cardComplete && !CardPanUtils.luhnCheck(panDigits) ->
+            "This number doesn't look valid. Check the digits."
+        else -> null
+    }
+
+    val cardIsError = when {
+        isNew ->
+            (attemptedSave && panDigits.length != CardPanUtils.PAYMENT_FORM_MAX_DIGITS) ||
+                (cardComplete && !CardPanUtils.luhnCheck(panDigits))
+        else ->
+            (attemptedSave && panDigits.isNotEmpty() && panDigits.length != CardPanUtils.PAYMENT_FORM_MAX_DIGITS) ||
+                (cardComplete && !CardPanUtils.luhnCheck(panDigits))
+    }
+
+    val holderSupportingText =
+        if (attemptedSave && holderName.isBlank()) "Enter the name on the card." else null
+    val cvvSupportingText = when {
+        attemptedSave && isNew && cvv.length !in 3..4 -> "Enter a 3 or 4 digit CVV."
+        attemptedSave && replacingCard && initial != null && cvv.length !in 3..4 -> "Enter CVV for the new card."
+        else -> null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -295,31 +326,55 @@ private fun PaymentFormDialog(
                     )
                 }
                 OutlinedTextField(
-                    value = cardDisplay,
-                    onValueChange = { 
-                        val digits = CardPanUtils.digitsOnly(it)
-                        cardDigits = digits
-                        val inferred = CardPanUtils.inferBrand(digits)
-                        if (inferred.isNotBlank()) {
-                            brand = inferred
-                        }
+                    value = panDigits,
+                    onValueChange = { typed ->
+                        attemptedSave = false
+                        cardDigits = typed.filter { it.isDigit() }.take(CardPanUtils.PAYMENT_FORM_MAX_DIGITS)
                     },
+                    visualTransformation = CreditCardVisualTransformation,
                     label = { Text("Card number") },
                     placeholder = { Text("1234 5678 9012 3456") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    isError = cardIsError,
+                    supportingText = cardSupportingText?.let { { Text(it) } },
+                )
+                Text(
+                    text = when {
+                        inferredBrand.isNotBlank() -> "Detected brand: $inferredBrand"
+                        panDigits.isNotEmpty() -> "Detected brand: Unknown"
+                        initial != null && initial.brand.isNotBlank() -> "Saved brand: ${initial.brand}"
+                        else -> "Brand is detected automatically from the card number."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
                 )
                 OutlinedTextField(
                     value = cvv,
-                    onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) cvv = v },
+                    onValueChange = { v ->
+                        attemptedSave = false
+                        if (v.length <= 4 && v.all { it.isDigit() }) cvv = v
+                    },
                     label = { Text("CVV") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    isError = cvvSupportingText != null,
+                    supportingText = cvvSupportingText?.let { { Text(it) } },
                 )
-                OutlinedTextField(value = holderName, onValueChange = { holderName = it }, label = { Text("Name on card") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = holderName,
+                    onValueChange = {
+                        attemptedSave = false
+                        holderName = it
+                    },
+                    label = { Text("Name on card") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = holderSupportingText != null,
+                    supportingText = holderSupportingText?.let { { Text(it) } },
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = monthStr,
@@ -346,14 +401,6 @@ private fun PaymentFormDialog(
                     label = { Text("Label (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = brand,
-                    onValueChange = { brand = it },
-                    label = { Text("Brand") },
-                    placeholder = { Text("Visa, Mastercard, etc.") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isDefault, onCheckedChange = { isDefault = it })
                     Text("Set as primary")
@@ -363,6 +410,7 @@ private fun PaymentFormDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    attemptedSave = true
                     val m = monthStr.toIntOrNull()?.coerceIn(1, 12) ?: 1
                     val y = yearStr.toIntOrNull()?.coerceAtLeast(2024) ?: 2030
                     if (holderName.isBlank()) return@TextButton
@@ -373,25 +421,24 @@ private fun PaymentFormDialog(
                     }
                     if (!cvvOk) return@TextButton
                     if (isNew) {
-                        if (panDigits.length < CardPanUtils.MIN_PAN_LENGTH || !CardPanUtils.luhnCheck(panDigits)) return@TextButton
+                        if (panDigits.length != CardPanUtils.PAYMENT_FORM_MAX_DIGITS || !CardPanUtils.luhnCheck(panDigits)) return@TextButton
                     } else if (replacingCard) {
-                        if (!CardPanUtils.luhnCheck(panDigits)) return@TextButton
+                        if (panDigits.length != CardPanUtils.PAYMENT_FORM_MAX_DIGITS || !CardPanUtils.luhnCheck(panDigits)) return@TextButton
                     }
-                    val inferred = if (brand.isBlank() && panDigits.length >= CardPanUtils.MIN_PAN_LENGTH) {
-                        CardPanUtils.inferBrand(panDigits)
-                    } else {
-                        brand
+                    val brandOut = when {
+                        replacingCard -> inferredBrand.ifBlank { "Card" }
+                        else -> initial?.brand.orEmpty()
                     }
                     val input = PaymentMethodInput(
                         label = label.ifBlank {
-                            if (panDigits.length >= CardPanUtils.MIN_PAN_LENGTH) {
-                                "${inferred.ifBlank { "Card" }} •••• ${CardPanUtils.last4(panDigits)}"
+                            if (replacingCard) {
+                                "${brandOut.ifBlank { "Card" }} •••• ${CardPanUtils.last4(panDigits)}"
                             } else {
                                 initial?.label.orEmpty().ifBlank { "Card" }
                             }
                         },
                         type = "card",
-                        brand = inferred.ifBlank { initial?.brand.orEmpty() },
+                        brand = brandOut,
                         holderName = holderName,
                         expiryMonth = m,
                         expiryYear = y,
