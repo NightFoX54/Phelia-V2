@@ -45,6 +45,10 @@ android {
     }
 }
 
+base {
+    archivesName.set("Phelia")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))

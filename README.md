@@ -56,7 +56,7 @@ To build without installing:
 
 The APK will be here:
 
-`app/build/outputs/apk/debug/app-debug.apk`
+`app/build/outputs/apk/debug/Phelia-debug-v1.0.apk`
 
 ---
 
