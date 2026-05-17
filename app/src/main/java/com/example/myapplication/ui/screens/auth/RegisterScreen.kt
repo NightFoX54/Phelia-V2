@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,34 +14,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,7 +48,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.myapplication.viewmodel.SessionViewModel
+import kotlinx.coroutines.delay
 
 private enum class RegisterKind { Customer, StoreApplication }
 
@@ -88,24 +86,19 @@ fun RegisterScreen(
 
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var storeApplySuccess by remember { mutableStateOf(false) }
 
     LaunchedEffect(email) {
-        if (email.length < 5 || !email.contains("@")) {
-            return@LaunchedEffect
-        }
+        if (email.length < 5 || !email.contains("@")) return@LaunchedEffect
         delay(600)
         sessionViewModel.checkEmailAvailability(email) { result ->
             result.fold(
                 onSuccess = {
-                    if (error == "Choose another mail address") {
-                        error = null
-                    }
+                    if (error == "Choose another mail address") error = null
                 },
                 onFailure = { e ->
-                    if (e.message == "Choose another mail address") {
-                        error = e.message
-                    }
-                }
+                    if (e.message == "Choose another mail address") error = e.message
+                },
             )
         }
     }
@@ -116,546 +109,556 @@ fun RegisterScreen(
         sessionViewModel.checkStoreNameAvailability(storeName) { result ->
             result.fold(
                 onSuccess = {
-                    if (error == "Please select different store name") {
-                        error = null
-                    }
+                    if (error == "Please select different store name") error = null
                 },
                 onFailure = { e ->
-                    if (e.message == "Please select different store name") {
-                        error = e.message
-                    }
-                }
+                    if (e.message == "Please select different store name") error = e.message
+                },
             )
         }
     }
-    var storeApplySuccess by remember { mutableStateOf(false) }
 
     val pickLogo = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri: Uri? -> pickedLogoUri = uri }
 
-    val bg = rememberAuthScreenBackgroundBrush()
+    val title = when {
+        kind == RegisterKind.Customer -> "Create account"
+        storeStep == 0 -> "Owner details"
+        else -> "Store details"
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(bg)
-            .padding(20.dp),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        AuthCompactThemeToggle(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 4.dp),
-        )
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-            }
-            Text(
-                text = "Create Account",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 12.dp),
-            )
+            AuthWaveHeader(height = 210.dp, logoSize = 64.dp)
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 28.dp)
+                    .padding(top = 10.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                KindChip(
-                    label = "Customer",
-                    selected = kind == RegisterKind.Customer,
-                    onClick = {
-                        kind = RegisterKind.Customer
+                AuthScreenTitle(title = title)
+
+                AuthSegmented(
+                    options = listOf("Customer", "Store"),
+                    selectedIndex = if (kind == RegisterKind.Customer) 0 else 1,
+                    enabled = !busy,
+                    onSelect = { idx ->
+                        kind = if (idx == 0) RegisterKind.Customer else RegisterKind.StoreApplication
                         storeStep = 0
                         error = null
                         storeApplySuccess = false
                     },
-                    modifier = Modifier.weight(1f),
                 )
-                KindChip(
-                    label = "Open a store",
-                    selected = kind == RegisterKind.StoreApplication,
-                    onClick = {
-                        kind = RegisterKind.StoreApplication
-                        storeStep = 0
-                        error = null
-                        storeApplySuccess = false
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
 
-            Text(
-                text = when (kind) {
-                    RegisterKind.Customer -> "Register to shop on the marketplace."
-                    RegisterKind.StoreApplication -> when (storeStep) {
-                        0 -> "Step 1 of 2 — your account"
-                        else -> "Step 2 of 2 — your store (pending admin approval)"
-                    }
-                },
-                color = Color(0xFF4B5563),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+                if (kind == RegisterKind.StoreApplication) {
+                    Text(
+                        text = "Step ${storeStep + 1} of 2",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    when {
-                        kind == RegisterKind.Customer -> {
-                            AuthLabeledField(
-                                label = "Full Name",
-                                icon = Icons.Default.Person,
-                                value = name,
-                                onValueChange = { 
-                                    name = it
-                                    error = null
-                                },
-                                placeholder = "John Doe",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Email Address",
-                                icon = Icons.Default.Email,
-                                value = email,
-                                onValueChange = { 
-                                    email = it
-                                    error = null 
-                                },
-                                placeholder = "your@email.com",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Password",
-                                icon = Icons.Default.Lock,
-                                value = password,
-                                onValueChange = { 
-                                    password = it
-                                    error = null
-                                },
-                                placeholder = "••••••••",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Confirm Password",
-                                icon = Icons.Default.Lock,
-                                value = confirmPassword,
-                                onValueChange = { 
-                                    confirmPassword = it
-                                    error = null
-                                },
-                                placeholder = "••••••••",
-                                enabled = !busy,
-                            )
-                            SubmitButton(
-                                busy = busy,
-                                text = if (busy) "Creating account…" else "Create Account",
-                                onClick = {
-                                    error = null
-                                    if (name.isBlank()) {
-                                        error = "Full Name is required"
-                                        return@SubmitButton
-                                    }
-                                    if (email.isBlank()) {
-                                        error = "Email Address is required"
-                                        return@SubmitButton
-                                    }
-                                    if (password.length < 6) {
-                                        error = "Password must be at least 6 characters"
-                                        return@SubmitButton
-                                    }
-                                    if (password != confirmPassword) {
-                                        error = "Passwords do not match"
-                                        return@SubmitButton
-                                    }
+                when {
+                    kind == RegisterKind.Customer -> {
+                        AuthMinimalField(
+                            label = "Full name",
+                            icon = Icons.Outlined.Person,
+                            value = name,
+                            onValueChange = { name = it; error = null },
+                            placeholder = "John Doe",
+                            enabled = !busy,
+                        )
+                        AuthMinimalField(
+                            label = "Email",
+                            icon = Icons.Outlined.Email,
+                            value = email,
+                            onValueChange = { email = it; error = null },
+                            placeholder = "you@email.com",
+                            enabled = !busy,
+                        )
+                        AuthMinimalField(
+                            label = "Password",
+                            icon = Icons.Outlined.Lock,
+                            value = password,
+                            onValueChange = { password = it; error = null },
+                            placeholder = "At least 6 characters",
+                            enabled = !busy,
+                            isPassword = true,
+                        )
+                        AuthMinimalField(
+                            label = "Confirm password",
+                            icon = Icons.Outlined.Lock,
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; error = null },
+                            placeholder = "Repeat password",
+                            enabled = !busy,
+                            isPassword = true,
+                        )
 
-                                    busy = true
-                                    sessionViewModel.checkEmailAvailability(email) { availResult ->
-                                        availResult.fold(
-                                            onSuccess = {
-                                                sessionViewModel.register(name, email, password) { result ->
-                                                    busy = false
-                                                    result.fold(
-                                                        onSuccess = { },
-                                                        onFailure = { e -> error = e.message }
-                                                    )
-                                                }
-                                            },
-                                            onFailure = { e ->
-                                                busy = false
-                                                error = e.message
-                                            }
-                                        )
-                                    }
-                                },
-                            )
-                        }
-                        storeStep == 0 -> {
-                            AuthLabeledField(
-                                label = "Full Name",
-                                icon = Icons.Default.Person,
-                                value = name,
-                                onValueChange = { 
-                                    name = it
-                                    error = null
-                                },
-                                placeholder = "John Doe",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Email Address",
-                                icon = Icons.Default.Email,
-                                value = email,
-                                onValueChange = { 
-                                    email = it
-                                    error = null 
-                                },
-                                placeholder = "your@email.com",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Password",
-                                icon = Icons.Default.Lock,
-                                value = password,
-                                onValueChange = { 
-                                    password = it
-                                    error = null
-                                },
-                                placeholder = "••••••••",
-                                enabled = !busy,
-                            )
-                            AuthLabeledField(
-                                label = "Confirm Password",
-                                icon = Icons.Default.Lock,
-                                value = confirmPassword,
-                                onValueChange = { 
-                                    confirmPassword = it
-                                    error = null
-                                },
-                                placeholder = "••••••••",
-                                enabled = !busy,
-                            )
-                            Button(
-                                onClick = {
-                                    error = null
-                                    if (name.isBlank()) {
-                                        error = "Full Name is required"
-                                        return@Button
-                                    }
-                                    if (email.isBlank()) {
-                                        error = "Email Address is required"
-                                        return@Button
-                                    }
-                                    if (password.length < 6) {
-                                        error = "Password must be at least 6 characters"
-                                        return@Button
-                                    }
-                                    if (password != confirmPassword) {
-                                        error = "Passwords do not match"
-                                        return@Button
-                                    }
-                                    
-                                    busy = true
-                                    sessionViewModel.checkEmailAvailability(email) { result ->
-                                        busy = false
-                                        result.fold(
-                                            onSuccess = { storeStep = 1 },
-                                            onFailure = { e -> error = e.message }
-                                        )
-                                    }
-                                },
-                                enabled = !busy,
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                modifier = Modifier.fillMaxWidth().height(52.dp),
-                            ) {
-                                Text(if (busy) "Checking email..." else "Continue", fontWeight = FontWeight.SemiBold)
+                        InlineError(error)
+
+                        AuthPrimaryButton(
+                            text = if (busy) "Creating account…" else "Create account",
+                            enabled = !busy,
+                        ) {
+                            error = null
+                            val validation = validateCustomer(name, email, password, confirmPassword)
+                            if (validation != null) {
+                                error = validation
+                                return@AuthPrimaryButton
                             }
-                        }
-                        else -> {
-                            OutlinedTextField(
-                                value = storeName,
-                                onValueChange = { 
-                                    storeName = it
-                                    error = null
-                                },
-                                label = { Text("Store name") },
-                                leadingIcon = { Icon(Icons.Default.Storefront, null) },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !busy,
-                                singleLine = true,
-                                shape = RoundedCornerShape(14.dp),
-                            )
-                            
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = taxNumber,
-                                    onValueChange = { taxNumber = it },
-                                    label = { Text("Tax Number (Vergi No)") },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy,
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
-                                )
-                                OutlinedTextField(
-                                    value = phone,
-                                    onValueChange = { phone = it },
-                                    label = { Text("Phone") },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy,
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(14.dp),
-                                )
-                            }
-
-                            OutlinedTextField(
-                                value = businessAddress,
-                                onValueChange = { businessAddress = it },
-                                label = { Text("Business Address") },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !busy,
-                                minLines = 2,
-                                shape = RoundedCornerShape(14.dp),
-                            )
-
-                            OutlinedTextField(
-                                value = storeDescription,
-                                onValueChange = { 
-                                    storeDescription = it
-                                    error = null
-                                },
-                                label = { Text("Store description") },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !busy,
-                                minLines = 3,
-                                shape = RoundedCornerShape(14.dp),
-                            )
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        "Store Identity",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    
-                                    Box(
-                                        modifier = Modifier
-                                            .size(120.dp)
-                                            .clip(RoundedCornerShape(24.dp))
-                                            .background(MaterialTheme.colorScheme.surface)
-                                            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
-                                            .clickable(enabled = !busy) {
-                                                pickLogo.launch(
-                                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                                )
-                                            },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        when (val u = pickedLogoUri) {
-                                            null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(Icons.Default.AddPhotoAlternate, null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(32.dp))
-                                                Text("Add Logo", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
-                                            }
-                                            else -> AsyncImage(
-                                                model = u,
-                                                contentDescription = null,
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop,
-                                            )
-                                        }
-                                    }
-
-                                    Text(
-                                        "Click above to upload store logo",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color(0xFF6B7280)
-                                    )
-                                }
-                            }
-                            
-                            if (storeApplySuccess) {
-                                Surface(
-                                    color = Color(0xFFECFDF5),
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f)),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = Color(0xFF10B981)
-                                        )
-                                        Text(
-                                            "Application submitted! We'll review your store and notify you soon.",
-                                            color = Color(0xFF065F46),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { storeStep = 0 },
-                                    enabled = !busy,
-                                    modifier = Modifier.weight(1f).height(52.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                ) { Text("Back", fontWeight = FontWeight.SemiBold) }
-                                
-                                Button(
-                                    onClick = {
-                                        error = null
-                                        if (storeName.isBlank()) {
-                                            error = "Store name is required"
-                                            return@Button
-                                        }
-                                        if (taxNumber.isBlank()) {
-                                            error = "Tax number is required"
-                                            return@Button
-                                        }
-                                        busy = true
-                                        storeApplySuccess = false
-                                        sessionViewModel.registerStoreApplication(
-                                            context = context,
-                                            name = name,
-                                            email = email,
-                                            password = password,
-                                            storeName = storeName,
-                                            storeDescription = storeDescription,
-                                            localLogoUri = pickedLogoUri,
-                                            applicantPhone = phone,
-                                            taxNumber = taxNumber,
-                                            businessAddress = businessAddress,
-                                        ) { result ->
+                            busy = true
+                            sessionViewModel.checkEmailAvailability(email) { availResult ->
+                                availResult.fold(
+                                    onSuccess = {
+                                        sessionViewModel.register(name, email, password) { result ->
                                             busy = false
                                             result.fold(
-                                                onSuccess = { storeApplySuccess = true },
+                                                onSuccess = { },
                                                 onFailure = { e -> error = e.message },
                                             )
                                         }
                                     },
-                                    enabled = !busy && !storeApplySuccess,
-                                    modifier = Modifier.weight(1f).height(52.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (storeApplySuccess) Color(0xFF10B981) else MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    if (busy) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                                    } else {
-                                        Text(if (storeApplySuccess) "Submitted" else "Apply Now", fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                            if (busy) {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                    onFailure = { e ->
+                                        busy = false
+                                        error = e.message
+                                    },
+                                )
                             }
                         }
                     }
 
-                    Text(
-                        text = "Already have an account? Sign in",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 4.dp)
-                            .clickable(enabled = !busy) { onNavigateToLogin() },
-                    )
+                    storeStep == 0 -> {
+                        AuthMinimalField(
+                            label = "Full name",
+                            icon = Icons.Outlined.Person,
+                            value = name,
+                            onValueChange = { name = it; error = null },
+                            placeholder = "John Doe",
+                            enabled = !busy,
+                        )
+                        AuthMinimalField(
+                            label = "Email",
+                            icon = Icons.Outlined.Email,
+                            value = email,
+                            onValueChange = { email = it; error = null },
+                            placeholder = "you@email.com",
+                            enabled = !busy,
+                        )
+                        AuthMinimalField(
+                            label = "Password",
+                            icon = Icons.Outlined.Lock,
+                            value = password,
+                            onValueChange = { password = it; error = null },
+                            placeholder = "At least 6 characters",
+                            enabled = !busy,
+                            isPassword = true,
+                        )
+                        AuthMinimalField(
+                            label = "Confirm password",
+                            icon = Icons.Outlined.Lock,
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; error = null },
+                            placeholder = "Repeat password",
+                            enabled = !busy,
+                            isPassword = true,
+                        )
 
-                    if (error != null) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
+                        InlineError(error)
+
+                        AuthPrimaryButton(
+                            text = if (busy) "Checking…" else "Continue",
+                            enabled = !busy,
                         ) {
-                            Text(
-                                text = error!!,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            error = null
+                            val validation = validateCustomer(name, email, password, confirmPassword)
+                            if (validation != null) {
+                                error = validation
+                                return@AuthPrimaryButton
+                            }
+                            busy = true
+                            sessionViewModel.checkEmailAvailability(email) { result ->
+                                busy = false
+                                result.fold(
+                                    onSuccess = { storeStep = 1 },
+                                    onFailure = { e -> error = e.message },
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        MinimalOutlinedField(
+                            value = storeName,
+                            onValueChange = { storeName = it; error = null },
+                            label = "Store name",
+                            leadingIcon = Icons.Outlined.Storefront,
+                            enabled = !busy,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            MinimalOutlinedField(
+                                value = taxNumber,
+                                onValueChange = { taxNumber = it },
+                                label = "Tax number",
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f),
                             )
+                            MinimalOutlinedField(
+                                value = phone,
+                                onValueChange = { phone = it },
+                                label = "Phone",
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        MinimalOutlinedField(
+                            value = businessAddress,
+                            onValueChange = { businessAddress = it },
+                            label = "Business address",
+                            enabled = !busy,
+                            minLines = 2,
+                        )
+                        MinimalOutlinedField(
+                            value = storeDescription,
+                            onValueChange = { storeDescription = it; error = null },
+                            label = "Store description",
+                            enabled = !busy,
+                            minLines = 3,
+                        )
+
+                        StoreLogoPicker(
+                            uri = pickedLogoUri,
+                            enabled = !busy,
+                            onPick = {
+                                pickLogo.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        )
+
+                        if (storeApplySuccess) {
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f)),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF10B981))
+                                    Text(
+                                        text = "Application submitted. We'll be in touch.",
+                                        color = Color(0xFF065F46),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+
+                        InlineError(error)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = { storeStep = 0 },
+                                enabled = !busy,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.weight(1f).height(56.dp),
+                            ) { Text("Back", fontWeight = FontWeight.SemiBold) }
+
+                            Button(
+                                onClick = {
+                                    error = null
+                                    if (storeName.isBlank()) {
+                                        error = "Store name is required"; return@Button
+                                    }
+                                    if (taxNumber.isBlank()) {
+                                        error = "Tax number is required"; return@Button
+                                    }
+                                    busy = true
+                                    storeApplySuccess = false
+                                    sessionViewModel.registerStoreApplication(
+                                        context = context,
+                                        name = name,
+                                        email = email,
+                                        password = password,
+                                        storeName = storeName,
+                                        storeDescription = storeDescription,
+                                        localLogoUri = pickedLogoUri,
+                                        applicantPhone = phone,
+                                        taxNumber = taxNumber,
+                                        businessAddress = businessAddress,
+                                    ) { result ->
+                                        busy = false
+                                        result.fold(
+                                            onSuccess = { storeApplySuccess = true },
+                                            onFailure = { e -> error = e.message },
+                                        )
+                                    }
+                                },
+                                enabled = !busy && !storeApplySuccess,
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (storeApplySuccess) Color(0xFF10B981)
+                                    else MaterialTheme.colorScheme.primary,
+                                ),
+                                modifier = Modifier.weight(1f).height(56.dp),
+                            ) {
+                                if (busy) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Text(
+                                        text = if (storeApplySuccess) "Submitted" else "Apply",
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                        }
+                        if (busy) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Already have an account?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = " Sign in",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(enabled = !busy) { onNavigateToLogin() },
+                    )
+                }
             }
         }
+
+        AuthCompactThemeToggle(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 6.dp, end = 12.dp),
+        )
     }
 }
 
-@Composable
-private fun KindChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val bg = if (selected) MaterialTheme.colorScheme.primary else Color.White
-    val fg = if (selected) Color.White else Color(0xFF374151)
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .height(44.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(bg)
-            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB), RoundedCornerShape(14.dp))
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-    ) {
-        Text(label, fontWeight = FontWeight.SemiBold, color = fg, style = MaterialTheme.typography.labelLarge)
-    }
+private fun validateCustomer(
+    name: String,
+    email: String,
+    password: String,
+    confirmPassword: String,
+): String? {
+    if (name.isBlank()) return "Full name is required"
+    if (email.isBlank()) return "Email is required"
+    if (password.length < 6) return "Password must be at least 6 characters"
+    if (password != confirmPassword) return "Passwords do not match"
+    return null
 }
 
 @Composable
-private fun SubmitButton(
-    busy: Boolean,
+private fun AuthPrimaryButton(
     text: String,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
-        enabled = !busy,
+        enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
         modifier = Modifier.fillMaxWidth().height(56.dp),
     ) {
-        Text(text, fontWeight = FontWeight.SemiBold)
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun InlineError(error: String?) {
+    if (error == null) return
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.30f)),
+    ) {
+        Text(
+            text = error,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun MinimalOutlinedField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    minLines: Int = 1,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        leadingIcon = leadingIcon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                )
+            }
+        },
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        singleLine = minLines == 1,
+        minLines = minLines,
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        ),
+    )
+}
+
+@Composable
+private fun StoreLogoPicker(
+    uri: Uri?,
+    enabled: Boolean,
+    onPick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant,
+                RoundedCornerShape(16.dp),
+            )
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant,
+                    RoundedCornerShape(20.dp),
+                )
+                .clickable(enabled = enabled, onClick = onPick),
+            contentAlignment = Alignment.Center,
+        ) {
+            when (uri) {
+                null -> Icon(
+                    imageVector = Icons.Outlined.AddPhotoAlternate,
+                    contentDescription = "Add logo",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(30.dp),
+                )
+                else -> AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Text(
+            text = if (uri == null) "Add store logo" else "Tap to change",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun AuthSegmented(
+    options: List<String>,
+    selectedIndex: Int,
+    enabled: Boolean,
+    onSelect: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        options.forEachIndexed { index, label ->
+            val selected = index == selectedIndex
+            val interaction = remember { MutableInteractionSource() }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.surface
+                        else Color.Transparent,
+                    )
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        enabled = enabled,
+                        onClick = { onSelect(index) },
+                    ),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (selected) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

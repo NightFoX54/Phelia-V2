@@ -30,7 +30,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.model.ui.UserRole
-import com.example.myapplication.data.repository.NotificationTypes
 import com.example.myapplication.ui.components.BottomNavBar
 import com.google.firebase.Timestamp
 import com.example.myapplication.ui.screens.admin.AdminCatalogScreen
@@ -121,15 +120,6 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
     }
 
     val trayNotifications by userSettingsViewModel.notifications.collectAsState()
-    val adminUnreadSupportTickets = trayNotifications.count {
-        !it.isRead && it.type == NotificationTypes.SUPPORT_TICKET_SUBMITTED
-    }
-    val adminUnreadStoreApplications = trayNotifications.count {
-        !it.isRead && it.type == NotificationTypes.STORE_APPLICATION_SUBMITTED
-    }
-    val adminUnreadStoreUpdateRequests = trayNotifications.count {
-        !it.isRead && it.type == NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED
-    }
     NotificationTraySideEffect(notifications = trayNotifications, userRole = profile.role)
 
     LaunchedEffect(navController) {
@@ -303,7 +293,6 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                             launchSingleTop = true
                         }
                     },
-                    onTrackOrder = { navController.navigate(AppRoutes.PROFILE) },
                 )
             }
             composable(AppRoutes.PROFILE) {
@@ -519,9 +508,6 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onSupportTickets = { navController.navigate(AppRoutes.ADMIN_SUPPORT_TICKETS) },
                     onOpenProduct = { productId -> navController.navigate(AppRoutes.productDetail(productId)) },
                     onOpenStore = { storeId -> navController.navigate(AppRoutes.storeDetail(storeId)) },
-                    unreadSupportTickets = adminUnreadSupportTickets,
-                    unreadStoreApplications = adminUnreadStoreApplications,
-                    unreadStoreUpdateRequests = adminUnreadStoreUpdateRequests,
                 )
             }
             composable(AppRoutes.ADMIN_SUPPORT_TICKETS) {

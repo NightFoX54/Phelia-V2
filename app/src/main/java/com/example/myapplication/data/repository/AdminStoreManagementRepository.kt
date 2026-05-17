@@ -4,7 +4,9 @@ import com.example.myapplication.data.model.StoreUpdateRequest
 import com.example.myapplication.data.model.readMillis
 import com.example.myapplication.data.repository.NotificationRepository
 import com.example.myapplication.data.repository.NotificationTypes
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
 import java.time.ZoneId
@@ -212,24 +214,44 @@ class AdminStoreManagementRepository(
 
     suspend fun fetchUpdateRequests(): Result<List<StoreUpdateRequest>> = runCatching {
         val snap = db.collection(COLLECTION_STORE_UPDATE_REQUESTS)
-            .whereEqualTo("status", "pending")
+            .whereEqualTo(FIELD_STATUS, STATUS_PENDING)
             .get()
             .await()
-        snap.documents.map { doc ->
-            StoreUpdateRequest(
-                requestId = doc.id,
-                storeId = doc.getString("storeId").orEmpty(),
-                name = doc.getString("name").orEmpty(),
-                description = doc.getString("description").orEmpty(),
-                logo = doc.getString("logo").orEmpty(),
-                email = doc.getString("email").orEmpty(),
-                phone = doc.getString("phone").orEmpty(),
-                taxNumber = doc.getString("taxNumber").orEmpty(),
-                businessAddress = doc.getString("businessAddress").orEmpty(),
-                status = doc.getString("status").orEmpty(),
-                createdAt = doc.getLong("createdAt") ?: 0L
-            )
-        }
+        snap.documents.mapNotNull { it.toStoreUpdateRequest() }
+    }
+
+    fun listenPendingUpdateRequests(
+        onUpdate: (List<StoreUpdateRequest>) -> Unit,
+        onError: ((String?) -> Unit)? = null,
+    ): ListenerRegistration =
+        db.collection(COLLECTION_STORE_UPDATE_REQUESTS)
+            .whereEqualTo(FIELD_STATUS, STATUS_PENDING)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    onUpdate(emptyList())
+                    onError?.invoke(err.message)
+                    return@addSnapshotListener
+                }
+                val list = snap?.documents?.mapNotNull { it.toStoreUpdateRequest() }.orEmpty()
+                onError?.invoke(null)
+                onUpdate(list)
+            }
+
+    private fun DocumentSnapshot.toStoreUpdateRequest(): StoreUpdateRequest? {
+        if (!exists()) return null
+        return StoreUpdateRequest(
+            requestId = id,
+            storeId = getString(FIELD_STORE_ID).orEmpty(),
+            name = getString(FIELD_NAME).orEmpty(),
+            description = getString(FIELD_DESCRIPTION).orEmpty(),
+            logo = getString(FIELD_LOGO).orEmpty(),
+            email = getString(FIELD_EMAIL).orEmpty(),
+            phone = getString(FIELD_PHONE).orEmpty(),
+            taxNumber = getString(FIELD_TAX_NUMBER).orEmpty(),
+            businessAddress = getString(FIELD_BUSINESS_ADDRESS).orEmpty(),
+            status = getString(FIELD_STATUS).orEmpty(),
+            createdAt = getLong(FIELD_CREATED_AT) ?: 0L,
+        )
     }
 
     suspend fun approveUpdateRequest(requestId: String): Result<Unit> = runCatching {
@@ -304,6 +326,8 @@ class AdminStoreManagementRepository(
         private const val COLLECTION_USERS = "users"
         private const val COLLECTION_PRODUCTS = "products"
         private const val COLLECTION_STORE_UPDATE_REQUESTS = "storeUpdateRequests"
+        private const val STATUS_PENDING = "pending"
+        private const val FIELD_STATUS = "status"
         private const val SUBCOLLECTION_SUBORDERS = "suborders"
         private const val SUBCOLLECTION_ITEMS = "items"
 

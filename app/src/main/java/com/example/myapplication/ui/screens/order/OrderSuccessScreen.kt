@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
@@ -38,7 +37,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun OrderSuccessScreen(
     orderId: String,
-    onTrackOrder: () -> Unit,
     onContinueShopping: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -157,17 +155,6 @@ fun OrderSuccessScreen(
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Button(
-                onClick = onTrackOrder,
-                shape = RoundedCornerShape(999.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.primary),
-                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) {
-                Text("Track Order", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.size(8.dp))
-                Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
-            }
             Button(
                 onClick = onContinueShopping,
                 shape = RoundedCornerShape(999.dp),

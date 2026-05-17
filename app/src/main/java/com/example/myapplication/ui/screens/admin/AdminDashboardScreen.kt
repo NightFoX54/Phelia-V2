@@ -65,14 +65,12 @@ fun AdminDashboardScreen(
     onSupportTickets: () -> Unit = {},
     onOpenProduct: (String) -> Unit = {},
     onOpenStore: (String) -> Unit = {},
-    unreadSupportTickets: Int = 0,
-    unreadStoreApplications: Int = 0,
-    unreadStoreUpdateRequests: Int = 0,
     modifier: Modifier = Modifier,
     viewModel: AdminDashboardViewModel = viewModel(),
 ) {
     val headerGradient = Brush.linearGradient(listOf(Color(0xFF6D28D9), Color(0xFF4338CA)))
     val dashboardState by viewModel.uiState.collectAsState()
+    val pendingCounts by viewModel.pendingCounts.collectAsState()
     val overview = (dashboardState as? AdminDashboardUiState.Ready)?.overview
     val ordersOverTime = overview?.ordersOverTime?.map { LineChartEntry(it.first, it.second) } ?: emptyList()
     val topProducts = overview?.topProducts.orEmpty()
@@ -277,7 +275,7 @@ fun AdminDashboardScreen(
                 text = "Customer support tickets",
                 icon = Icons.Default.HelpOutline,
                 containerColor = Color(0xFF4F46E5),
-                badgeCount = unreadSupportTickets,
+                badgeCount = pendingCounts.openSupportTickets,
                 onClick = onSupportTickets,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
@@ -312,7 +310,7 @@ fun AdminDashboardScreen(
                 text = "Store update requests",
                 icon = Icons.Default.Assignment,
                 containerColor = Color(0xFF8B5CF6),
-                badgeCount = unreadStoreUpdateRequests,
+                badgeCount = pendingCounts.pendingStoreUpdateRequests,
                 onClick = onStoreUpdateRequests,
                 modifier = Modifier.padding(horizontal = 20.dp),
                 titleWeight = FontWeight.Bold,
@@ -322,7 +320,7 @@ fun AdminDashboardScreen(
                 text = "Store applications",
                 icon = Icons.Default.AppRegistration,
                 containerColor = Color(0xFF0D9488),
-                badgeCount = unreadStoreApplications,
+                badgeCount = pendingCounts.pendingStoreApplications,
                 onClick = onStoreApplications,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
