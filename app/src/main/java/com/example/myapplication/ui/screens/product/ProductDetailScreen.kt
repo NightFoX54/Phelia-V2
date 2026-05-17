@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Visibility
@@ -342,10 +341,6 @@ private fun ProductDetailContent(
                             }
                             Spacer(modifier = Modifier.size(10.dp))
                         } else {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
-                                IconButton(onClick = {}) { Icon(Icons.Default.Share, null, tint = MaterialTheme.colorScheme.onSurface) }
-                            }
-                            Spacer(modifier = Modifier.size(10.dp))
                             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shadowElevation = 2.dp) {
                                 IconButton(onClick = onFavoriteToggle) {
                                     Icon(

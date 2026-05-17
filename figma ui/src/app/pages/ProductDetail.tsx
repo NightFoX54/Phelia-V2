@@ -3,7 +3,6 @@ import {
   Heart,
   Star,
   ShoppingCart,
-  Share2,
   ChevronLeft,
   ChevronRight,
   Send,
@@ -291,9 +290,6 @@ export function ProductDetail() {
           <ArrowLeft className="w-6 h-6 text-gray-700" />
         </Link>
         <div className="flex gap-2">
-          <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-colors">
-            <Share2 className="w-6 h-6 text-gray-700" />
-          </button>
           <button
             onClick={() => setIsFavorite(!isFavorite)}
             className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-colors"
