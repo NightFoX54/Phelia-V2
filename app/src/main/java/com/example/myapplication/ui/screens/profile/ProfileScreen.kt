@@ -195,13 +195,14 @@ fun ProfileScreen(
                         ProfileMenuRow(icon = Icons.Default.Storefront, label = "Manage Stores", tint = MaterialTheme.colorScheme.tertiary) { onNavigate(AppRoutes.STORE_MANAGEMENT) }
                         ProfileMenuRow(icon = Icons.Default.AppRegistration, label = "Store Applications", tint = MaterialTheme.colorScheme.secondary) { onNavigate(AppRoutes.ADMIN_STORE_APPLICATIONS) }
                         ProfileMenuRow(icon = Icons.Default.Inventory, label = "Inactive Products", tint = MaterialTheme.colorScheme.error) { onNavigate(AppRoutes.ADMIN_INACTIVE_PRODUCTS) }
+                        ProfileMenuRow(icon = Icons.Default.Help, label = "Customer Support Tickets", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.ADMIN_SUPPORT_TICKETS) }
                     } else {
                         ProfileMenuRow(icon = Icons.Default.Person, label = "Edit Profile", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_EDIT) }
                         ProfileMenuRow(icon = Icons.Default.LocationOn, label = "Shipping Address", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_ADDRESS) }
                         ProfileMenuRow(icon = Icons.Default.CreditCard, label = "Payment Methods", tint = MaterialTheme.colorScheme.tertiary) { onNavigate(AppRoutes.PROFILE_PAYMENT) }
                         ProfileMenuRow(icon = Icons.Default.Notifications, label = "Notifications", tint = MaterialTheme.colorScheme.secondary) { onNavigate(AppRoutes.PROFILE_NOTIFICATIONS) }
+                        ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_HELP) }
                     }
-                    ProfileMenuRow(icon = Icons.Default.Help, label = "Help & Support", tint = MaterialTheme.colorScheme.primary) { onNavigate(AppRoutes.PROFILE_HELP) }
                     ProfileMenuRow(icon = Icons.Default.Settings, label = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant) { onNavigate(AppRoutes.PROFILE_SETTINGS) }
                 }
             }

@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,6 +53,15 @@ fun AdminSupportTicketDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(ticketId, state is AdminSupportTicketDetailUiState.Ready) {
+        if (state is AdminSupportTicketDetailUiState.Ready) {
+            userSettingsViewModel.syncDismissNotificationsMatching(
+                type = NotificationTypes.SUPPORT_TICKET_SUBMITTED,
+                orderId = ticketId,
+            )
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {

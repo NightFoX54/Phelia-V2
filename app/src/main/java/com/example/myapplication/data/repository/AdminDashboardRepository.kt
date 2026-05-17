@@ -22,12 +22,14 @@ data class AdminDashboardOverview(
 )
 
 data class AdminProductPerformance(
+    val productId: String,
     val name: String,
     val unitsSold: Int,
     val revenue: Double,
 )
 
 data class AdminStorePerformance(
+    val storeId: String,
     val storeName: String,
     val orderCount: Int,
     val revenue: Double,
@@ -67,7 +69,7 @@ class AdminDashboardRepository(
             }
         }
 
-        data class ProductAgg(var name: String, var unitsSold: Int, var revenue: Double)
+        data class ProductAgg(val productId: String, var name: String, var unitsSold: Int, var revenue: Double)
         val productAgg = linkedMapOf<String, ProductAgg>()
         itemsSnap.documents.forEach { doc ->
             val productId = doc.getString(FIELD_PRODUCT_ID)?.takeIf { it.isNotBlank() } ?: doc.id
@@ -77,7 +79,7 @@ class AdminDashboardRepository(
             val revenue = unitPrice * qty
             val agg = productAgg[productId]
             if (agg == null) {
-                productAgg[productId] = ProductAgg(name = name, unitsSold = qty, revenue = revenue)
+                productAgg[productId] = ProductAgg(productId = productId, name = name, unitsSold = qty, revenue = revenue)
             } else {
                 agg.unitsSold += qty
                 agg.revenue += revenue
@@ -88,11 +90,11 @@ class AdminDashboardRepository(
         val topProducts = rankedProducts
             .sortedWith(compareByDescending<ProductAgg> { it.unitsSold }.thenByDescending { it.revenue })
             .take(3)
-            .map { AdminProductPerformance(name = it.name, unitsSold = it.unitsSold, revenue = it.revenue) }
+            .map { AdminProductPerformance(productId = it.productId, name = it.name, unitsSold = it.unitsSold, revenue = it.revenue) }
         val worstProducts = rankedProducts
             .sortedWith(compareBy<ProductAgg> { it.unitsSold }.thenBy { it.revenue })
             .take(3)
-            .map { AdminProductPerformance(name = it.name, unitsSold = it.unitsSold, revenue = it.revenue) }
+            .map { AdminProductPerformance(productId = it.productId, name = it.name, unitsSold = it.unitsSold, revenue = it.revenue) }
         val topSellingChart = rankedProducts
             .sortedByDescending { it.unitsSold }
             .take(5)
@@ -118,6 +120,7 @@ class AdminDashboardRepository(
             .take(3)
             .map { (sid, agg) ->
                 AdminStorePerformance(
+                    storeId = sid,
                     storeName = storeNamesById[sid]?.takeIf { it.isNotBlank() } ?: sid,
                     orderCount = agg.orderCount,
                     revenue = agg.revenue,

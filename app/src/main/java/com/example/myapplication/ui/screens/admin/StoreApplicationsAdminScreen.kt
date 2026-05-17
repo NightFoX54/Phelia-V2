@@ -145,6 +145,12 @@ fun StoreApplicationsAdminScreen(
                         },
                         onViewDetail = {
                             detailTarget = app
+                            scope.launch {
+                                userSettingsViewModel.syncDismissNotificationsMatching(
+                                    type = NotificationTypes.STORE_APPLICATION_SUBMITTED,
+                                    storeApplicationId = app.applicationId,
+                                )
+                            }
                         }
                     )
                 }

@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.screens.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +63,8 @@ fun AdminDashboardScreen(
     onStoreApplications: () -> Unit = {},
     onCatalogMeta: () -> Unit = {},
     onSupportTickets: () -> Unit = {},
+    onOpenProduct: (String) -> Unit = {},
+    onOpenStore: (String) -> Unit = {},
     unreadSupportTickets: Int = 0,
     unreadStoreApplications: Int = 0,
     unreadStoreUpdateRequests: Int = 0,
@@ -181,7 +184,11 @@ fun AdminDashboardScreen(
                     }
                     topProducts.forEachIndexed { idx, product ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                                .clickable { onOpenProduct(product.productId) }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("#${idx + 1}", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = 36.dp))
@@ -213,7 +220,11 @@ fun AdminDashboardScreen(
                     }
                     worstProducts.forEach { product ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                                .clickable { onOpenProduct(product.productId) }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -243,7 +254,11 @@ fun AdminDashboardScreen(
                     }
                     topStores.forEach { store ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp)).padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                                .clickable { onOpenStore(store.storeId) }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {

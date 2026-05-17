@@ -517,6 +517,8 @@ fun MainScaffoldNavHost(sessionViewModel: SessionViewModel) {
                     onStoreApplications = { navController.navigate(AppRoutes.ADMIN_STORE_APPLICATIONS) },
                     onCatalogMeta = { navController.navigate(AppRoutes.ADMIN_CATALOG) },
                     onSupportTickets = { navController.navigate(AppRoutes.ADMIN_SUPPORT_TICKETS) },
+                    onOpenProduct = { productId -> navController.navigate(AppRoutes.productDetail(productId)) },
+                    onOpenStore = { storeId -> navController.navigate(AppRoutes.storeDetail(storeId)) },
                     unreadSupportTickets = adminUnreadSupportTickets,
                     unreadStoreApplications = adminUnreadStoreApplications,
                     unreadStoreUpdateRequests = adminUnreadStoreUpdateRequests,

@@ -399,16 +399,6 @@ fun StoreDashboardScreen(
                 Icon(Icons.Default.ExpandLess, contentDescription = "Scroll to top")
             }
         }
-        if (loadSt is StoreProductsLoadState.Ready) {
-            FloatingActionButton(
-                onClick = onAddProduct,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 88.dp),
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-            }
-        }
     }
 }
 

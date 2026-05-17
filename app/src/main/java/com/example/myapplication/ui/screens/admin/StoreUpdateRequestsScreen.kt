@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +56,20 @@ fun StoreUpdateRequestsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
+
+    val visibleRequests = (uiState as? AdminStoreUpdateRequestsUiState.Ready)?.requests.orEmpty()
+    LaunchedEffect(visibleRequests.map { it.storeId }) {
+        visibleRequests
+            .map { it.storeId }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .forEach { storeId ->
+                userSettingsViewModel.syncDismissNotificationsMatching(
+                    type = NotificationTypes.STORE_UPDATE_REQUEST_SUBMITTED,
+                    storeId = storeId,
+                )
+            }
+    }
 
     Column(
         modifier = modifier
